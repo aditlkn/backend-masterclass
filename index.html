@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backend Engineering Masterclass — 30 Days, Principal Depth</title>
+<meta name="description" content="A 30-day backend engineering curriculum. One concept per day, principal-engineer depth, real production lessons, interactive visuals.">
+<meta property="og:title" content="Backend Engineering Masterclass">
+<meta property="og:description" content="30 days. Principal-engineer depth. Real production lessons. Interactive visuals.">
+<meta property="og:type" content="website">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{
+  --bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;
+  --border:#232840;--border2:#2e3550;
+  --text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;
+  --accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;
+  --w1:#5b8fff;--w2:#3ecf8e;--w3:#a87fff;--w4:#f5a623;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:56px;}
+.nav-logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text);text-decoration:none;letter-spacing:-.3px;}
+.nav-logo span{color:var(--accent);}
+.nav-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:1px;}
+
+.hero{max-width:860px;margin:0 auto;padding:96px 40px 80px;text-align:center;}
+.hero-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border:1px solid rgba(91,143,255,.3);background:rgba(91,143,255,.07);padding:5px 16px;border-radius:20px;margin-bottom:28px;}
+.hero h1{font-family:'Lora',serif;font-size:clamp(32px,5vw,52px);font-weight:600;line-height:1.15;color:var(--text);margin-bottom:20px;}
+.hero h1 em{font-style:italic;color:var(--accent);}
+.hero-sub{font-size:17px;color:var(--text2);max-width:560px;margin:0 auto 44px;line-height:1.75;}
+.stats{display:flex;justify-content:center;gap:48px;flex-wrap:wrap;}
+.stat-num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--text);display:block;}
+.stat-label{font-size:12px;color:var(--text3);}
+
+.weeks{max-width:1020px;margin:0 auto;padding:0 40px 100px;}
+.week-block{margin-bottom:56px;}
+.week-header{display:flex;align-items:baseline;gap:16px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.week-pill{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:3px 12px;border-radius:4px;font-weight:600;}
+.w1 .week-pill{background:rgba(91,143,255,.1);color:var(--w1);}
+.w2 .week-pill{background:rgba(62,207,142,.1);color:var(--w2);}
+.w3 .week-pill{background:rgba(168,127,255,.1);color:var(--w3);}
+.w4 .week-pill{background:rgba(245,166,35,.1);color:var(--w4);}
+.week-title{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);}
+.week-status{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.status-done{color:var(--green);}
+.status-soon{color:var(--text3);}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;text-decoration:none;display:block;position:relative;overflow:hidden;transition:transform .15s,border-color .15s,background .15s;}
+.card::after{content:'';position:absolute;inset:0 0 auto 0;height:2px;background:var(--c);opacity:0;transition:opacity .15s;}
+.card.live:hover{transform:translateY(-2px);border-color:var(--c);background:var(--bg3);}
+.card.live:hover::after{opacity:1;}
+.card.locked{opacity:.4;pointer-events:none;}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.day-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--c);letter-spacing:1px;}
+.badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;letter-spacing:.5px;}
+.badge-live{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.badge-soon{background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
+.card-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:8px;}
+.tags{display:flex;flex-wrap:wrap;gap:4px;}
+.tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:2px 7px;border-radius:4px;}
+.card-meta{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+
+footer{border-top:1px solid var(--border);padding:28px 40px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.5px;}
+
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+@media(max-width:600px){
+  nav{padding:0 20px;}
+  .hero{padding:60px 20px 48px;}
+  .weeks{padding:0 20px 60px;}
+  .stats{gap:28px;}
+  .grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">Backend<span>.</span>dev</a>
+  <span class="nav-meta">30 DAYS · PRINCIPAL DEPTH</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Backend Engineering Masterclass</div>
+  <h1>From mobile dev to<br><em>backend engineer</em></h1>
+  <p class="hero-sub">One concept per day. Principal-engineer depth. Real production war stories, interactive visuals, and decision frameworks you can apply immediately.</p>
+  <div class="stats">
+    <div><span class="stat-num">30</span><span class="stat-label">Days</span></div>
+    <div><span class="stat-num">~60</span><span class="stat-label">min / day</span></div>
+    <div><span class="stat-num">7</span><span class="stat-label">Days live now</span></div>
+    <div><span class="stat-num">8</span><span class="stat-label">Interactives / day</span></div>
+  </div>
+</div>
+
+<div class="weeks">
+
+  <!-- WEEK 1 -->
+  <div class="week-block w1">
+    <div class="week-header">
+      <span class="week-pill">Week 1</span>
+      <span class="week-title">Networking &amp; APIs</span>
+      <span class="week-status status-done">✓ Complete</span>
+    </div>
+    <div class="grid">
+      <a href="/day01" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 01</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">HTTP Deep Dive</div>
+        <div class="tags"><span class="tag">HTTP/2</span><span class="tag">TLS</span><span class="tag">Keep-alive</span><span class="tag">Compression</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day02" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 02</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">TCP/IP &amp; Sockets</div>
+        <div class="tags"><span class="tag">3-Way Handshake</span><span class="tag">TIME_WAIT</span><span class="tag">Nagle</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day03" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 03</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">DNS &amp; Service Discovery</div>
+        <div class="tags"><span class="tag">Resolution chain</span><span class="tag">TTL</span><span class="tag">k8s ndots</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day04" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 04</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">REST API Design at Scale</div>
+        <div class="tags"><span class="tag">Pagination</span><span class="tag">Idempotency</span><span class="tag">Versioning</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day05" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 05</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">Load Balancing Strategies</div>
+        <div class="tags"><span class="tag">P2C</span><span class="tag">Health checks</span><span class="tag">Slow-start</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day06" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 06</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">API Gateway Patterns</div>
+        <div class="tags"><span class="tag">BFF</span><span class="tag">Circuit breaking</span><span class="tag">Correlation IDs</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+      <a href="/day07" class="card live" style="--c:var(--w1)">
+        <div class="card-top"><span class="day-num">DAY 07</span><span class="badge badge-live">Available</span></div>
+        <div class="card-title">gRPC &amp; Protocol Buffers</div>
+        <div class="tags"><span class="tag">Protobuf</span><span class="tag">Streaming</span><span class="tag">Deadlines</span></div>
+        <div class="card-meta"><span>⏱ ~60 min</span><span>⚙ 8 interactives</span></div>
+      </a>
+    </div>
+  </div>
+
+  <!-- WEEK 2 -->
+  <div class="week-block w2">
+    <div class="week-header">
+      <span class="week-pill">Week 2</span>
+      <span class="week-title">Databases &amp; Storage</span>
+      <span class="week-status status-soon">Shipping soon</span>
+    </div>
+    <div class="grid">
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 08</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Database Indexing in Depth</div><div class="tags"><span class="tag">B-Tree</span><span class="tag">Covering index</span><span class="tag">EXPLAIN</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 09</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Transactions &amp; ACID</div><div class="tags"><span class="tag">Isolation levels</span><span class="tag">Sagas</span><span class="tag">Locking</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 10</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Database Replication</div><div class="tags"><span class="tag">WAL</span><span class="tag">Read replicas</span><span class="tag">Failover</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 11</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Connection Pooling &amp; PgBouncer</div><div class="tags"><span class="tag">PgBouncer</span><span class="tag">Pool sizing</span><span class="tag">Transaction mode</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 12</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Sharding &amp; Partitioning</div><div class="tags"><span class="tag">Shard keys</span><span class="tag">Citus</span><span class="tag">pg_partman</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 13</span><span class="badge badge-soon">Soon</span></div><div class="card-title">NoSQL Data Modeling</div><div class="tags"><span class="tag">MongoDB</span><span class="tag">Redis</span><span class="tag">Cassandra</span></div></div>
+      <div class="card locked" style="--c:var(--w2)"><div class="card-top"><span class="day-num">DAY 14</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Database Migrations at Scale</div><div class="tags"><span class="tag">gh-ost</span><span class="tag">Expand-contract</span><span class="tag">Zero downtime</span></div></div>
+    </div>
+  </div>
+
+  <!-- WEEK 3 -->
+  <div class="week-block w3">
+    <div class="week-header">
+      <span class="week-pill">Week 3</span>
+      <span class="week-title">Reliability &amp; Observability</span>
+      <span class="week-status status-soon">Shipping soon</span>
+    </div>
+    <div class="grid">
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 15</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Caching Strategies</div><div class="tags"><span class="tag">Cache-aside</span><span class="tag">Stampede</span><span class="tag">Invalidation</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 16</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Rate Limiting &amp; Throttling</div><div class="tags"><span class="tag">Token bucket</span><span class="tag">Redis Lua</span><span class="tag">Sliding window</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 17</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Circuit Breakers &amp; Resilience</div><div class="tags"><span class="tag">Bulkhead</span><span class="tag">Retry jitter</span><span class="tag">cockatiel</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 18</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Distributed Tracing</div><div class="tags"><span class="tag">OpenTelemetry</span><span class="tag">Sampling</span><span class="tag">W3C trace</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 19</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Structured Logging</div><div class="tags"><span class="tag">Pino</span><span class="tag">Correlation IDs</span><span class="tag">Retention</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 20</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Async Job Queues &amp; Workers</div><div class="tags"><span class="tag">BullMQ</span><span class="tag">DLQ</span><span class="tag">At-least-once</span></div></div>
+      <div class="card locked" style="--c:var(--w3)"><div class="card-top"><span class="day-num">DAY 21</span><span class="badge badge-soon">Soon</span></div><div class="card-title">SLOs, SLIs &amp; Error Budgets</div><div class="tags"><span class="tag">Burn rate</span><span class="tag">Four signals</span><span class="tag">Alerting</span></div></div>
+    </div>
+  </div>
+
+  <!-- WEEK 4 -->
+  <div class="week-block w4">
+    <div class="week-header">
+      <span class="week-pill">Week 4</span>
+      <span class="week-title">Scale &amp; Architecture</span>
+      <span class="week-status status-soon">Shipping soon</span>
+    </div>
+    <div class="grid">
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 22</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Kafka &amp; Event Streaming</div><div class="tags"><span class="tag">Consumer groups</span><span class="tag">Ordering</span><span class="tag">Compaction</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 23</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Microservices &amp; Boundaries</div><div class="tags"><span class="tag">DDD</span><span class="tag">Bounded context</span><span class="tag">Contracts</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 24</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Auth: JWT, OAuth2, RBAC</div><div class="tags"><span class="tag">PKCE</span><span class="tag">RBAC</span><span class="tag">Token revocation</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 25</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Event Sourcing &amp; CQRS</div><div class="tags"><span class="tag">Event store</span><span class="tag">Projections</span><span class="tag">CQRS</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 26</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Kubernetes Deep Dive</div><div class="tags"><span class="tag">Resources</span><span class="tag">HPA</span><span class="tag">Probes</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 27</span><span class="badge badge-soon">Soon</span></div><div class="card-title">CI/CD &amp; Deployment Strategies</div><div class="tags"><span class="tag">Canary</span><span class="tag">Feature flags</span><span class="tag">GitOps</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 28</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Security: OWASP &amp; SSRF</div><div class="tags"><span class="tag">SQL injection</span><span class="tag">SSRF</span><span class="tag">Secrets</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 29</span><span class="badge badge-soon">Soon</span></div><div class="card-title">Performance Profiling</div><div class="tags"><span class="tag">clinic.js</span><span class="tag">N+1</span><span class="tag">GC tuning</span></div></div>
+      <div class="card locked" style="--c:var(--w4)"><div class="card-top"><span class="day-num">DAY 30</span><span class="badge badge-soon">Soon</span></div><div class="card-title">System Design Synthesis</div><div class="tags"><span class="tag">CAP theorem</span><span class="tag">Estimation</span><span class="tag">Principal thinking</span></div></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Backend Engineering Masterclass &nbsp;·&nbsp; Week 1 of 4 complete &nbsp;·&nbsp; Days 8–30 shipping weekly</footer>
+
+</body>
+</html>

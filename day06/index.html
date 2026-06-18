@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 6: API Gateway Patterns — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--bg4:#1d2230;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--purple);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--text);font-style:italic;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0 8px;overflow:hidden;font-family:'JetBrains Mono',monospace;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:10px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.decision-strip .ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;gap:0;}
+.ds-step{display:flex;gap:0;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.1);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.4;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-detail strong{color:var(--text);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes flowRight{0%{left:-20px}100%{left:calc(100% + 20px)}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 06 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-model">What Belongs at the Gateway</a>
+  <a href="#s-bff">BFF Pattern</a>
+  <a href="#s-auth">Auth at the Gateway</a>
+  <a href="#s-ratelimit">Rate Limiting</a>
+  <a href="#s-routing">Request Routing</a>
+  <a href="#s-circuit">Circuit Breaking</a>
+  <a href="#s-correlation">Correlation IDs</a>
+  <a href="#s-mesh">Gateway vs Service Mesh</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Design Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+</nav>
+<article class="content">
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 1 · Day 6 · Networking &amp; APIs</div>
+  <h1>The API gateway is either<br>your best decision or a <em>distributed monolith</em></h1>
+  <p class="hero-sub">A well-designed gateway is invisible — it handles auth, rate limiting, routing, and observability so your services don't have to. A poorly designed one becomes a bottleneck that every service depends on, that nobody owns, and that accumulates business logic until it's the most critical and most fragile piece of your entire architecture.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--purple)"></div>Kong / nginx / AWS API GW</div>
+  </div>
+</div>
+
+<!-- S1: WHAT BELONGS AT THE GATEWAY -->
+<div class="section" id="s-model">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>What belongs at the gateway — and what doesn't</h2>
+
+  <p>The most important gateway design decision isn't which product to use — it's what responsibilities to give it. Get this wrong and you end up with one of two failure modes: an <strong>anemic gateway</strong> that does nothing (every service reimplements auth, rate limiting, and logging independently, inconsistently), or a <strong>fat gateway</strong> that accumulates business logic until changing it requires a full deployment pipeline and approval from five teams.</p>
+
+  <p>The mental model: <strong>the gateway owns cross-cutting concerns, not business logic</strong>. Cross-cutting means: the same thing applies to every request regardless of which service handles it. Business logic means: it depends on what the request is doing or who the user is in a domain-specific way.</p>
+
+  <h3>Belongs at the gateway</h3>
+  <ul>
+    <li><strong>Authentication:</strong> Verify that the token/API key is valid and not expired. Extract identity. Forward it downstream as trusted headers (<code>X-User-Id</code>, <code>X-User-Role</code>). Services trust the gateway-injected identity — they don't re-verify tokens.</li>
+    <li><strong>Rate limiting:</strong> Per API key, per IP, per endpoint. The gateway sees all traffic; services see only their slice. Rate limiting in a service is ineffective — a single service doesn't know about the 10 other services the same client is hammering.</li>
+    <li><strong>TLS termination:</strong> Decrypt HTTPS at the gateway. Forward plaintext (or re-encrypt with an internal cert) to services. Services don't need TLS complexity; the gateway handles certificate management centrally.</li>
+    <li><strong>Request/response logging:</strong> Log every request with method, path, status, latency, and correlation ID at the gateway level. One place. Consistent schema. No service-specific logging gaps.</li>
+    <li><strong>Correlation ID generation:</strong> Generate a unique request ID at ingress. Forward it via <code>X-Request-Id</code> header to every downstream service. Without this, distributed debugging is log archaeology.</li>
+    <li><strong>Circuit breaking to upstreams:</strong> If a backend service is failing, the gateway should stop routing to it and return a fast error rather than letting client connections queue.</li>
+  </ul>
+
+  <h3>Does NOT belong at the gateway</h3>
+  <ul>
+    <li><strong>Authorisation decisions:</strong> "Can this user edit this specific order?" requires domain knowledge — the order's owner, the user's role, the tenant's policy. That's business logic. The gateway can tell you <em>who</em> the user is; whether they're <em>allowed</em> is a service-level decision.</li>
+    <li><strong>Request body transformation with business rules:</strong> Transforming a field name is fine. Calculating a discount, applying a pricing rule, or enriching data from a database query is not. The gateway becomes a silent business logic owner nobody notices until it breaks.</li>
+    <li><strong>Orchestration:</strong> Calling service A, then service B, then combining the responses — that's an aggregation layer (or BFF), not a gateway. A gateway routes; it doesn't compose.</li>
+  </ul>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Gateway responsibility matrix — click any row to see the reasoning</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Green tick = belongs here. Click any concern to understand why it lives at the gateway, in the service, or both.</p>
+    <div id="resp-matrix"></div>
+    <div id="resp-why" style="margin-top:12px;padding:10px 16px;background:var(--bg);border-radius:6px;font-size:13px;min-height:36px;line-height:1.6"><span style="color:var(--text3)">Click any row above →</span></div>
+  </div>
+</div>
+
+<!-- S2: BFF -->
+<div class="section" id="s-bff">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>The BFF pattern: one gateway per client, not one gateway for all</h2>
+
+  <p>BFF (Backend for Frontend) is one of the most impactful architectural patterns for multi-client systems, and one of the least implemented until the team is already suffering from its absence.</p>
+
+  <p>The problem it solves: a mobile app, a web dashboard, and a third-party integration all calling the same generic API. The mobile app makes 6 API calls to render one screen (user profile, orders, notifications, recommendations, settings, activity feed). Each call returns far more data than the mobile client needs, because the API was designed to be general. The web dashboard makes 2 calls but needs deeper data. The third-party integration needs a completely different shape.</p>
+
+  <p>The generic API ends up trying to serve all three, satisfying none of them well: too much data for mobile (bandwidth waste), not enough flexibility for the web dashboard, wrong shape for third parties. Versioning becomes a nightmare because a change for the mobile client potentially breaks the others.</p>
+
+  <h3>The BFF solution</h3>
+  <p>Create a separate gateway layer per client type: a Mobile BFF, a Web BFF, and a Partner API gateway. Each BFF is owned by the team that builds the corresponding client. The Mobile BFF knows exactly what the mobile app needs — it calls 3 backend services, aggregates the data, strips fields the app doesn't use, and returns a single response. One network round-trip instead of six. The response is exactly the shape the mobile app expects, with no irrelevant fields.</p>
+
+  <p>Each BFF independently evolves with its client. The Mobile BFF can change its response shape without touching the Web BFF. The backend services remain generic — they don't need to know which client is calling.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>BFF is not a microservice proliferation excuse</strong>
+      <p>A BFF per feature, per team, or per minor client variation becomes its own maintenance burden. Start with one BFF per meaningfully different client type (mobile vs web vs external partners). That's typically 2-3 BFFs. If you find yourself creating a BFF for "mobile iOS" vs "mobile Android" when both need the same data — you've gone too far.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">BFF pattern — 6 generic API calls vs 1 BFF call for a mobile home screen</span><span class="viz-badge">COMPARISON</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="viz-btn active" onclick="document.getElementById('bff-mode').value='generic';renderBFF();this.classList.add('active');document.querySelectorAll('.bff-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active')" id="bff-btn-generic">Generic API (no BFF)</button>
+      <button class="viz-btn" onclick="document.getElementById('bff-mode').value='bff';renderBFF();document.querySelectorAll('.bff-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active')" id="bff-btn-bff">Mobile BFF</button>
+      <select id="bff-mode" style="display:none"><option value="generic">generic</option><option value="bff">bff</option></select>
+    </div>
+    <div id="bff-output" class="mono-out" style="min-height:220px;font-size:12px;line-height:2"></div>
+  </div>
+</div>
+
+<!-- S3: AUTH AT THE GATEWAY -->
+<div class="section" id="s-auth">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Auth at the gateway: validate once, trust downstream</h2>
+
+  <p>Authentication is the single clearest case for gateway-level handling. The alternative — every service independently validates every token — is slow, inconsistent, and creates a surface area for vulnerabilities. If Service A has a bug in its token validation that Service B correctly fixes, you have split authentication behaviour depending on which service a request hits.</p>
+
+  <h3>The pattern</h3>
+  <p>The gateway receives the request with an <code>Authorization: Bearer &lt;token&gt;</code> header. It validates the JWT against a JWKS (JSON Web Key Set) endpoint — cryptographic signature verification, expiry check, issuer check. If validation fails, the gateway returns <code>401 Unauthorized</code> immediately, and the request never reaches a backend service.</p>
+
+  <p>If validation passes, the gateway <em>removes</em> the <code>Authorization</code> header and injects trusted identity headers: <code>X-User-Id: usr_123</code>, <code>X-User-Role: admin</code>, <code>X-Tenant-Id: tenant_abc</code>. Backend services read these headers directly — no JWT library, no crypto, no network call to an auth service. They trust the gateway.</p>
+
+  <h3>JWKS caching: the performance detail that matters</h3>
+  <p>JWT validation requires fetching the public key from the JWKS endpoint to verify the signature. If you fetch the JWKS on every request, you're making an HTTP call to your auth service for every API call — which adds latency and makes your auth service a bottleneck. Cache the JWKS. Refresh the cache on a schedule (every 5 minutes) and on key ID mismatch (when a token has a <code>kid</code> not in cache, fetch once and retry). This is how Kong, nginx-lua, and AWS API Gateway all handle it.</p>
+
+  <h3>The authorisation boundary</h3>
+  <p>Authentication (who are you?) belongs at the gateway. Authorisation (can you do this?) mostly belongs in the service. The gateway can do coarse-grained authorisation — "only users with role <code>admin</code> can reach <code>/v1/admin/*</code>" — because that's a routing rule, not a business rule. Fine-grained authorisation — "can user 456 edit order 789?" — requires the service to check ownership in its database.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Kong gateway — JWT validation plugin + identity header injection</span>
+      <span class="code-block-lang">YAML</span>
+    </div>
+    <pre><span class="cm"># Kong declarative config (deck format)</span>
+plugins:
+  - name: jwt
+    config:
+      key_claim_name: kid          <span class="cm"># JWT header field with key ID</span>
+      claims_to_verify:
+        - exp                       <span class="cm"># verify expiry</span>
+        - nbf                       <span class="cm"># verify not-before</span>
+      maximum_expiration: 86400    <span class="cm"># reject tokens valid &gt; 24h</span>
+      secret_is_base64: false
+
+  <span class="cm"># After JWT validation: inject identity into upstream headers</span>
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - X-User-Id:$(jwt.claims.sub)
+          - X-User-Role:$(jwt.claims.role)
+          - X-Tenant-Id:$(jwt.claims.tenant_id)
+      remove:
+        headers:
+          - Authorization            <span class="cm"># services get identity, not the raw token</span>
+
+<span class="cm"># nginx-lua equivalent (OpenResty)</span>
+<span class="cm"># local jwt = require("resty.jwt")</span>
+<span class="cm"># local token = ngx.req.get_headers()["Authorization"]</span>
+<span class="cm"># local verified = jwt:verify(jwks_public_key, token)</span>
+<span class="cm"># if not verified.verified then ngx.exit(401) end</span>
+<span class="cm"># ngx.req.set_header("X-User-Id", verified.payload.sub)</span>
+<span class="cm"># ngx.req.set_header("Authorization", nil) -- strip token</span></pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Auth at the gateway — step through JWT validation to identity injection</span><span class="viz-badge">STEP-THROUGH</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <button class="viz-btn" onclick="authPrev()" id="auth-prev" disabled>← Prev</button>
+      <button class="viz-btn active" onclick="authNext()" id="auth-next">Next →</button>
+      <button class="viz-btn" onclick="authReset()">↺ Reset</button>
+      <span id="auth-counter" style="font-size:11px;color:var(--text3)">0 / 7</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:11px;color:var(--accent);font-weight:600">CLIENT</span>
+      <span style="font-size:11px;color:var(--orange);font-weight:600">GATEWAY</span>
+      <span style="font-size:11px;color:var(--green);font-weight:600">SERVICE</span>
+    </div>
+    <div id="auth-diagram" style="position:relative;min-height:260px;background:var(--bg);border-radius:8px;border:1px solid var(--border);overflow:hidden;padding:10px 0">
+      <div style="position:absolute;left:33%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div style="position:absolute;left:67%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div id="auth-arrows"></div>
+    </div>
+    <div id="auth-explain" style="margin-top:12px;padding:12px 16px;background:var(--bg3);border-radius:6px;font-size:13px;color:var(--text2);min-height:60px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S4: RATE LIMITING -->
+<div class="section" id="s-ratelimit">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Rate limiting at the gateway: multi-dimensional and coordinated</h2>
+
+  <p>Rate limiting in a service is broken by design. If you have 5 instances of a service and limit to 100 requests per minute per instance, an attacker with 5 connections can make 500 requests per minute — one per instance. The limit only works if there's a single enforcer that sees all traffic. That's the gateway.</p>
+
+  <h3>Multi-dimensional limiting</h3>
+  <p>Production rate limiting is never just one dimension. You need at least three, enforced simultaneously:</p>
+  <ul>
+    <li><strong>Per API key:</strong> The primary limit for authenticated clients. "Your plan allows 1,000 requests/minute." This prevents a single customer from monopolising infrastructure.</li>
+    <li><strong>Per IP address:</strong> Essential for unauthenticated endpoints (login, token refresh). A single IP making 1,000 login attempts per minute is a credential stuffing attack. IP rate limiting catches this even before authentication runs.</li>
+    <li><strong>Per endpoint:</strong> Some endpoints are more expensive than others. <code>POST /reports/generate</code> hitting the database hard should have a much lower limit than <code>GET /users/{id}</code>. Endpoint-level limits prevent a single expensive endpoint from exhausting capacity even within a customer's global limit.</li>
+  </ul>
+
+  <h3>Distributed rate limiting with Redis</h3>
+  <p>The gateway runs as multiple instances (for HA). Each instance must share rate limit state — otherwise each instance has its own counter and a customer with 3 gateway connections gets 3× their limit. Redis with an atomic Lua script is the standard solution: a single Lua script atomically checks and increments the counter, returns the current count and the TTL, and the gateway either passes or rejects the request based on the result.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Multi-dimensional rate limiting middleware — Node.js / Express gateway</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="kw">import</span> redis <span class="kw">from</span> <span class="str">'./redis'</span>;
+
+<span class="kw">const</span> <span class="var">LIMITS</span> = {
+  apiKey:   { window: <span class="num">60</span>,   max: <span class="num">1000</span> },  <span class="cm">// 1000 req/min per key</span>
+  ip:       { window: <span class="num">60</span>,   max: <span class="num">200</span>  },  <span class="cm">// 200 req/min per IP</span>
+  endpoint: { window: <span class="num">60</span>,   max: <span class="num">50</span>   },  <span class="cm">// expensive endpoints</span>
+};
+
+<span class="cm">// Atomic sliding window in Redis Lua</span>
+<span class="kw">const</span> <span class="var">SLIDING_WINDOW</span> = <span class="str">`
+local key    = KEYS[1]
+local window = tonumber(ARGV[1])
+local limit  = tonumber(ARGV[2])
+local now    = tonumber(ARGV[3])
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window * 1000)
+local count = redis.call('ZCARD', key)
+if count >= limit then return {0, count, limit} end
+redis.call('ZADD', key, now, now .. math.random())
+redis.call('EXPIRE', key, window)
+return {1, count + 1, limit}
+`</span>;
+
+<span class="kw">async function</span> <span class="fn">checkLimit</span>(key: <span class="ty">string</span>, window: <span class="ty">number</span>, max: <span class="ty">number</span>) {
+  <span class="kw">const</span> [allowed, count, limit] = <span class="kw">await</span> redis.<span class="fn">eval</span>(
+    SLIDING_WINDOW, <span class="num">1</span>, key, window, max, Date.<span class="fn">now</span>()
+  ) <span class="kw">as</span> [<span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>];
+  <span class="kw">return</span> { allowed: allowed === <span class="num">1</span>, count, limit };
+}
+
+<span class="kw">export async function</span> <span class="fn">rateLimitMiddleware</span>(req: Request, res: Response, next: NextFunction) {
+  <span class="kw">const</span> <span class="var">apiKey</span>   = req.headers[<span class="str">'x-api-key'</span>] <span class="kw">as</span> <span class="ty">string</span>;
+  <span class="kw">const</span> <span class="var">ip</span>       = req.ip;
+  <span class="kw">const</span> <span class="var">endpoint</span> = req.method + <span class="str">':'</span> + req.path;
+
+  <span class="cm">// Check all dimensions in parallel</span>
+  <span class="kw">const</span> [keyResult, ipResult] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    apiKey ? <span class="fn">checkLimit</span>(<span class="str">`rl:key:\${apiKey}`</span>, LIMITS.apiKey.window, LIMITS.apiKey.max) : <span class="kw">null</span>,
+    <span class="fn">checkLimit</span>(<span class="str">`rl:ip:\${ip}`</span>, LIMITS.ip.window, LIMITS.ip.max),
+  ]);
+
+  <span class="kw">const</span> <span class="var">blocked</span> = [keyResult, ipResult].<span class="fn">find</span>(r => r && !r.allowed);
+  <span class="kw">if</span> (blocked) {
+    res.<span class="fn">set</span>({
+      <span class="str">'X-RateLimit-Limit'</span>:     String(blocked.limit),
+      <span class="str">'X-RateLimit-Remaining'</span>:  <span class="str">'0'</span>,
+      <span class="str">'Retry-After'</span>:            <span class="str">'60'</span>,
+    });
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">429</span>).<span class="fn">json</span>({
+      error: { code: <span class="str">'RATE_LIMITED'</span>, message: <span class="str">'Too many requests'</span>, request_id: req.id }
+    });
+  }
+
+  <span class="cm">// Set informational headers on every response</span>
+  <span class="kw">if</span> (keyResult) {
+    res.<span class="fn">set</span>({
+      <span class="str">'X-RateLimit-Limit'</span>:    String(keyResult.limit),
+      <span class="str">'X-RateLimit-Remaining'</span>: String(keyResult.limit - keyResult.count),
+    });
+  }
+  <span class="fn">next</span>();
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Multi-dimensional rate limiting — per key, per IP, per endpoint simultaneously</span><span class="viz-badge">LIVE SIM</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">PER API KEY: <span id="rl-key-val" style="color:var(--accent)">100/min</span></div>
+        <input type="range" class="viz-slider" id="rl-key-limit" min="10" max="500" value="100" oninput="updateRLConfig()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">PER IP: <span id="rl-ip-val" style="color:var(--orange)">20/min</span></div>
+        <input type="range" class="viz-slider" id="rl-ip-limit" min="5" max="200" value="20" oninput="updateRLConfig()" style="accent-color:var(--orange)">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">PER ENDPOINT: <span id="rl-ep-val" style="color:var(--purple)">10/min</span></div>
+        <input type="range" class="viz-slider" id="rl-ep-limit" min="1" max="100" value="10" oninput="updateRLConfig()" style="accent-color:var(--purple)">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <span style="font-size:11px;color:var(--text3)">Request rate:</span>
+      <input type="range" class="viz-slider" id="rl-rps" min="1" max="10" value="5" style="width:120px;margin:0">
+      <button class="viz-btn" id="rl-start" onclick="rlStartStop()" style="border-color:var(--green);color:var(--green)">&#9654; Start</button>
+      <button class="viz-btn" onclick="rlReset()">&#8635; Reset</button>
+    </div>
+    <div id="rl-bars" style="margin-bottom:10px"></div>
+    <div id="rl-note" style="font-size:13px;color:var(--text2);min-height:32px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S5: ROUTING -->
+<div class="section" id="s-routing">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Request routing: the gateway's primary job</h2>
+
+  <p>Routing is what the gateway is fundamentally for — taking an incoming request and deciding which upstream service should handle it. Everything else (auth, rate limiting, logging) is middleware around this core function.</p>
+
+  <h3>Path-based routing</h3>
+  <p>The simplest and most common pattern. Route based on the URL path prefix:</p>
+  <ul>
+    <li><code>/v1/orders/*</code> → Order Service</li>
+    <li><code>/v1/users/*</code> → User Service</li>
+    <li><code>/v1/payments/*</code> → Payment Service</li>
+    <li><code>/v1/admin/*</code> → Admin Service (with additional auth check)</li>
+    <li><code>/static/*</code> → CDN origin / S3</li>
+  </ul>
+  <p>Path-based routing is easy to reason about, easy to debug (just look at the URL), and easy to configure. It's also easy to get wrong — long prefix lists with overlapping patterns (does <code>/v1/orders/refunds</code> match <code>/v1/orders/*</code> or <code>/v1/refunds/*</code>?) are a common source of production routing bugs.</p>
+
+  <h3>Header-based routing</h3>
+  <p>Route based on request headers. The most powerful use case: <strong>canary deployments</strong>. Route 5% of traffic to the new version by header, cookie, or percentage:</p>
+  <ul>
+    <li><code>X-Canary: true</code> header → new version</li>
+    <li>5% by random hash of user ID → new version</li>
+    <li>User in beta cohort (from JWT claim) → new version</li>
+  </ul>
+  <p>This is how Stripe, Netflix, and Google deploy: new code is running in production for a controlled slice of traffic before it reaches everyone. The gateway is the enforcer of the canary split.</p>
+
+  <h3>Timeout hierarchy</h3>
+  <p>The gateway's upstream timeout must be <em>shorter</em> than the client's timeout. If a client times out at 30 seconds and the gateway times out at 30 seconds, the client gives up at the same time the gateway does — no opportunity to return a meaningful error to the client. Set the gateway timeout to 25 seconds — the gateway can return a <code>504 Gateway Timeout</code> to the client 5 seconds before the client's own timeout fires, giving the client useful information and time to retry or display an error.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">nginx API gateway — path routing + canary + timeout hierarchy</span>
+      <span class="code-block-lang">NGINX</span>
+    </div>
+    <pre><span class="cm"># Upstream definitions with connection pooling</span>
+upstream orders_v1   { least_conn; server orders-v1:3000;   keepalive 32; }
+upstream orders_v2   { least_conn; server orders-v2:3000;   keepalive 32; }
+upstream users_svc   { least_conn; server users:3001;       keepalive 32; }
+upstream payments    { least_conn; server payments:3002;    keepalive 32; }
+
+server {
+    listen 443 ssl http2;
+
+    <span class="cm"># Correlation ID: generate if not provided by client</span>
+    set $req_id $http_x_request_id;
+    if ($req_id = "") { set $req_id $request_id; }
+    add_header X-Request-Id $req_id always;
+
+    <span class="cm"># Canary routing: 5% to v2 by cookie/header, rest to v1</span>
+    split_clients "${remote_addr}${request_uri}" $orders_upstream {
+        5%   orders_v2;
+        *    orders_v1;
+    }
+
+    <span class="cm"># Path-based routing</span>
+    location /v1/orders/ {
+        proxy_pass http://$orders_upstream;
+        proxy_read_timeout 25s;      <span class="cm"># shorter than client's 30s</span>
+        proxy_connect_timeout 3s;
+        proxy_set_header X-Request-Id  $req_id;
+        proxy_set_header X-User-Id     $http_x_user_id;     <span class="cm"># injected by auth</span>
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_hide_header Authorization;                     <span class="cm"># strip raw token</span>
+    }
+
+    location /v1/users/ {
+        proxy_pass http://users_svc;
+        proxy_read_timeout 25s;
+        proxy_set_header X-Request-Id $req_id;
+    }
+
+    location /v1/payments/ {
+        <span class="cm"># Extra: payments get additional auth header check</span>
+        if ($http_x_user_role != "admin") {
+            return 403 '{"error":{"code":"FORBIDDEN"}}';
+        }
+        proxy_pass http://payments;
+        proxy_read_timeout 25s;
+    }
+
+    <span class="cm"># Fallback: unknown routes</span>
+    location / {
+        return 404 '{"error":{"code":"NOT_FOUND","message":"Unknown API path"}}';
+    }
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Route builder — toggle routes, watch nginx config generate live</span><span class="viz-badge">BUILDER</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Toggle routes on/off. The nginx config updates in real time. Green dot = active route.</p>
+    <div id="route-rows" style="margin-bottom:14px"></div>
+    <button class="viz-btn" onclick="addRoute()" style="border-color:var(--green);color:var(--green);margin-bottom:14px">+ Add route</button>
+    <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-family:JetBrains Mono,monospace">Generated nginx config</div>
+    <pre id="route-config" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:11.5px;color:#abb2bf;line-height:1.7;overflow-x:auto;white-space:pre"></pre>
+  </div>
+</div>
+
+<!-- S6: CIRCUIT BREAKING -->
+<div class="section" id="s-circuit">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Circuit breaking at the gateway: fail fast before you cascade</h2>
+
+  <p>Without circuit breaking, a slow or failing backend service causes a cascade: clients retry, the gateway queues requests, queued requests pile up, the gateway exhausts its connection pool, other routes start being affected because the gateway is starved for resources. One broken service takes down the whole gateway.</p>
+
+  <p>A circuit breaker at the gateway level prevents this. When an upstream service's error rate or response time crosses a threshold, the circuit "opens" — the gateway immediately returns an error response for that route without connecting to the broken service. The connection pool is freed. Other routes continue working normally.</p>
+
+  <h3>The three states</h3>
+  <ul>
+    <li><strong>Closed (normal):</strong> Requests flow through. The circuit breaker tracks error rate and response time. Below threshold → stays closed.</li>
+    <li><strong>Open (failing fast):</strong> Error rate exceeded threshold. All requests immediately return an error — no connection to the backend attempted. After a configured timeout (e.g., 30 seconds), transitions to half-open.</li>
+    <li><strong>Half-open (probing):</strong> Allows a small number of test requests through. If they succeed, the circuit closes. If they fail, the circuit reopens for another timeout period.</li>
+  </ul>
+
+  <h3>Fallback strategies</h3>
+  <p>An open circuit needs a fallback response. Options in order of preference:</p>
+  <ol>
+    <li><strong>Cached response:</strong> Return the last successful response from Redis cache. Stale data is better than an error for most read operations.</li>
+    <li><strong>Degraded response:</strong> Return a partial response that omits the data from the failing service. A product page without reviews is better than a 500.</li>
+    <li><strong>Queue and process asynchronously:</strong> For write operations that can be deferred, accept the request and queue it for when the service recovers.</li>
+    <li><strong>Fast error with Retry-After:</strong> Return a 503 with a <code>Retry-After</code> header telling the client when to retry. At least the client can make an informed decision.</li>
+  </ol>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Circuit breaker at the gateway layer — Node.js</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="kw">import</span> { circuitBreaker, handleAll, ConsecutiveBreaker, ExponentialBackoff, retry, wrap } <span class="kw">from</span> <span class="str">'cockatiel'</span>;
+
+<span class="cm">// One circuit breaker per upstream service</span>
+<span class="kw">const</span> <span class="var">ordersCB</span> = <span class="fn">circuitBreaker</span>(handleAll, {
+  halfOpenAfter: <span class="num">15_000</span>,              <span class="cm">// probe after 15s</span>
+  breaker: <span class="kw">new</span> <span class="fn">ConsecutiveBreaker</span>(<span class="num">5</span>),  <span class="cm">// open after 5 consecutive failures</span>
+});
+
+<span class="cm">// Log every state transition — these are incidents</span>
+ordersCB.<span class="fn">onStateChange</span>(state => {
+  logger.<span class="fn">error</span>({ state, service: <span class="str">'orders'</span> }, <span class="str">'Circuit breaker state change'</span>);
+  metrics.<span class="fn">gauge</span>(<span class="str">'gateway.circuit.state'</span>, state === <span class="str">'open'</span> ? <span class="num">1</span> : <span class="num">0</span>, { service: <span class="str">'orders'</span> });
+});
+
+<span class="kw">async function</span> <span class="fn">proxyToOrders</span>(req: Request, res: Response) {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> <span class="var">result</span> = <span class="kw">await</span> ordersCB.<span class="fn">execute</span>(<span class="kw">async</span> () => {
+      <span class="kw">return</span> <span class="kw">await</span> ordersPool.<span class="fn">request</span>({
+        path: req.path, method: req.method,
+        headers: { <span class="str">'x-request-id'</span>: req.id, <span class="str">'x-user-id'</span>: req.userId },
+        body: req.body, headersTimeout: <span class="num">5_000</span>, bodyTimeout: <span class="num">25_000</span>,
+      });
+    });
+    res.<span class="fn">status</span>(result.statusCode).<span class="fn">json</span>(<span class="kw">await</span> result.body.<span class="fn">json</span>());
+  } <span class="kw">catch</span> (err: <span class="kw">any</span>) {
+    <span class="kw">if</span> (err.type === <span class="str">'BrokenCircuitError'</span>) {
+      <span class="cm">// Circuit is open — serve stale cache or degraded response</span>
+      <span class="kw">const</span> <span class="var">cached</span> = <span class="kw">await</span> redis.<span class="fn">get</span>(<span class="str">`cache:orders:\${req.params.id}`</span>);
+      <span class="kw">if</span> (cached) {
+        res.<span class="fn">set</span>(<span class="str">'X-Served-From-Cache'</span>, <span class="str">'true'</span>);
+        <span class="kw">return</span> res.<span class="fn">json</span>(<span class="fn">JSON.parse</span>(cached));
+      }
+      res.<span class="fn">set</span>(<span class="str">'Retry-After'</span>, <span class="str">'15'</span>);
+      <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">503</span>).<span class="fn">json</span>({
+        error: { code: <span class="str">'SERVICE_UNAVAILABLE'</span>, message: <span class="str">'Orders service temporarily unavailable'</span>, request_id: req.id }
+      });
+    }
+    <span class="kw">throw</span> err;
+  }
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Circuit breaker simulator — watch the state machine transition in real time</span><span class="viz-badge">LIVE SIM</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">UPSTREAM FAILURE RATE: <span id="cb-fail-rate-val" style="color:var(--accent)">0%</span></div>
+        <input type="range" class="viz-slider" id="cb-fail-rate" min="0" max="100" value="0" oninput="document.getElementById('cb-fail-rate-val').textContent=this.value+'%'">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--text3)">State:</span>
+        <span id="cb-state" style="font-family:JetBrains Mono,monospace;font-size:16px;font-weight:700;color:var(--green)">CLOSED</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="viz-btn" id="cb-start" onclick="cbStartStop()" style="border-color:var(--green);color:var(--green)">&#9654; Start requests</button>
+      <button class="viz-btn" onclick="cbReset()">&#8635; Reset</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-family:JetBrains Mono,monospace">Event log</div>
+    <div id="cb-log" class="mono-out" style="min-height:160px;font-size:12px;line-height:2"></div>
+  </div>
+</div>
+
+<!-- S7: CORRELATION IDs -->
+<div class="section" id="s-correlation">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Correlation IDs: the debugging feature worth 10 observability tools</h2>
+
+  <p>Here is the scenario that plays out in every microservices system without correlation IDs. A user reports an error at 2:47pm. You search the Order Service logs — 50,000 log lines during that minute. You find 12 errors. Which one is theirs? You search the Payment Service — 80,000 lines. The error you're looking for called both services, but you have no way to know which Payment Service log line corresponds to which Order Service request. You spend two hours manually correlating timestamps and user IDs across logs from four services.</p>
+
+  <p>With correlation IDs: the gateway generates a UUID at request ingress (<code>req_a1b2c3d4</code>). Every service logs it. Every downstream call carries it. The user gives you their request ID from the error response. You search <em>one</em> field across all logs. You find every log line from every service involved in that exact request in under 30 seconds.</p>
+
+  <h3>The implementation</h3>
+  <p>The gateway generates an ID if the client didn't provide one (<code>X-Request-Id</code>). It forwards the ID to all upstream services via header. Services include the ID in every log line. Services forward the ID when they make downstream calls. The ID is returned in the response headers so clients (and users) can report it.</p>
+
+  <h3>What to propagate beyond the correlation ID</h3>
+  <p>The correlation ID is the minimum. In a well-instrumented system you also propagate:</p>
+  <ul>
+    <li><strong>Trace context:</strong> W3C <code>traceparent</code> header for distributed tracing (OpenTelemetry). The trace ID is a superset of the correlation ID — it includes span relationships between services.</li>
+    <li><strong>User context:</strong> <code>X-User-Id</code>, <code>X-Tenant-Id</code> — injected by the gateway after auth. Services don't need to parse tokens; they read these headers.</li>
+    <li><strong>Baggage:</strong> OpenTelemetry Baggage header can carry arbitrary key-value pairs (user tier, feature flags, A/B cohort) through the entire call graph without each service needing to know how to derive them.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Correlation ID propagation — gateway + downstream service pattern</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="cm">// Gateway: generate and propagate</span>
+<span class="kw">import</span> { randomUUID } <span class="kw">from</span> <span class="str">'crypto'</span>;
+
+app.<span class="fn">use</span>((req, res, next) => {
+  <span class="cm">// Accept client-provided ID or generate one</span>
+  req.id = (req.headers[<span class="str">'x-request-id'</span>] <span class="kw">as</span> <span class="ty">string</span>) || <span class="str">`req_\${<span class="fn">randomUUID</span>().<span class="fn">replace</span>(/-/g,<span class="str">''</span>).<span class="fn">slice</span>(0,16)}`</span>;
+
+  <span class="cm">// Return in response so users/clients can report it</span>
+  res.<span class="fn">set</span>(<span class="str">'X-Request-Id'</span>, req.id);
+
+  <span class="cm">// Forward to all upstream calls</span>
+  res.<span class="fn">locals</span>.upstreamHeaders = {
+    <span class="str">'x-request-id'</span>: req.id,
+    <span class="str">'x-user-id'</span>:    req.userId,     <span class="cm">// set by auth middleware</span>
+    <span class="str">'x-tenant-id'</span>:  req.tenantId,
+    <span class="str">'traceparent'</span>:  req.headers[<span class="str">'traceparent'</span>] || <span class="fn">generateTraceparent</span>(req.id),
+  };
+  <span class="fn">next</span>();
+});
+
+<span class="cm">// Every downstream service: bind to request context</span>
+app.<span class="fn">use</span>((req, res, next) => {
+  <span class="cm">// Create child logger with request ID bound</span>
+  req.log = logger.<span class="fn">child</span>({
+    request_id: req.headers[<span class="str">'x-request-id'</span>],
+    user_id:    req.headers[<span class="str">'x-user-id'</span>],
+    tenant_id:  req.headers[<span class="str">'x-tenant-id'</span>],
+  });
+
+  <span class="cm">// Every log line in this request handler now includes request_id automatically</span>
+  req.log.<span class="fn">info</span>({ method: req.method, path: req.path }, <span class="str">'request received'</span>);
+  <span class="fn">next</span>();
+});
+
+<span class="cm">// When making calls to OTHER services: propagate the ID</span>
+<span class="kw">async function</span> <span class="fn">callInventoryService</span>(orderId: <span class="ty">string</span>, requestId: <span class="ty">string</span>) {
+  <span class="kw">return</span> inventoryPool.<span class="fn">request</span>({
+    path: <span class="str">`/v1/inventory/\${orderId}`</span>,
+    headers: { <span class="str">'x-request-id'</span>: requestId }, <span class="cm">// same ID, forms the trace chain</span>
+  });
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Correlation ID trace — follow one request ID through the entire call graph</span><span class="viz-badge">STEP-THROUGH</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <button class="viz-btn" onclick="tracePrev()" id="trace-prev" disabled>← Prev</button>
+      <button class="viz-btn active" onclick="traceNext()" id="trace-next">Next →</button>
+      <button class="viz-btn" onclick="traceReset()">↺ Reset</button>
+      <span id="trace-counter" style="font-size:11px;color:var(--text3)">0 / 9</span>
+    </div>
+    <div id="trace-steps" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-height:200px;max-height:220px;overflow-y:auto;margin-bottom:12px"></div>
+    <div id="trace-explain" style="padding:12px 16px;background:var(--bg3);border-radius:6px;font-size:13px;color:var(--text2);min-height:56px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S8: GATEWAY VS MESH -->
+<div class="section" id="s-mesh">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Gateway vs service mesh: north-south vs east-west</h2>
+
+  <p>This is a comparison that confuses most engineers because both tools involve proxies routing traffic between services. The distinction is simple once you understand which traffic each handles:</p>
+
+  <ul>
+    <li><strong>API Gateway:</strong> handles <em>north-south traffic</em> — traffic coming in from outside your system (browsers, mobile apps, third-party clients) going to your internal services. The entry point.</li>
+    <li><strong>Service mesh:</strong> handles <em>east-west traffic</em> — service-to-service calls within your system. The internal network fabric.</li>
+  </ul>
+
+  <p>They solve different problems. A gateway solves "how do external clients reach internal services securely and efficiently?" A mesh solves "how do internal services communicate with each other reliably, with observability and mutual TLS?"</p>
+
+  <h3>When you need each</h3>
+  <p><strong>You always need a gateway.</strong> Even a single-service architecture needs something handling TLS termination, rate limiting, and auth at the edge.</p>
+  <p><strong>You need a service mesh when:</strong> you have many services calling each other (east-west traffic is significant), you need mTLS between all internal services (compliance, zero-trust), you need per-request observability on internal traffic (latency, error rates per service-to-service call), or you need fine-grained traffic control between internal services (canary deployments of internal APIs).</p>
+  <p><strong>The mistake:</strong> trying to use a gateway to manage east-west traffic. Routing all internal service calls through the gateway means every internal call goes out-of-process to the gateway and back — adding latency and creating a bottleneck. East-west traffic should stay on the internal network, handled by the mesh's sidecar proxies (Envoy in Istio, Linkerd-proxy in Linkerd).</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Concern</th><th>API Gateway</th><th>Service Mesh</th></tr></thead>
+      <tbody>
+        <tr><td>Traffic direction</td><td>North-south (external → internal)</td><td>East-west (service → service)</td></tr>
+        <tr><td>Auth</td><td>JWT/API key validation</td><td>mTLS between services</td></tr>
+        <tr><td>Rate limiting</td><td>Per client/IP/endpoint</td><td>Not typical</td></tr>
+        <tr><td>Observability</td><td>External-facing metrics</td><td>Internal service graph metrics</td></tr>
+        <tr><td>Canary</td><td>% of external traffic</td><td>% of internal service calls</td></tr>
+        <tr><td>Circuit breaking</td><td>To backend services</td><td>Between services</td></tr>
+        <tr><td>Products</td><td>Kong, nginx, AWS API GW, Traefik</td><td>Istio, Linkerd, Consul Connect</td></tr>
+        <tr><td>Required?</td><td>Always</td><td>Only at scale or for compliance</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Gateway vs service mesh topology — north-south vs east-west traffic</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="viz-btn active" onclick="document.getElementById('topo-mode').value='gateway';renderTopology();document.querySelectorAll('.topo-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active')" class="topo-btn">Gateway only (north-south)</button>
+      <button class="viz-btn" onclick="document.getElementById('topo-mode').value='mesh';renderTopology();document.querySelectorAll('.topo-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active')" class="topo-btn">Service mesh (east-west)</button>
+      <button class="viz-btn" onclick="document.getElementById('topo-mode').value='both';renderTopology();document.querySelectorAll('.topo-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active')" class="topo-btn">Both (production)</button>
+      <select id="topo-mode" style="display:none"><option value="gateway">gateway</option><option value="mesh">mesh</option><option value="both">both</option></select>
+    </div>
+    <div id="topo-canvas" style="position:relative;min-height:220px;background:var(--bg);border-radius:8px;border:1px solid var(--border);padding:10px;overflow:hidden"></div>
+  </div>
+</div>
+
+<!-- S9: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality: gateway failure modes</h2>
+
+  <h3>The gateway as a single point of failure</h3>
+  <p>Every request goes through the gateway. When it goes down, everything goes down. This is obvious — but the subtler version is the gateway as a <em>performance</em> bottleneck. A misconfigured gateway with too few worker processes, a memory leak in a plugin, or a Redis connection pool exhausted by rate limiting queries will degrade all traffic, not just the affected routes.</p>
+  <p>Run gateway instances in active-active pairs behind a network load balancer. Monitor gateway CPU, memory, and connection counts as aggressively as you monitor your application services.</p>
+
+  <h3>Plugin order matters and is almost never documented</h3>
+  <p>In Kong, nginx-lua, and most gateway plugin systems, middleware runs in a defined order. Auth before rate limiting, or rate limiting before auth? If you rate limit before auth, unauthenticated requests consume rate limit quota. If you auth before rate limiting, every request (including those that will be rejected for bad tokens) hits your JWT validation. The right order: auth first (fast reject of invalid tokens), then rate limiting per authenticated identity.</p>
+
+  <h3>The timeout misconfiguration that causes 200 cascades</h3>
+  <p>Client sets a 30s timeout. Gateway sets a 30s proxy timeout. Backend service takes 35 seconds. The gateway closes the connection to the backend at 30s and returns a <code>504</code> to the client. But the backend service doesn't know the gateway closed the connection — it keeps processing the request for another 5 seconds, then writes the response to a closed socket. The response is discarded. The work was done. The user saw an error. This is why the gateway's timeout must be 5+ seconds shorter than the client's timeout — and why your backend service must handle request cancellation (<code>req.on('close')</code> in Node.js) to abort work when the client is gone.</p>
+
+  <h3>Fat gateway drift</h3>
+  <p>Six months after launch: "let's just put this pricing logic in the gateway, it has the product context already." A year later: the gateway validates tokens, rate limits, routes, applies discounts, checks feature flags, enriches requests with user data, applies business rules to responses. It's now the most complex service you have, owned by no team, understood by no one. Any change requires days of testing because nobody knows what else depends on it.</p>
+  <p>The preventive measure: document what the gateway is responsible for on day one. Any PR that adds logic beyond cross-cutting concerns requires explicit sign-off from the team lead. Boring to write — useful when the drift starts.</p>
+</div>
+
+<!-- S10: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Your gateway timeout is part of your SLA</h3>
+  <p>If your gateway has a 30-second timeout and your 99th percentile backend response is 28 seconds, you have almost no margin. A traffic spike that pushes P99 to 32 seconds immediately causes gateway timeouts for 1% of requests — which you see as 504 errors in your gateway metrics, not as application errors. Track gateway-added latency separately from backend latency, and set your gateway timeout to be <em>meaningfully</em> shorter than your SLA (not just 1 second shorter).</p>
+
+  <h3>Validate JWTs at the gateway, but cache the result</h3>
+  <p>JWKS endpoint fetches are a network call. For a high-traffic gateway, doing one per request is a lot of load on your auth provider. Cache the JWKS (it changes rarely), and cache the validated claims per token (using the token's expiry as the cache TTL). A valid JWT for user 123 with role "admin" that expires in 900 seconds should only be validated once. Cache the result for min(900s, some_max). Subsequent requests with the same token hit the cache, not the JWKS endpoint.</p>
+
+  <h3>The gateway sees your most sensitive data</h3>
+  <p>Every request, every token, every API key, every user ID passes through the gateway. It's an extremely attractive target — not to attack, but to exfiltrate data from. Gateway access logs must never include full Authorization headers or API keys. Log the key <em>prefix</em> (first 8 characters) for debugging, not the full key. Apply the same data handling standards to gateway logs as you apply to your most sensitive database.</p>
+
+  <h3>Rate limit by cost, not just count</h3>
+  <p>Treating a <code>GET /user</code> and a <code>POST /reports/generate</code> as equally costing "1 request" against a rate limit is incorrect. The report generation hits the database, takes 2 seconds, and consumes 10× the resources of a user lookup. A sophisticated rate limit assigns costs: the cheap endpoint costs 1 token, the expensive endpoint costs 10. This is what Stripe's API does — their rate limit is measured in "request units," not requests.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Design decisions</div>
+  <h2>Designing a gateway — decide in this order</h2>
+  <p class="ds-sub">These decisions compound. Getting #1 wrong makes #2-6 harder. Answer them before choosing a product.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">What does this gateway own? Write it down before touching a config file.</div>
+        <div class="ds-detail">List exactly which concerns belong here: auth, rate limiting, routing, TLS, logging, circuit breaking, correlation IDs. Write what <em>doesn't</em> belong just as explicitly. This list is your contract. The first time someone asks to add business logic to the gateway, you have something to point at. Without this list, fat gateway drift is inevitable — it's not a discipline problem, it's an entropy problem.
+          <br><span class="ds-tag ds-tag-stop">undocumented scope = business logic accumulation over time</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Do different client types need different response shapes? If yes, consider BFF.</div>
+        <div class="ds-detail">If your mobile app and web dashboard both hit the same generic API and mobile consistently makes 4-6 calls to render one screen — you need a BFF. One gateway per client type (mobile, web, partners). Each owned by the team shipping that client. If all your clients need the same data shape, a single generic gateway is fine. Don't add BFF complexity for the sake of it.
+          <br><span class="ds-tag ds-tag-info">signal: mobile making 5+ calls per user action</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Set up auth at the gateway — validate once, forward identity.</div>
+        <div class="ds-detail">The gateway validates JWTs against a cached JWKS. On success: strip the <code>Authorization</code> header, inject <code>X-User-Id</code>, <code>X-User-Role</code>, <code>X-Tenant-Id</code>. Services trust these headers unconditionally. Fine-grained authorisation ("can this user edit this resource?") stays in the service. This division is hard to change later — decide it clearly now.
+          <br><span class="ds-tag ds-tag-ok">gateway = who you are. service = what you can do.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Configure rate limiting across all three dimensions before launch.</div>
+        <div class="ds-detail">Per API key (your primary limit — tied to a plan), per IP (catches unauthenticated abuse — credential stuffing on login), per endpoint (expensive endpoints need separate, lower limits). All three running simultaneously in Redis. Add cost-based weighting for expensive endpoints from day one. Starting with a single flat limit and adding dimensions later means a flag day for your clients.
+          <br><span class="ds-tag ds-tag-warn">single-dimension limiting leaves attack vectors open</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Set the gateway timeout shorter than every client's timeout.</div>
+        <div class="ds-detail">Map all your clients and their configured timeouts. Set the gateway proxy timeout to the minimum client timeout minus 5 seconds. This ensures the gateway can always return a meaningful <code>504</code> before the client gives up. A gateway that times out at the same time as the client gives the client nothing useful. Also: the gateway timeout must be shorter than the upstream backend's own timeout, or the backend might win the race and the gateway returns a 200 on a request that didn't fully process.
+          <br><span class="ds-tag ds-tag-stop">gateway timeout = client timeout = no useful error signal</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Generate correlation IDs at ingress. Make them visible in every error response.</div>
+        <div class="ds-detail">Generate at the gateway edge. Log at every service. Forward through every downstream call. Return in every error response body (<code>request_id: "req_abc123"</code>). The first time a user reports an error and gives you that ID and you find the full trace in 30 seconds rather than 2 hours — that's the payoff. The first time a user gives you an error and you have nothing to look up with — that's the cost of skipping it.
+          <br><span class="ds-tag ds-tag-ok">30-second trace vs 2-hour log archaeology</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Production gateway checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">Auth</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Validate once</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">JWT at gateway. Strip token. Inject X-User-Id/Role/Tenant. Services trust headers.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">RL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Rate limiting</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Per key + per IP + per endpoint. Shared Redis. Always return Retry-After on 429.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">ID</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Correlation IDs</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Generate at edge. Log everywhere. Return in every error response. Forward through all downstream calls.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">T/O</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Timeouts</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Gateway timeout &lt; client timeout. Always. Returns 504 before client gives up.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">CB</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Circuit breaker</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Per upstream service. Log state changes. Fallback: cache → degraded → 503 + Retry-After.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">HA</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Redundancy</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Active-active pair. Gateway is the single chokepoint — it must not be a single point of failure.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){var pos=window.scrollY+120,active=null;document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s){if(s.offsetTop<=pos)active=s.id;});tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});},{passive:true});
+function mkDiv(css){var d=document.createElement('div');d.style.cssText=css;return d;}
+
+// ════ VIZ 1 — Responsibility Matrix ════
+var CONCERNS = [
+  { label:'JWT / API key validation',        gateway:true,  service:false, why:'One place to validate, one place to update when keys rotate. Services trust the result.' },
+  { label:'TLS termination',                 gateway:true,  service:false, why:'Certificates managed centrally. Internal network can be plaintext or internal certs.' },
+  { label:'Rate limiting',                   gateway:true,  service:false, why:'Gateway sees all traffic across all services. Service-level limiting is ineffective at scale.' },
+  { label:'Request/response logging',        gateway:true,  service:true,  why:'Gateway logs the envelope (method, path, status, latency). Services log domain events. Both needed.' },
+  { label:'Correlation ID generation',       gateway:true,  service:false, why:'Must originate at the very first touch of the request, before any service sees it.' },
+  { label:'Circuit breaking to upstreams',   gateway:true,  service:false, why:'Gateway can short-circuit entire routes before they consume connection pool threads.' },
+  { label:'Canary / A/B routing',            gateway:true,  service:false, why:'Traffic split must happen before the request reaches any service.' },
+  { label:'CORS headers',                    gateway:true,  service:false, why:'Cross-cutting. Same rule applies to all endpoints. Set once at the gateway.' },
+  { label:'Can user access THIS resource?',  gateway:false, service:true,  why:'Requires domain knowledge: ownership, resource state, tenant policy. Not a routing decision.' },
+  { label:'Business rule calculation',       gateway:false, service:true,  why:'Pricing, discounts, eligibility — all domain logic. Gateway doesn\'t know your domain.' },
+  { label:'Data enrichment from DB',         gateway:false, service:true,  why:'Gateway should not have database connections. It\'s a proxy, not a service.' },
+  { label:'Request aggregation / fanout',    gateway:false, service:true,  why:'Orchestration belongs in a BFF or service, not the gateway. Gateways route; they don\'t compose.' },
+  { label:'Feature flag evaluation',         gateway:false, service:true,  why:'Feature flags depend on user state, experiment cohort, business rules — service territory.' },
+];
+function initMatrix(){
+  var cont=document.getElementById('resp-matrix');if(!cont)return;
+  cont.innerHTML='<div style="display:grid;grid-template-columns:1fr 100px 100px;gap:4px;margin-bottom:6px;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:JetBrains Mono,monospace">' +
+    '<span>Concern</span><span style="text-align:center">Gateway</span><span style="text-align:center">Service</span></div>' +
+    CONCERNS.map(function(c,i){
+      var gc=c.gateway?'var(--green)':'var(--border)';
+      var sc=c.service?'var(--green)':'var(--border)';
+      var gbg=c.gateway?'rgba(62,207,142,.12)':'transparent';
+      var sbg=c.service?'rgba(62,207,142,.12)':'transparent';
+      return '<div onclick="showConcernWhy('+i+')" style="display:grid;grid-template-columns:1fr 100px 100px;gap:4px;cursor:pointer;border-radius:6px;overflow:hidden;transition:background .12s" onmouseenter="this.style.background=\'var(--bg3)\'" onmouseleave="this.style.background=\'transparent\'">' +
+        '<div style="font-size:12.5px;color:var(--text2);padding:8px 10px;display:flex;align-items:center">'+c.label+'</div>' +
+        '<div style="background:'+gbg+';display:flex;align-items:center;justify-content:center;font-size:16px;color:'+gc+';border:1px solid '+gc+';border-radius:4px;margin:2px">'+(c.gateway?'✓':'')+'</div>' +
+        '<div style="background:'+sbg+';display:flex;align-items:center;justify-content:center;font-size:16px;color:'+sc+';border:1px solid '+sc+';border-radius:4px;margin:2px">'+(c.service?'✓':'')+'</div>' +
+        '</div>';
+    }).join('');
+}
+function showConcernWhy(i){
+  var c=CONCERNS[i];
+  var el=document.getElementById('resp-why');if(!el)return;
+  var placement=c.gateway&&c.service?'Gateway + Service':c.gateway?'Gateway only':'Service only';
+  var col=c.gateway&&!c.service?'var(--accent)':c.service&&!c.gateway?'var(--green)':'var(--orange)';
+  el.innerHTML='<span style="color:'+col+'">'+placement+':</span> <span style="color:var(--text2)">'+c.why+'</span>';
+}
+
+// ════ VIZ 2 — BFF comparison ════
+function renderBFF(){
+  var mode=document.getElementById('bff-mode')?document.getElementById('bff-mode').value:'generic';
+  var out=document.getElementById('bff-output');if(!out)return;
+  var scenarios={
+    generic:{
+      label:'Generic single API — mobile app loads home screen',
+      calls:[
+        {name:'GET /users/123',           ms:45,  bytes:1240, needed:120, note:'Returns 40 fields, mobile needs 3'},
+        {name:'GET /orders?user=123',     ms:120, bytes:8400, needed:200, note:'Returns full order objects, needs 2 fields each'},
+        {name:'GET /notifications/123',   ms:38,  bytes:960,  needed:80,  note:'Returns 12 fields, mobile shows 2'},
+        {name:'GET /recommendations/123', ms:210, bytes:4200, needed:400, note:'ML call, returns 20 items, shows 5'},
+        {name:'GET /settings/123',        ms:32,  bytes:2100, needed:40,  note:'Returns full config, needs 2 flags'},
+        {name:'GET /activity/123',        ms:88,  bytes:3600, needed:160, note:'Returns 50 events, shows 5'},
+      ]
+    },
+    bff:{
+      label:'Mobile BFF — single aggregated call',
+      calls:[
+        {name:'GET /mobile/home-screen/123', ms:180, bytes:1000, needed:1000, note:'BFF calls all 6 services in parallel, strips fields, returns exactly what mobile needs'},
+      ]
+    }
+  };
+  var s=scenarios[mode]||scenarios.generic;
+  var totalMs=mode==='generic'?Math.max.apply(null,s.calls.map(function(c){return c.ms;}))+s.calls.reduce(function(a,c){return a+c.ms;},0)/6:s.calls[0].ms;
+  var totalBytes=s.calls.reduce(function(a,c){return a+c.bytes;},0);
+  var usedBytes=s.calls.reduce(function(a,c){return a+c.needed;},0);
+  var waste=Math.round((1-usedBytes/totalBytes)*100);
+  var lines=['<span style="color:var(--accent)">'+s.label+'</span>',''];
+  if(mode==='generic'){
+    lines.push('Sequential waterfall (mobile waits for each call):','');
+    var elapsed=0;
+    s.calls.forEach(function(c){
+      elapsed+=c.ms;
+      var wasteFlag=c.bytes>c.needed*3?'  <span style="color:var(--red)">'+Math.round((1-c.needed/c.bytes)*100)+'% waste</span>':'';
+      lines.push('[T+'+elapsed+'ms] '+c.name+' → '+c.bytes+'B received, '+c.needed+'B used'+wasteFlag);
+      lines.push('  <span style="color:var(--text3)">'+c.note+'</span>');
+    });
+    lines.push('');
+    lines.push('Total wall time: <span style="color:var(--red)">'+s.calls.reduce(function(a,c){return a+c.ms;},0)+'ms</span>');
+    lines.push('Total bytes:     <span style="color:var(--red)">'+totalBytes.toLocaleString()+'B</span>  ('+usedBytes+'B actually used — '+waste+'% wasted)');
+    lines.push('Network calls:   <span style="color:var(--red)">6</span>');
+  } else {
+    var c=s.calls[0];
+    lines.push('[T+0ms]   BFF receives request');
+    lines.push('[T+0ms]   BFF fans out to all 6 services in parallel');
+    lines.push('[T+180ms] All responses received, fields stripped, aggregated');
+    lines.push('[T+180ms] → single response returned to mobile client');
+    lines.push('');
+    lines.push('Total wall time: <span style="color:var(--green)">'+c.ms+'ms</span>  (vs 533ms generic)');
+    lines.push('Total bytes:     <span style="color:var(--green)">'+c.bytes.toLocaleString()+'B</span>  (vs 20,500B generic — 95% smaller)');
+    lines.push('Network calls:   <span style="color:var(--green)">1</span>  (client-side. BFF makes 6 internally in parallel)');
+    lines.push('');
+    lines.push('<span style="color:var(--green)">✓ 3x faster. 95% less bandwidth. Client code simpler.</span>');
+  }
+  out.innerHTML=lines.join('\n');
+}
+
+// ════ VIZ 3 — Auth flow stepper ════
+var AUTH_STEPS=[
+  {label:'Client sends request + Bearer token',         col:'var(--accent)',
+   explain:'Client includes <code>Authorization: Bearer eyJhbGci...</code>. The token is a signed JWT containing claims (user ID, role, tenant, expiry). The gateway is the first thing to see it.'},
+  {label:'Gateway extracts and decodes JWT header',     col:'var(--accent)',
+   explain:'Decode the JWT header (not verify — just decode). Extract the <code>kid</code> (key ID) field. This tells us which signing key to use for verification — important when you rotate keys without invalidating all existing tokens.'},
+  {label:'Fetch JWKS — check cache first',              col:'var(--orange)',
+   explain:'Check the local JWKS cache for a key matching the <code>kid</code>. Cache hit: use the cached public key. Cache miss: fetch from <code>https://auth.example.com/.well-known/jwks.json</code>. Cache the result for 5 minutes. This is a network call — avoiding it on every request is critical.'},
+  {label:'Verify signature, expiry, issuer',            col:'var(--orange)',
+   explain:'Cryptographic signature verification against the public key. Check <code>exp</code> (expiry) — reject expired tokens. Check <code>iss</code> (issuer) — reject tokens from unexpected issuers. Check <code>aud</code> (audience) — reject tokens meant for other services. Any failure: return 401 immediately.'},
+  {label:'Strip Authorization, inject identity headers',col:'var(--green)',
+   explain:'Remove the raw <code>Authorization</code> header — services should never see the raw token. Inject trusted headers: <code>X-User-Id: usr_123</code>, <code>X-User-Role: admin</code>, <code>X-Tenant-Id: tenant_abc</code>. These are asserted by the gateway; services trust them unconditionally.'},
+  {label:'Route to upstream service',                   col:'var(--green)',
+   explain:'Forward the request (without the JWT) to the backend service. The service reads <code>X-User-Id</code> etc. directly from headers — no JWT library, no JWKS fetch, no crypto. Total auth overhead added to the request: 0-2ms (cache hit) or ~20ms (cache miss including JWKS fetch).'},
+  {label:'Service makes authorisation decision',        col:'var(--purple)',
+   explain:'The service knows WHO the user is (from injected headers). Now it decides WHAT they can do. "Can user 123 edit order 456?" requires checking the order\'s owner_id in the database. This is business logic — it stays in the service, not the gateway.'},
+];
+var authStep=0;
+function authReset(){authStep=0;var el=document.getElementById('auth-arrows');if(el)el.innerHTML='';var ex=document.getElementById('auth-explain');if(ex)ex.innerHTML='<span style="color:var(--text3)">Click Next &#x2192; to trace a request through gateway authentication.</span>';var ctr=document.getElementById('auth-counter');if(ctr)ctr.textContent='0 / '+AUTH_STEPS.length;var p=document.getElementById('auth-prev');if(p)p.disabled=true;var n=document.getElementById('auth-next');if(n)n.disabled=false;}
+function authNext(){if(authStep>=AUTH_STEPS.length)return;var s=AUTH_STEPS[authStep];addAuthArrow(s,authStep);var ex=document.getElementById('auth-explain');if(ex)ex.innerHTML='<strong style="color:'+s.col+'">'+s.label+'</strong><br>'+s.explain;authStep++;var ctr=document.getElementById('auth-counter');if(ctr)ctr.textContent=authStep+' / '+AUTH_STEPS.length;var p=document.getElementById('auth-prev');if(p)p.disabled=false;var n=document.getElementById('auth-next');if(n)n.disabled=authStep>=AUTH_STEPS.length;}
+function authPrev(){if(authStep<=0)return;authStep--;var el=document.getElementById('auth-arrows');if(el)el.innerHTML='';for(var i=0;i<authStep;i++)addAuthArrow(AUTH_STEPS[i],i);var prev=authStep>0?AUTH_STEPS[authStep-1]:null;var ex=document.getElementById('auth-explain');if(ex)ex.innerHTML=prev?'<strong style="color:'+prev.col+'">'+prev.label+'</strong><br>'+prev.explain:'<span style="color:var(--text3)">Click Next &#x2192;</span>';var ctr=document.getElementById('auth-counter');if(ctr)ctr.textContent=authStep+' / '+AUTH_STEPS.length;var p=document.getElementById('auth-prev');if(p)p.disabled=authStep<=0;var n=document.getElementById('auth-next');if(n)n.disabled=false;}
+function addAuthArrow(s,idx){
+  var container=document.getElementById('auth-arrows');if(!container)return;
+  var top=10+idx*34;
+  var div=document.createElement('div');
+  div.style.cssText='position:absolute;left:4%;right:4%;top:'+top+'px;display:flex;align-items:center;animation:fadeIn .25s ease';
+  var line='<div style="flex:1;height:2px;background:'+s.col+';opacity:.8;position:relative"><span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:9px;color:'+s.col+';background:var(--bg);padding:0 4px;white-space:nowrap;border-radius:2px;font-family:JetBrains Mono,monospace">'+s.label+'</span></div>';
+  var arr='<div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid '+s.col+'"></div>';
+  div.innerHTML=line+arr;
+  container.appendChild(div);
+}
+
+// ════ VIZ 4 — Multi-dim rate limiter ════
+var rlCounters={apiKey:0,ip:0,endpoint:0};
+var rlLimits={apiKey:100,ip:20,endpoint:10};
+var rlTimer=null;var rlRunning=false;
+
+function updateRLConfig(){
+  rlLimits.apiKey=parseInt(document.getElementById('rl-key-limit').value)||100;
+  rlLimits.ip=parseInt(document.getElementById('rl-ip-limit').value)||20;
+  rlLimits.endpoint=parseInt(document.getElementById('rl-ep-limit').value)||10;
+  document.getElementById('rl-key-val').textContent=rlLimits.apiKey+'/min';
+  document.getElementById('rl-ip-val').textContent=rlLimits.ip+'/min';
+  document.getElementById('rl-ep-val').textContent=rlLimits.endpoint+'/min';
+  renderRL();
+}
+function rlStartStop(){
+  if(rlRunning){rlRunning=false;clearInterval(rlTimer);document.getElementById('rl-start').textContent='&#9654; Start requests';return;}
+  rlRunning=true;document.getElementById('rl-start').textContent='&#9632; Stop';
+  var rps=parseInt(document.getElementById('rl-rps').value)||10;
+  rlTimer=setInterval(function(){
+    rlCounters.apiKey++;rlCounters.ip++;rlCounters.endpoint++;
+    renderRL();
+    // reset every 60 "ticks" (simulate per-minute window)
+    if(rlCounters.apiKey>rlLimits.apiKey*1.5){rlCounters={apiKey:0,ip:0,endpoint:0};}
+  },60000/rlLimits.apiKey*10/rps*100);
+}
+function rlReset(){rlCounters={apiKey:0,ip:0,endpoint:0};renderRL();}
+function renderRL(){
+  var dims=[
+    {key:'apiKey',  label:'Per API Key',   limit:rlLimits.apiKey,  count:rlCounters.apiKey},
+    {key:'ip',      label:'Per IP',        limit:rlLimits.ip,       count:rlCounters.ip},
+    {key:'endpoint',label:'Per Endpoint',  limit:rlLimits.endpoint, count:rlCounters.endpoint},
+  ];
+  var out=document.getElementById('rl-bars');if(!out)return;
+  out.innerHTML=dims.map(function(d){
+    var pct=Math.min(d.count/d.limit*100,100);
+    var col=pct>=100?'var(--red)':pct>=80?'var(--orange)':'var(--green)';
+    var blocked=d.count>=d.limit;
+    return '<div style="margin-bottom:14px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">' +
+      '<span>'+d.label+'</span>' +
+      '<span style="color:'+col+'">'+(blocked?'BLOCKED — 429':''+d.count+' / '+d.limit+'/min')+'</span></div>' +
+      '<div style="background:var(--bg);border-radius:3px;height:16px;overflow:hidden;border:1px solid var(--border)">' +
+      '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px;transition:width .2s,background .2s"></div></div>' +
+      (blocked?'<div style="font-size:11px;color:var(--red);margin-top:3px">&#x2717; Returning 429 — Retry-After: 60 + X-RateLimit-Limit: '+d.limit+'</div>':'') +
+      '</div>';
+  }).join('');
+
+  var blocked=dims.find(function(d){return d.count>=d.limit;});
+  var note=document.getElementById('rl-note');if(!note)return;
+  if(blocked){
+    note.innerHTML='<span style="color:var(--red)">429 returned — blocked by: '+blocked.label+'. Other dimensions may still have quota. Multi-dimensional limiting catches different abuse patterns.</span>';
+  } else {
+    var lowest=dims.reduce(function(a,b){return (a.count/a.limit)>(b.count/b.limit)?a:b;});
+    note.innerHTML='<span style="color:var(--text3)">Closest to limit: '+lowest.label+' ('+Math.round(lowest.count/lowest.limit*100)+'% used). Rate limit headers sent on every response.</span>';
+  }
+}
+
+// ════ VIZ 5 — Route builder ════
+var ROUTES=[
+  {path:'/v1/orders/*',    upstream:'orders-service:3000',  method:'ANY', active:true},
+  {path:'/v1/users/*',     upstream:'users-service:3001',   method:'ANY', active:true},
+  {path:'/v1/payments/*',  upstream:'payments-service:3002',method:'ANY', active:true},
+  {path:'/v1/admin/*',     upstream:'admin-service:3003',   method:'ANY', active:true},
+  {path:'/static/*',       upstream:'s3-origin:80',         method:'GET', active:false},
+];
+function toggleRoute(i){ROUTES[i].active=!ROUTES[i].active;renderRoutes();}
+function addRoute(){
+  ROUTES.push({path:'/v1/new-service/*',upstream:'new-service:3004',method:'ANY',active:true});
+  renderRoutes();
+}
+function renderRoutes(){
+  var cont=document.getElementById('route-rows');if(!cont)return;
+  cont.innerHTML=ROUTES.map(function(r,i){
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;opacity:'+(r.active?1:0.5)+'">' +
+      '<div style="width:10px;height:10px;border-radius:50%;background:'+(r.active?'var(--green)':'var(--red)')+';flex-shrink:0;cursor:pointer" onclick="toggleRoute('+i+')" title="toggle"></div>' +
+      '<code style="font-size:12px;color:var(--purple);min-width:180px">'+r.path+'</code>' +
+      '<span style="font-size:11px;color:var(--text3)">&#x2192;</span>' +
+      '<code style="font-size:12px;color:var(--accent)">'+r.upstream+'</code>' +
+      '<span style="font-size:10px;color:var(--text3);margin-left:auto">['+r.method+']</span>' +
+      '</div>';
+  }).join('');
+
+  // Generate nginx config
+  var active=ROUTES.filter(function(r){return r.active;});
+  var upstreams=active.map(function(r){
+    var name=r.upstream.split(':')[0].replace(/-/g,'_');
+    return 'upstream '+name+' { least_conn; server '+r.upstream+'; keepalive 16; }';
+  });
+  var locations=active.map(function(r){
+    var name=r.upstream.split(':')[0].replace(/-/g,'_');
+    var pathClean=r.path.replace('/*','');
+    return '    location '+pathClean+'/ {\n        proxy_pass http://'+name+';\n        proxy_read_timeout 25s;\n        proxy_set_header X-Request-Id $req_id;\n    }';
+  });
+  var config=upstreams.join('\n')+'\n\nserver {\n    listen 443 ssl http2;\n    set $req_id $http_x_request_id;\n    if ($req_id = "") { set $req_id $request_id; }\n    add_header X-Request-Id $req_id always;\n\n'+locations.join('\n\n')+'\n}';
+  var out=document.getElementById('route-config');if(out)out.textContent=config;
+}
+
+// ════ VIZ 6 — Circuit breaker ════
+var CB_STATE='closed';
+var cbErrors=0;
+var cbRequests=0;
+var cbTimer=null;
+var cbHalfOpenTimer=null;
+var cbRunning=false;
+var CB_THRESHOLD=5;
+var CB_HALFOPEN_AFTER=10000;
+var cbLog=[];
+
+function cbStartStop(){
+  if(cbRunning){cbRunning=false;clearInterval(cbTimer);document.getElementById('cb-start').textContent='&#9654; Start requests';return;}
+  cbRunning=true;document.getElementById('cb-start').textContent='&#9632; Stop';
+  cbTimer=setInterval(function(){
+    if(CB_STATE==='open'){
+      cbLog.push({t:Date.now(),type:'blocked',msg:'Circuit OPEN — fast fail, no upstream connection'});
+    } else {
+      cbRequests++;
+      var failRate=parseInt(document.getElementById('cb-fail-rate').value)||0;
+      var fails=Math.random()*100<failRate;
+      if(fails){
+        cbErrors++;
+        cbLog.push({t:Date.now(),type:'error',msg:'Request #'+cbRequests+' FAILED ('+failRate+'% fail rate)'});
+        if(cbErrors>=CB_THRESHOLD&&CB_STATE==='closed'){
+          CB_STATE='open';cbErrors=0;
+          cbLog.push({t:Date.now(),type:'open',msg:'Circuit OPENED — '+CB_THRESHOLD+' consecutive failures. Fast-failing all requests.'});
+          clearTimeout(cbHalfOpenTimer);
+          cbHalfOpenTimer=setTimeout(function(){
+            if(CB_STATE==='open'){CB_STATE='half-open';cbLog.push({t:Date.now(),type:'half',msg:'Circuit HALF-OPEN — probing with test requests'});}
+            renderCB();
+          },CB_HALFOPEN_AFTER);
+        }
+      } else {
+        cbErrors=0;
+        if(CB_STATE==='half-open'){
+          CB_STATE='closed';
+          cbLog.push({t:Date.now(),type:'closed',msg:'Circuit CLOSED — probe succeeded, resuming normal traffic'});
+        } else {
+          cbLog.push({t:Date.now(),type:'ok',msg:'Request #'+cbRequests+' OK'});
+        }
+      }
+    }
+    if(cbLog.length>12)cbLog=cbLog.slice(-12);
+    renderCB();
+  },400);
+}
+function cbReset(){CB_STATE='closed';cbErrors=0;cbRequests=0;cbLog=[];clearTimeout(cbHalfOpenTimer);if(cbRunning){cbRunning=false;clearInterval(cbTimer);cbTimer=null;document.getElementById('cb-start').textContent='&#9654; Start requests';}renderCB();}
+function renderCB(){
+  document.getElementById('cb-fail-rate-val').textContent=document.getElementById('cb-fail-rate').value+'%';
+  var stateEl=document.getElementById('cb-state');
+  var cols={closed:'var(--green)',open:'var(--red)','half-open':'var(--orange)'};
+  if(stateEl){stateEl.textContent=CB_STATE.toUpperCase();stateEl.style.color=cols[CB_STATE]||'var(--text3)';}
+  var logEl=document.getElementById('cb-log');if(!logEl)return;
+  var cols2={ok:'var(--green)',error:'var(--red)',open:'var(--red)',closed:'var(--green)',half:'var(--orange)',blocked:'var(--text3)'};
+  logEl.innerHTML=cbLog.slice().reverse().map(function(l){
+    return '<span style="color:'+cols2[l.type]+'">'+l.msg+'</span>';
+  }).join('\n');
+}
+
+// ════ VIZ 7 — Correlation ID trace ════
+var TRACE_STEPS=[
+  {service:'Client',      msg:'POST /v1/orders  (no X-Request-Id sent)',               col:'var(--text3)', note:'Client makes a request. No request ID provided.'},
+  {service:'Gateway',     msg:'Generated: req_a1b2c3d4e5f6',                            col:'var(--accent)',note:'Gateway generates a unique ID. Sets X-Request-Id: req_a1b2c3d4e5f6 on request and response.'},
+  {service:'Gateway',     msg:'JWT validated → X-User-Id: usr_789 injected',            col:'var(--accent)',note:'Auth middleware runs. Token decoded, identity headers injected. X-Request-Id preserved.'},
+  {service:'Order Svc',   msg:'log: {request_id:"req_a1b2c3d4e5f6", action:"create"}', col:'var(--green)', note:'Order Service logs the request ID on every line. Any log search for this ID finds all Order Service activity for this request.'},
+  {service:'Order Svc',   msg:'calls Payment Svc → X-Request-Id: req_a1b2c3d4e5f6',   col:'var(--green)', note:'Order Service makes a downstream call to Payment Service, forwarding the same request ID.'},
+  {service:'Payment Svc', msg:'log: {request_id:"req_a1b2c3d4e5f6", action:"charge"}', col:'var(--purple)',note:'Payment Service logs the same ID. Now both services\' logs are linked by this one ID.'},
+  {service:'Payment Svc', msg:'calls Fraud Svc → X-Request-Id: req_a1b2c3d4e5f6',     col:'var(--purple)',note:'Payment Service calls Fraud Service. Same ID propagates.'},
+  {service:'Fraud Svc',   msg:'log: {request_id:"req_a1b2c3d4e5f6", verdict:"pass"}',  col:'var(--orange)',note:'Fraud Service logs. Now three services\' logs are linked. A search for this one ID finds the complete picture across all of them.'},
+  {service:'Client',      msg:'Error response: {request_id:"req_a1b2c3d4e5f6"}',       col:'var(--red)',   note:'Client gets an error. The request ID is in the response body. User reports the error with this ID. You find the complete trace in 30 seconds.'},
+];
+var traceStep=0;
+function traceReset(){traceStep=0;var el=document.getElementById('trace-steps');if(el)el.innerHTML='';var ex=document.getElementById('trace-explain');if(ex)ex.innerHTML='<span style="color:var(--text3)">Click Next &#x2192; to follow a request ID through the entire call graph.</span>';var ctr=document.getElementById('trace-counter');if(ctr)ctr.textContent='0 / '+TRACE_STEPS.length;var p=document.getElementById('trace-prev');if(p)p.disabled=true;var n=document.getElementById('trace-next');if(n)n.disabled=false;}
+function traceNext(){if(traceStep>=TRACE_STEPS.length)return;var s=TRACE_STEPS[traceStep];addTraceStep(s,traceStep);var ex=document.getElementById('trace-explain');if(ex)ex.innerHTML='<strong style="color:'+s.col+'">'+s.service+':</strong> '+s.note;traceStep++;var ctr=document.getElementById('trace-counter');if(ctr)ctr.textContent=traceStep+' / '+TRACE_STEPS.length;var p=document.getElementById('trace-prev');if(p)p.disabled=false;var n=document.getElementById('trace-next');if(n)n.disabled=traceStep>=TRACE_STEPS.length;}
+function tracePrev(){if(traceStep<=0)return;traceStep--;var el=document.getElementById('trace-steps');if(el)el.innerHTML='';for(var i=0;i<traceStep;i++)addTraceStep(TRACE_STEPS[i],i);var prev=traceStep>0?TRACE_STEPS[traceStep-1]:null;var ex=document.getElementById('trace-explain');if(ex)ex.innerHTML=prev?'<strong style="color:'+prev.col+'">'+prev.service+':</strong> '+prev.note:'<span style="color:var(--text3)">Click Next &#x2192;</span>';var ctr=document.getElementById('trace-counter');if(ctr)ctr.textContent=traceStep+' / '+TRACE_STEPS.length;var p=document.getElementById('trace-prev');if(p)p.disabled=traceStep<=0;var n=document.getElementById('trace-next');if(n)n.disabled=false;}
+function addTraceStep(s,idx){
+  var el=document.getElementById('trace-steps');if(!el)return;
+  var div=document.createElement('div');
+  div.style.cssText='display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);animation:fadeIn .2s ease';
+  div.innerHTML='<span style="font-family:JetBrains Mono,monospace;font-size:10px;color:'+s.col+';min-width:90px;padding-top:2px">'+s.service+'</span>' +
+    '<span style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2)">'+s.msg+'</span>';
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+// ════ VIZ 8 — Gateway vs Mesh topology ════
+function renderTopology(){
+  var mode=document.getElementById('topo-mode')?document.getElementById('topo-mode').value:'gateway';
+  var canvas=document.getElementById('topo-canvas');if(!canvas)return;
+  canvas.innerHTML='';
+  var W=canvas.offsetWidth||500;var H=200;
+
+  if(mode==='gateway'){
+    // Client → Gateway → Services (north-south)
+    var nodes=[
+      {label:'Internet\nClients',x:W*0.08,y:H/2,col:'var(--text3)'},
+      {label:'API\nGateway',    x:W*0.35,y:H/2,col:'var(--accent)'},
+      {label:'Order\nService',  x:W*0.7, y:H*0.2,col:'var(--green)'},
+      {label:'User\nService',   x:W*0.7, y:H*0.5,col:'var(--green)'},
+      {label:'Payment\nService',x:W*0.7, y:H*0.8,col:'var(--green)'},
+    ];
+    var edges=[
+      {from:0,to:1,label:'HTTPS',col:'var(--accent)'},
+      {from:1,to:2,label:'HTTP',col:'var(--green)'},
+      {from:1,to:3,label:'HTTP',col:'var(--green)'},
+      {from:1,to:4,label:'HTTP',col:'var(--green)'},
+    ];
+    drawTopology(canvas,W,H,nodes,edges,'North-south traffic only. Gateway handles external entry. No east-west control.');
+  } else if(mode==='mesh'){
+    // Services with sidecars calling each other (east-west)
+    var nodes2=[
+      {label:'API\nGateway',x:W*0.08,y:H/2,col:'var(--accent)'},
+      {label:'Order\n+sidecar',x:W*0.38,y:H*0.2,col:'var(--purple)'},
+      {label:'User\n+sidecar', x:W*0.38,y:H*0.8,col:'var(--purple)'},
+      {label:'Payment\n+sidecar',x:W*0.72,y:H*0.2,col:'var(--purple)'},
+      {label:'Inventory\n+sidecar',x:W*0.72,y:H*0.8,col:'var(--purple)'},
+    ];
+    var edges2=[
+      {from:0,to:1,label:'HTTPS',col:'var(--accent)'},
+      {from:1,to:3,label:'mTLS',col:'var(--purple)'},
+      {from:1,to:2,label:'mTLS',col:'var(--purple)'},
+      {from:3,to:4,label:'mTLS',col:'var(--purple)'},
+      {from:2,to:4,label:'mTLS',col:'var(--purple)'},
+    ];
+    drawTopology(canvas,W,H,nodes2,edges2,'East-west service mesh. All internal calls via sidecars with mTLS, tracing, circuit breaking.');
+  } else {
+    // Both
+    var nodes3=[
+      {label:'Clients',    x:W*0.04,y:H/2,   col:'var(--text3)'},
+      {label:'Gateway',    x:W*0.22,y:H/2,   col:'var(--accent)'},
+      {label:'Order\n+envoy',x:W*0.5,y:H*0.2,col:'var(--purple)'},
+      {label:'User\n+envoy', x:W*0.5,y:H*0.8,col:'var(--purple)'},
+      {label:'Payment\n+envoy',x:W*0.78,y:H*0.3,col:'var(--purple)'},
+      {label:'Inventory\n+envoy',x:W*0.78,y:H*0.7,col:'var(--purple)'},
+    ];
+    var edges3=[
+      {from:0,to:1,label:'HTTPS',col:'var(--accent)'},
+      {from:1,to:2,label:'route',col:'var(--accent)'},
+      {from:1,to:3,label:'route',col:'var(--accent)'},
+      {from:2,to:4,label:'mTLS',col:'var(--purple)'},
+      {from:3,to:5,label:'mTLS',col:'var(--purple)'},
+      {from:4,to:5,label:'mTLS',col:'var(--purple)'},
+    ];
+    drawTopology(canvas,W,H,nodes3,edges3,'Production: gateway for north-south, mesh for east-west. Each solves a different problem.');
+  }
+}
+
+function drawTopology(canvas,W,H,nodes,edges,caption){
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',W);svg.setAttribute('height',H);svg.style.overflow='visible';
+
+  // edges first
+  edges.forEach(function(e){
+    var n1=nodes[e.from],n2=nodes[e.to];
+    var line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',n1.x);line.setAttribute('y1',n1.y);
+    line.setAttribute('x2',n2.x);line.setAttribute('y2',n2.y);
+    line.setAttribute('stroke',e.col);line.setAttribute('stroke-width','1.5');line.setAttribute('opacity','0.6');
+    svg.appendChild(line);
+    // label
+    var tx=(n1.x+n2.x)/2;var ty=(n1.y+n2.y)/2-6;
+    var text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',tx);text.setAttribute('y',ty);text.setAttribute('fill',e.col);
+    text.setAttribute('font-size','9');text.setAttribute('text-anchor','middle');text.setAttribute('font-family','JetBrains Mono, monospace');
+    text.textContent=e.label;
+    svg.appendChild(text);
+  });
+
+  // nodes
+  nodes.forEach(function(n){
+    var circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',n.x);circle.setAttribute('cy',n.y);circle.setAttribute('r','24');
+    circle.setAttribute('fill','#181c26');circle.setAttribute('stroke',n.col);circle.setAttribute('stroke-width','2');
+    svg.appendChild(circle);
+    var lines=n.label.split('\n');
+    lines.forEach(function(line,i){
+      var text=document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x',n.x);text.setAttribute('y',n.y+(i-(lines.length-1)/2)*12+1);
+      text.setAttribute('fill',n.col);text.setAttribute('font-size','9');
+      text.setAttribute('text-anchor','middle');text.setAttribute('dominant-baseline','middle');
+      text.setAttribute('font-family','JetBrains Mono, monospace');text.setAttribute('font-weight','600');
+      text.textContent=line;
+      svg.appendChild(text);
+    });
+  });
+
+  canvas.appendChild(svg);
+  var cap=mkDiv('font-size:12px;color:var(--text3);margin-top:10px;text-align:center');
+  cap.textContent=caption;canvas.appendChild(cap);
+}
+
+// ── Init ──
+setTimeout(function(){
+  initMatrix();renderBFF();authReset();updateRLConfig();renderRoutes();renderCB();traceReset();renderTopology();
+},100);
+</script>
+</body>
+</html>

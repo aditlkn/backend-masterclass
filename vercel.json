@@ -1,0 +1,28 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+      ]
+    },
+    {
+      "source": "/day(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/day01", "destination": "/day01/index.html" },
+    { "source": "/day02", "destination": "/day02/index.html" },
+    { "source": "/day03", "destination": "/day03/index.html" },
+    { "source": "/day04", "destination": "/day04/index.html" },
+    { "source": "/day05", "destination": "/day05/index.html" },
+    { "source": "/day06", "destination": "/day06/index.html" },
+    { "source": "/day07", "destination": "/day07/index.html" }
+  ]
+}

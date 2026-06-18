@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 7: gRPC & Protocol Buffers — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--bg4:#1d2230;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--green);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--text);font-style:italic;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0 8px;overflow:hidden;font-family:'JetBrains Mono',monospace;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:10px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.decision-strip .ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;gap:0;}
+.ds-step{display:flex;gap:0;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.1);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.4;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-detail strong{color:var(--text);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes streamDot{0%{opacity:0;transform:translateX(0)}50%{opacity:1}100%{opacity:0;transform:translateX(60px)}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 07 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-model">Why gRPC Exists</a>
+  <a href="#s-protobuf">Protobuf Encoding</a>
+  <a href="#s-streaming">The 4 Streaming Patterns</a>
+  <a href="#s-deadlines">Deadline Propagation</a>
+  <a href="#s-evolution">Schema Evolution</a>
+  <a href="#s-tooling">Tooling: buf &amp; grpcurl</a>
+  <a href="#s-lbalancing">Load Balancing in gRPC</a>
+  <a href="#s-vsrest">gRPC vs REST</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+</nav>
+<article class="content">
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 1 · Day 7 · Networking &amp; APIs</div>
+  <h1>gRPC is not just<br><em>faster JSON</em></h1>
+  <p class="hero-sub">Most engineers who switch to gRPC think the win is the binary encoding — smaller payloads, faster parsing. That's real, but it's not the point. The real wins are things REST genuinely cannot do: first-class streaming, deadline propagation that works across service boundaries, and a schema contract that tooling can enforce before you deploy. If you're using gRPC just to save bandwidth, you're using a Swiss Army knife as a butter knife.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>Week 1 complete</div>
+  </div>
+</div>
+
+<!-- S1: WHY gRPC -->
+<div class="section" id="s-model">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why gRPC exists: the problems REST doesn't solve well</h2>
+
+  <p>REST is excellent for what it was designed for: resource-oriented APIs consumed by browsers and third-party developers. It's built on HTTP/1.1 semantics that are universally understood and toolable. But REST has structural limitations that become painful at scale in a microservices architecture.</p>
+
+  <p><strong>The interface definition problem.</strong> REST has no standard schema definition. OpenAPI (Swagger) is widely used but optional and frequently out of sync with actual server behaviour. A REST client learns the API shape from documentation, not from a machine-readable contract that both client and server are compiled against. When you change a field name in a REST API, nothing stops you from shipping the server and forgetting to update a client. You find out when production breaks.</p>
+
+  <p><strong>The streaming problem.</strong> HTTP/1.1 wasn't designed for long-lived bidirectional streams. WebSockets are a hack layered on top. Server-sent events are one-directional. Building a real-time bidirectional protocol on REST requires significant custom engineering. gRPC's streaming is first-class and works the same way for unary, server-streaming, client-streaming, and bidirectional use cases.</p>
+
+  <p><strong>The deadline problem.</strong> In REST, if a client sets a 5-second timeout, that information dies at the first service boundary. Service A knows the client wants a response in 5 seconds, but when it calls Service B, Service B doesn't know there are only 3 seconds left. gRPC propagates deadlines across every service call in the chain — Service B and Service C all know the original deadline and can fail fast rather than doing work that will be discarded.</p>
+
+  <p><strong>The performance problem.</strong> JSON is text-based and verbose. Field names are repeated in every object. Numbers are serialised as characters. A typical microservice message in JSON is 3-10x larger than its Protobuf equivalent, and JSON parsing is significantly more CPU-intensive than Protobuf decoding. For high-frequency internal service calls at thousands per second, this compounds.</p>
+
+  <p>gRPC solves all four. It's built on HTTP/2 (multiplexed streams, binary framing), uses Protocol Buffers (schema-enforced, binary encoded), propagates deadlines as first-class header metadata, and generates client and server code in any language from the same schema definition.</p>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Protobuf vs JSON — toggle fields, see byte-level encoding difference</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Toggle fields on/off to include them in the message. See exactly how Protobuf encodes each field vs JSON — and why field names don’t appear in the wire format.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:JetBrains Mono,monospace">Fields (click to toggle)</div>
+        <div id="proto-fields"></div>
+      </div>
+      <div id="proto-output" class="mono-out" style="min-height:220px;font-size:11.5px;line-height:1.9"></div>
+    </div>
+  </div>
+</div>
+
+<!-- S2: PROTOBUF -->
+<div class="section" id="s-protobuf">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Protocol Buffers: how binary encoding actually works</h2>
+
+  <p>Protobuf is not just "JSON but binary." The encoding is fundamentally different in ways that matter for both size and forward/backward compatibility. Understanding the encoding helps you understand why certain schema changes are safe and others are breaking.</p>
+
+  <h3>The key insight: field names are not encoded</h3>
+  <p>In JSON, field names are strings in the payload: <code>{"user_id": 123, "email": "a@b.com"}</code>. Every byte of "user_id" is transmitted every time. In Protobuf, field names don't exist in the wire format. Instead, each field has a <strong>field number</strong> — a small integer defined in the <code>.proto</code> schema. The wire format encodes the field number, a wire type (varint, length-delimited, etc.), and the value. The decoder looks up the field name from the compiled schema.</p>
+
+  <p>This is why Protobuf is compact. A field named <code>payment_method_type</code> (21 bytes as a JSON key) becomes field number 3 (1-2 bytes in Protobuf, depending on the number). A message with 20 fields saves the key name overhead on every field for every message. At thousands of messages per second, this is significant CPU and bandwidth.</p>
+
+  <h3>Wire types</h3>
+  <p>Protobuf has 6 wire types that determine how many bytes follow:</p>
+  <ul>
+    <li><strong>Varint (0):</strong> Variable-length integer encoding. Small numbers use fewer bytes. The number 1 encodes in 1 byte; the number 300 in 2 bytes; 2^28 in 5 bytes. <code>int32</code>, <code>int64</code>, <code>bool</code>, <code>enum</code>.</li>
+    <li><strong>64-bit (1):</strong> Fixed 8 bytes. <code>fixed64</code>, <code>double</code>.</li>
+    <li><strong>Length-delimited (2):</strong> A varint length followed by that many bytes. Used for <code>string</code>, <code>bytes</code>, nested messages, and packed repeated fields.</li>
+    <li><strong>32-bit (5):</strong> Fixed 4 bytes. <code>fixed32</code>, <code>float</code>.</li>
+  </ul>
+
+  <h3>The tag byte: field number + wire type in one</h3>
+  <p>Each field in the wire format starts with a <em>tag</em> — a varint encoding both the field number and wire type: <code>tag = (field_number &lt;&lt; 3) | wire_type</code>. Field 1, wire type 0 (varint) = tag value 8 = 1 byte. Field 1, wire type 2 (length-delimited) = tag value 10 = 1 byte. This is why small field numbers are important — they keep tags to 1 byte.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>Why field numbers are sacred</strong>
+      <p>The wire format has no field names — just field numbers. If you renumber field 3 to field 5, old clients sending field 3 will have their data silently ignored by new servers expecting field 5. This is not an error — it's how Protobuf achieves forward compatibility. Unknown fields are preserved but ignored. Changing field numbers is the single most dangerous schema change you can make.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Proto3 message definition and what the wire encoding looks like</span>
+      <span class="code-block-lang">PROTO</span>
+    </div>
+    <pre><span class="cm">// payments.proto</span>
+<span class="kw">syntax</span> = <span class="str">"proto3"</span>;
+<span class="kw">package</span> payments.v1;
+
+<span class="kw">message</span> <span class="ty">ChargeRequest</span> {
+  <span class="ty">string</span>  idempotency_key = <span class="num">1</span>;   <span class="cm">// field 1, wire type 2 (string)</span>
+  <span class="ty">int64</span>   amount_paise    = <span class="num">2</span>;   <span class="cm">// field 2, wire type 0 (varint)</span>
+  <span class="ty">string</span>  user_id         = <span class="num">3</span>;   <span class="cm">// field 3, wire type 2</span>
+  <span class="ty">string</span>  currency        = <span class="num">4</span>;   <span class="cm">// field 4, wire type 2</span>
+  <span class="ty">PaymentMethod</span> method    = <span class="num">5</span>;   <span class="cm">// field 5, wire type 2 (nested message)</span>
+}
+
+<span class="cm">// JSON equivalent: 94 bytes</span>
+<span class="cm">// {"idempotency_key":"idem_abc123","amount_paise":50000,"user_id":"usr_789","currency":"INR"}</span>
+
+<span class="cm">// Protobuf encoding: ~45 bytes (approximately, no method field)</span>
+<span class="cm">// 0a 0a 69 64 65 6d 5f 61 62 63 31 32 33   ← field 1: "idem_abc123"</span>
+<span class="cm">// 10 d0 86 03                               ← field 2: 50000 (varint)</span>
+<span class="cm">// 1a 07 75 73 72 5f 37 38 39               ← field 3: "usr_789"</span>
+<span class="cm">// 22 03 49 4e 52                           ← field 4: "INR"</span>
+<span class="cm">// Total: ~48% smaller than JSON</span>
+
+<span class="cm">// Service definition</span>
+<span class="kw">service</span> <span class="ty">PaymentService</span> {
+  <span class="cm">// Unary: one request, one response</span>
+  <span class="kw">rpc</span> <span class="fn">Charge</span> (<span class="ty">ChargeRequest</span>) <span class="kw">returns</span> (<span class="ty">ChargeResponse</span>);
+
+  <span class="cm">// Server streaming: one request, stream of responses</span>
+  <span class="kw">rpc</span> <span class="fn">StreamTransactions</span> (<span class="ty">TransactionFilter</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="ty">Transaction</span>);
+
+  <span class="cm">// Client streaming: stream of requests, one response</span>
+  <span class="kw">rpc</span> <span class="fn">BatchCharge</span> (<span class="kw">stream</span> <span class="ty">ChargeRequest</span>) <span class="kw">returns</span> (<span class="ty">BatchChargeResponse</span>);
+
+  <span class="cm">// Bidirectional: both sides stream simultaneously</span>
+  <span class="kw">rpc</span> <span class="fn">RealtimePaymentFeed</span> (<span class="kw">stream</span> <span class="ty">FeedRequest</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="ty">PaymentEvent</span>);
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Protobuf vs JSON — toggle fields, see byte-level encoding difference</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Toggle fields to include them. See how Protobuf encodes each field vs JSON — and why field names don’t appear in the wire format at all.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:JetBrains Mono,monospace">Fields (click to toggle)</div>
+        <div id="proto-fields"></div>
+      </div>
+      <div id="proto-output" class="mono-out" style="min-height:220px;font-size:11.5px;line-height:1.9"></div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: STREAMING -->
+<div class="section" id="s-streaming">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>The 4 streaming patterns: when to use each</h2>
+
+  <p>gRPC's streaming is one of its most powerful features and the one most teams underuse. Most gRPC adopters only use unary RPCs — which is fine, but leaves the streaming advantage on the table for the use cases where it matters most.</p>
+
+  <h3>Unary: request-response (what you already know)</h3>
+  <p>One request, one response. Functionally identical to a REST API call, but with binary encoding, schema enforcement, and deadline propagation. The right choice for the majority of service calls: CRUD operations, authentication checks, any operation where you need a single answer.</p>
+
+  <h3>Server streaming: one request, many responses</h3>
+  <p>Client sends one request; server streams back a sequence of responses on the same HTTP/2 stream until done. The server controls when the stream ends. Use cases: exporting large datasets (stream rows instead of buffering everything in memory), live dashboards (stream updates as data changes), log tailing, real-time analytics feeds. The key advantage over REST polling: the server pushes data; the client doesn't need to poll. Lower latency, lower overhead.</p>
+
+  <h3>Client streaming: many requests, one response</h3>
+  <p>Client streams a sequence of requests; server accumulates them and sends one final response. Use cases: file upload (stream chunks, server returns a single completion response), batch operations where you want to stream input rather than send one giant payload, telemetry ingestion (stream events, server returns an ack with count). Rare in practice — most batch patterns are better served by a message queue. But for synchronous bulk ingestion with backpressure, it's elegant.</p>
+
+  <h3>Bidirectional streaming: both sides stream simultaneously</h3>
+  <p>Both client and server send and receive independently on the same connection. Neither side needs to wait for the other. Use cases: real-time chat, collaborative editing, trading/order book updates, game state synchronisation, voice/video control channels. This is the pattern that previously required WebSockets or custom TCP protocols — gRPC makes it a first-class RPC pattern with all the schema and deadline benefits.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">All 4 streaming patterns in Node.js</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="kw">import</span> * <span class="kw">as</span> grpc <span class="kw">from</span> <span class="str">'@grpc/grpc-js'</span>;
+
+<span class="cm">// 1. UNARY — one request, one response</span>
+<span class="kw">const</span> <span class="var">deadline</span> = <span class="kw">new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + <span class="num">5000</span>); <span class="cm">// always set deadlines</span>
+client.<span class="fn">Charge</span>(request, { deadline }, (err, response) => {
+  <span class="kw">if</span> (err) <span class="kw">throw</span> err;
+  console.<span class="fn">log</span>(response.charge_id);
+});
+
+<span class="cm">// 2. SERVER STREAMING — stream large dataset</span>
+<span class="kw">const</span> <span class="var">stream</span> = client.<span class="fn">StreamTransactions</span>(
+  { user_id: <span class="str">'usr_123'</span>, from_date: <span class="str">'2024-01-01'</span> },
+  { deadline: <span class="kw">new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + <span class="num">30000</span>) }
+);
+stream.<span class="fn">on</span>(<span class="str">'data'</span>, (transaction) => {
+  <span class="fn">processTransaction</span>(transaction); <span class="cm">// process as data arrives</span>
+});
+stream.<span class="fn">on</span>(<span class="str">'end'</span>,   () => console.<span class="fn">log</span>(<span class="str">'stream complete'</span>));
+stream.<span class="fn">on</span>(<span class="str">'error'</span>, (err) => console.<span class="fn">error</span>(err));
+
+<span class="cm">// 3. CLIENT STREAMING — batch ingest</span>
+<span class="kw">const</span> <span class="var">batchCall</span> = client.<span class="fn">BatchCharge</span>(
+  { deadline: <span class="kw">new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + <span class="num">60000</span>) },
+  (err, result) => {
+    console.<span class="fn">log</span>(<span class="str">`Processed \${result.charged_count} charges`</span>);
+  }
+);
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">charge</span> <span class="kw">of</span> charges) {
+  batchCall.<span class="fn">write</span>(charge);  <span class="cm">// stream requests to server</span>
+}
+batchCall.<span class="fn">end</span>();             <span class="cm">// signal end of client stream</span>
+
+<span class="cm">// 4. BIDIRECTIONAL STREAMING — realtime feed</span>
+<span class="kw">const</span> <span class="var">feed</span> = client.<span class="fn">RealtimePaymentFeed</span>({ deadline: ... });
+feed.<span class="fn">on</span>(<span class="str">'data'</span>, (event) => <span class="fn">renderUpdate</span>(event));
+feed.<span class="fn">write</span>({ filter: { currency: <span class="str">'INR'</span>, min_amount: <span class="num">1000</span> } });
+<span class="cm">// Later: update filter without reconnecting</span>
+feed.<span class="fn">write</span>({ filter: { currency: <span class="str">'INR'</span>, min_amount: <span class="num">5000</span> } });</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">The 4 gRPC streaming patterns — animated message flow</span><span class="viz-badge">ANIMATED</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="viz-btn stream-btn active" onclick="setStreamMode('unary',this)">Unary</button>
+      <button class="viz-btn stream-btn" onclick="setStreamMode('server',this)">Server streaming</button>
+      <button class="viz-btn stream-btn" onclick="setStreamMode('client',this)">Client streaming</button>
+      <button class="viz-btn stream-btn" onclick="setStreamMode('bidi',this)">Bidirectional</button>
+      <button class="viz-btn" id="stream-start" onclick="streamStart()" style="border-color:var(--green);color:var(--green)">&#9654; Animate</button>
+    </div>
+    <div id="stream-canvas" style="position:relative;height:120px;background:var(--bg);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:10px"></div>
+    <div id="stream-note" style="font-size:13px;color:var(--text2);min-height:32px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S4: DEADLINES -->
+<div class="section" id="s-deadlines">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Deadline propagation: the feature that prevents cascading failures</h2>
+
+  <p>Deadlines are the single most important gRPC feature that has no equivalent in REST. They're so fundamental that the gRPC framework enforces them at the protocol level — not as an application concern but as a network-layer concern.</p>
+
+  <h3>How gRPC deadlines work</h3>
+  <p>When a gRPC call is made with a deadline, the remaining time is encoded in the request metadata as a <code>grpc-timeout</code> header. Every service in the call chain receives this header and knows exactly how much time is left from the original client's perspective. Crucially: <strong>the deadline doesn't reset at each service boundary.</strong> If the client set 5 seconds and Service A took 2 seconds to process before calling Service B, Service B receives a 3-second deadline — not 5 seconds.</p>
+
+  <p>This means Service B can check its deadline <em>before</em> starting expensive work. If the deadline is 200ms and Service B knows its DB query typically takes 500ms, it can immediately return a <code>DEADLINE_EXCEEDED</code> error rather than starting work that will be abandoned when the deadline fires anyway. This is <em>deadline-aware processing</em>, and it's the key to preventing the cascade where Service A's slow response causes Service B to do useless work.</p>
+
+  <h3>The REST equivalent doesn't exist</h3>
+  <p>In REST, a client timeout is a client-side concept only. You can set a 5-second timeout on your HTTP client. When you call Service A, Service A doesn't know about your timeout. When Service A calls Service B, Service B definitely doesn't know. You might add a custom <code>X-Request-Timeout</code> header and have every service read and propagate it — but this is manual, inconsistent, and not enforced by the framework.</p>
+
+  <h3>Context cancellation propagation</h3>
+  <p>When a client cancels a gRPC call (because its deadline expired or the user navigated away), the cancellation propagates through the entire call chain. Service A's context is cancelled, which cancels Service B's context, which cancels the database query. Work is abandoned at every level simultaneously rather than continuing to consume resources for a response nobody will receive.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Deadline propagation — always set, always check</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="cm">// WRONG: No deadline — call hangs forever if downstream is slow</span>
+client.<span class="fn">Charge</span>(request, (err, response) => { <span class="cm">/* ... */</span> });
+
+<span class="cm">// RIGHT: Absolute deadline (wall clock time, not duration)</span>
+<span class="kw">const</span> <span class="var">deadline</span> = <span class="kw">new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + <span class="num">5000</span>); <span class="cm">// 5s from now</span>
+client.<span class="fn">Charge</span>(request, { deadline }, (err, response) => {
+  <span class="kw">if</span> (err?.code === grpc.status.DEADLINE_EXCEEDED) {
+    <span class="cm">// Timed out — log with remaining time info for debugging</span>
+    logger.<span class="fn">warn</span>({ deadline: deadline.<span class="fn">toISOString</span>() }, <span class="str">'charge deadline exceeded'</span>);
+  }
+});
+
+<span class="cm">// Server-side: check deadline BEFORE expensive work</span>
+<span class="kw">async function</span> <span class="fn">Charge</span>(call: ServerUnaryCall, callback: sendUnaryData) {
+  <span class="cm">// Check if client already gave up before we start</span>
+  <span class="kw">const</span> <span class="var">deadline</span> = call.getDeadline();
+  <span class="kw">const</span> <span class="var">remainingMs</span> = deadline - Date.<span class="fn">now</span>();
+
+  <span class="kw">if</span> (remainingMs < <span class="num">100</span>) {
+    <span class="cm">// Less than 100ms left — not enough time to do anything useful</span>
+    <span class="kw">return</span> <span class="fn">callback</span>({ code: grpc.status.DEADLINE_EXCEEDED });
+  }
+
+  <span class="cm">// Listen for cancellation — stop DB work if client cancelled</span>
+  <span class="kw">let</span> <span class="var">cancelled</span> = <span class="kw">false</span>;
+  call.<span class="fn">on</span>(<span class="str">'cancelled'</span>, () => { cancelled = <span class="kw">true</span>; });
+
+  <span class="kw">try</span> {
+    <span class="kw">const</span> <span class="var">charge</span> = <span class="kw">await</span> db.<span class="fn">createCharge</span>(call.request);
+    <span class="kw">if</span> (cancelled) <span class="kw">return</span>; <span class="cm">// client gave up while we were working</span>
+    <span class="fn">callback</span>(<span class="kw">null</span>, { charge_id: charge.id, status: <span class="str">'SUCCESS'</span> });
+  } <span class="kw">catch</span> (err) {
+    <span class="fn">callback</span>({ code: grpc.status.INTERNAL, message: err.message });
+  }
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Deadline propagation — trace a 5s deadline through 3 services</span><span class="viz-badge">STEP-THROUGH</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <button class="viz-btn" onclick="dlPrev()" id="dl-prev" disabled>← Prev</button>
+      <button class="viz-btn active" onclick="dlNext()" id="dl-next">Next →</button>
+      <button class="viz-btn" onclick="dlReset()">↺ Reset</button>
+      <span id="dl-counter" style="font-size:11px;color:var(--text3)">0 / 7</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:8px;text-align:center">
+      <span style="font-size:10px;color:var(--accent);font-weight:600">CLIENT</span>
+      <span style="font-size:10px;color:var(--green);font-weight:600">SERVICE A</span>
+      <span style="font-size:10px;color:var(--orange);font-weight:600">SERVICE B</span>
+      <span style="font-size:10px;color:var(--purple);font-weight:600">SERVICE C</span>
+    </div>
+    <div style="position:relative;min-height:260px;background:var(--bg);border-radius:8px;border:1px solid var(--border);overflow:hidden;padding:10px 0">
+      <div style="position:absolute;left:10%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div style="position:absolute;left:35%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div style="position:absolute;left:62%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div style="position:absolute;left:87%;top:0;bottom:0;width:1px;background:var(--border2)"></div>
+      <div id="dl-arrows"></div>
+    </div>
+    <div id="dl-explain" style="margin-top:12px;padding:12px 16px;background:var(--bg3);border-radius:6px;font-size:13px;color:var(--text2);min-height:60px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S5: SCHEMA EVOLUTION -->
+<div class="section" id="s-evolution">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Schema evolution: the rules that make or break compatibility</h2>
+
+  <p>Protobuf's binary encoding enables backward and forward compatibility — but only if you follow the rules. The encoding's lack of field names means that compatible changes are genuinely compatible across versions, and breaking changes are genuinely breaking in ways that can be subtle and silent.</p>
+
+  <h3>Safe changes (backward and forward compatible)</h3>
+  <ul>
+    <li><strong>Adding a new field with a new field number:</strong> Old clients ignore unknown fields. New servers return default values for unset fields. Both directions work.</li>
+    <li><strong>Deleting a field:</strong> The field number should be <em>reserved</em> so it's never reused. Old clients sending deleted fields have their data ignored. New clients receive default values. Compatible, but use <code>reserved</code> to prevent accidental field number reuse.</li>
+    <li><strong>Renaming a field:</strong> The field name doesn't exist in the wire format — only the number does. You can rename field 3 from <code>user_id</code> to <code>customer_id</code> and the wire format is identical. This is one of Protobuf's most useful properties.</li>
+    <li><strong>Changing a singular field to <code>repeated</code>:</strong> Old messages with one value become a one-element list. Compatible.</li>
+  </ul>
+
+  <h3>Breaking changes — never do these in production</h3>
+  <ul>
+    <li><strong>Changing a field number:</strong> If field 3 was <code>user_id</code> and you renumber it to field 5, old clients send field 3 which new servers don't recognise. The data is silently dropped. This is the most dangerous change.</li>
+    <li><strong>Changing a field's wire type:</strong> Changing <code>int32</code> to <code>string</code> changes the wire type from varint to length-delimited. The decoder will misinterpret the bytes. Silent data corruption.</li>
+    <li><strong>Reusing a field number:</strong> If you delete field 3 and then add a new field also numbered 3 with a different type, old messages with the old field 3 will be decoded as the new field 3. Data corruption.</li>
+  </ul>
+
+  <h3>The <code>reserved</code> keyword</h3>
+  <p>Proto3 has a <code>reserved</code> statement that prevents field number and name reuse: <code>reserved 3, 5; reserved "old_field_name";</code>. The compiler will error if any future field tries to use these numbers or names. Always reserve deleted field numbers and names.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Safe schema evolution with reserved fields</span>
+      <span class="code-block-lang">PROTO</span>
+    </div>
+    <pre><span class="cm">// Version 1 of the message</span>
+<span class="kw">message</span> <span class="ty">ChargeRequest</span> {
+  <span class="ty">string</span> idempotency_key = <span class="num">1</span>;
+  <span class="ty">int64</span>  amount_paise    = <span class="num">2</span>;
+  <span class="ty">string</span> user_id         = <span class="num">3</span>; <span class="cm">// will be deleted in v2</span>
+  <span class="ty">string</span> currency        = <span class="num">4</span>;
+}
+
+<span class="cm">// Version 2: user_id moved to metadata, new customer_reference added</span>
+<span class="kw">message</span> <span class="ty">ChargeRequest</span> {
+  <span class="ty">string</span> idempotency_key     = <span class="num">1</span>;
+  <span class="ty">int64</span>  amount_paise         = <span class="num">2</span>;
+  <span class="cm">// Field 3 deleted — MUST be reserved or someone will reuse it</span>
+  <span class="ty">string</span> currency             = <span class="num">4</span>;
+  <span class="ty">string</span> customer_reference   = <span class="num">5</span>; <span class="cm">// new field — safe to add</span>
+  <span class="ty">PaymentMethod</span> method        = <span class="num">6</span>; <span class="cm">// new nested message — safe</span>
+
+  <span class="cm">// Prevent field number 3 and name "user_id" from being reused</span>
+  <span class="kw">reserved</span> <span class="num">3</span>;
+  <span class="kw">reserved</span> <span class="str">"user_id"</span>;
+}
+
+<span class="cm">// buf.build breaking change detection catches this automatically:</span>
+<span class="cm">// buf breaking --against .git#branch=main</span>
+<span class="cm">// ERROR: payments/v1/charge.proto:4:3:</span>
+<span class="cm">#   Field "3" on message "ChargeRequest" changed type from</span>
+<span class="cm">#   "TYPE_STRING" to "TYPE_INT64" -- this is a breaking change</span></pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Schema evolution validator — safe vs breaking changes in Protobuf</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Green = compatible. Red = breaking. Click any change to see the proto example and why it is or isn’t safe.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div id="schema-changes"></div>
+      <div id="schema-detail" class="mono-out" style="min-height:180px;font-size:12px;line-height:1.9"><span style="color:var(--text3)">Click a change type →</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- S6: TOOLING -->
+<div class="section" id="s-tooling">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Tooling: buf, grpcurl, and the gRPC ecosystem</h2>
+
+  <p>One of REST's genuine advantages is toolability — curl works, browsers work, Postman works. gRPC's binary protocol makes ad-hoc testing harder. The ecosystem has caught up significantly, but you need to know which tools to reach for.</p>
+
+  <h3>buf: the modern Protobuf toolchain</h3>
+  <p><code>buf</code> is the most important tool in the gRPC ecosystem. It replaces the raw <code>protoc</code> compiler with a tool that handles dependency management, linting, breaking change detection, and a registry (buf.build) for sharing schemas.</p>
+  <ul>
+    <li><strong><code>buf lint</code></strong> — enforces style rules (field names, service names, package structure). Catches naming inconsistencies before code review.</li>
+    <li><strong><code>buf breaking --against .git#branch=main</code></strong> — detects breaking changes in your Protobuf schemas against a previous version. Runs in CI. Blocks PRs that would break client compatibility.</li>
+    <li><strong><code>buf generate</code></strong> — generates client and server code from <code>.proto</code> files. Replace the complex <code>protoc</code> invocations with a simple config file.</li>
+    <li><strong><code>buf push</code></strong> — publish schemas to buf.build for team sharing and dependency management.</li>
+  </ul>
+
+  <h3>grpcurl: curl for gRPC</h3>
+  <p><code>grpcurl</code> lets you call gRPC services from the command line. Requires either server reflection enabled (the server advertises its schemas) or a <code>.proto</code> file. Equivalent to <code>curl</code> for REST debugging.</p>
+
+  <h3>Evans: interactive gRPC client</h3>
+  <p>Evans is an interactive REPL for gRPC — like a gRPC equivalent of <code>psql</code> or <code>redis-cli</code>. Tab-completion of service and method names, interactive input of request messages. Excellent for exploration and debugging.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">buf and grpcurl — essential commands</span>
+      <span class="code-block-lang">BASH</span>
+    </div>
+    <pre><span class="cm"># buf.yaml — project config</span>
+<span class="cm"># version: v1</span>
+<span class="cm"># lint: { use: [DEFAULT] }</span>
+<span class="cm"># breaking: { use: [FILE] }</span>
+
+<span class="cm">## ── buf commands ──────────────────────────────────────────</span>
+<span class="cm"># Lint proto files for style issues</span>
+buf lint
+
+<span class="cm"># Check for breaking changes against main branch</span>
+buf breaking --against <span class="str">'.git#branch=main'</span>
+
+<span class="cm"># Generate code (replaces protoc invocations)</span>
+buf generate
+
+<span class="cm"># Format proto files</span>
+buf format -w
+
+<span class="cm">## ── grpcurl ───────────────────────────────────────────────</span>
+<span class="cm"># List all services (requires server reflection)</span>
+grpcurl -plaintext localhost:50051 list
+
+<span class="cm"># Describe a service</span>
+grpcurl -plaintext localhost:50051 describe payments.v1.PaymentService
+
+<span class="cm"># Call a unary method</span>
+grpcurl -plaintext -d <span class="str">'{"idempotency_key":"test_001","amount_paise":50000,"user_id":"usr_123","currency":"INR"}'</span> \
+  localhost:50051 payments.v1.PaymentService/Charge
+
+<span class="cm"># Server streaming</span>
+grpcurl -plaintext -d <span class="str">'{"user_id":"usr_123"}'</span> \
+  localhost:50051 payments.v1.PaymentService/StreamTransactions
+
+<span class="cm"># With a proto file instead of reflection</span>
+grpcurl -import-path ./proto -proto payments/v1/charge.proto \
+  -d <span class="str">'{"amount_paise":50000}'</span> \
+  api.example.com:443 payments.v1.PaymentService/Charge
+
+<span class="cm"># With metadata (e.g. auth headers)</span>
+grpcurl -H <span class="str">'Authorization: Bearer eyJ...'</span> \
+  -H <span class="str">'x-request-id: req_abc123'</span> \
+  api.example.com:443 payments.v1.PaymentService/Charge \
+  -d <span class="str">'{"amount_paise":50000}'</span>
+
+<span class="cm">## ── Enable server reflection in Node.js ───────────────────</span>
+<span class="cm"># import { addReflection } from 'grpc-server-reflection'</span>
+<span class="cm"># addReflection(server, join(__dirname, 'proto/descriptor.bin'))</span></pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">buf.build workflow — from proto file to safe deployment</span><span class="viz-badge">STEP-THROUGH</span></div>
+  <div class="viz-body">
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">WORKFLOW STEP: <span id="buf-step-val" style="color:var(--accent)">Step 1 / 4</span></div>
+      <input type="range" class="viz-slider" id="buf-step" min="1" max="4" value="1" oninput="renderBufWorkflow()">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+        <span>Write .proto</span><span>buf lint</span><span>buf breaking</span><span>buf generate</span>
+      </div>
+    </div>
+    <div id="buf-note" style="font-size:13px;color:var(--text2);margin-bottom:10px;min-height:36px;line-height:1.6"></div>
+    <pre id="buf-output" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;color:#abb2bf;line-height:1.7;overflow-x:auto;min-height:140px;white-space:pre;font-family:JetBrains Mono,monospace"></pre>
+  </div>
+</div>
+
+<!-- S7: LOAD BALANCING -->
+<div class="section" id="s-lbalancing">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Load balancing in gRPC: why it's harder than HTTP and how to solve it</h2>
+
+  <p>gRPC's use of HTTP/2 creates a load balancing challenge that most teams don't anticipate until they hit it in production. With HTTP/1.1 REST APIs, each request is a new TCP connection (or a connection from a pool). Load balancers distribute connections, which distributes requests. With gRPC over HTTP/2, a single long-lived connection multiplexes all requests. If a client maintains one connection to a server, all its requests go to that server regardless of the load balancer sitting in between.</p>
+
+  <p>Concretely: you have 5 gRPC backend instances behind a load balancer. A client establishes one HTTP/2 connection. The load balancer routes that connection to Instance 2. All subsequent gRPC calls from that client go to Instance 2. Instances 1, 3, 4, and 5 see nothing from this client. This is the opposite of load balancing.</p>
+
+  <h3>Solution 1: L7 load balancing (recommended)</h3>
+  <p>Use an L7-aware load balancer that understands HTTP/2 — Envoy, nginx (1.13.10+), or a service mesh. These terminate the HTTP/2 connection and distribute individual gRPC frames (not just TCP connections) across backends. Each request gets independently routed, even though the client has one connection. This is the simplest solution for most architectures.</p>
+
+  <h3>Solution 2: Client-side load balancing</h3>
+  <p>The gRPC client library knows about all backend instances (from DNS or a service registry) and distributes requests across them directly. No load balancer in the path — the client implements the balancing algorithm. gRPC's built-in <code>round_robin</code> and <code>pick_first</code> load balancers, and Envoy's <code>LEAST_REQUEST</code>, work at this layer. Requires the client to know backend addresses — typically via DNS with multiple A records or a service discovery system like Consul.</p>
+
+  <h3>Solution 3: Proxy with gRPC awareness</h3>
+  <p>AWS ALB supports gRPC natively (since 2020). GCP Cloud Load Balancing supports gRPC. These are the easiest solutions for cloud-hosted gRPC services — they handle HTTP/2 termination and per-request routing automatically.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Client-side load balancing with gRPC round-robin</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="kw">import</span> * <span class="kw">as</span> grpc <span class="kw">from</span> <span class="str">'@grpc/grpc-js'</span>;
+
+<span class="cm">// Option 1: DNS-based round-robin (multiple A records)</span>
+<span class="cm">// DNS resolver returns: 10.0.0.1, 10.0.0.2, 10.0.0.3</span>
+<span class="cm">// gRPC connects to all and round-robins across them</span>
+<span class="kw">const</span> <span class="var">client</span> = <span class="kw">new</span> PaymentServiceClient(
+  <span class="str">'dns:///payments.internal:50051'</span>,   <span class="cm">// dns:/// prefix = DNS resolver</span>
+  grpc.credentials.<span class="fn">createInsecure</span>(),
+  {
+    <span class="str">'grpc.service_config'</span>: <span class="fn">JSON.stringify</span>({
+      loadBalancingConfig: [{ round_robin: {} }]
+    })
+  }
+);
+
+<span class="cm">// Option 2: Static list of backends</span>
+<span class="kw">const</span> <span class="var">client</span> = <span class="kw">new</span> PaymentServiceClient(
+  <span class="str">'ipv4:///10.0.0.1:50051,10.0.0.2:50051,10.0.0.3:50051'</span>,
+  grpc.credentials.<span class="fn">createInsecure</span>(),
+  { <span class="str">'grpc.service_config'</span>: <span class="fn">JSON.stringify</span>({ loadBalancingConfig: [{ round_robin: {} }] }) }
+);
+
+<span class="cm">// Envoy sidecar: most production-grade approach</span>
+<span class="cm">// Client connects to local Envoy (127.0.0.1:50051)</span>
+<span class="cm">// Envoy has the LB policy and knows about all backends</span>
+<span class="cm">// Client sees one address; Envoy handles per-request distribution</span>
+<span class="kw">const</span> <span class="var">client</span> = <span class="kw">new</span> PaymentServiceClient(
+  <span class="str">'localhost:50051'</span>,  <span class="cm">// Envoy sidecar, not a real backend</span>
+  grpc.credentials.<span class="fn">createInsecure</span>()
+  <span class="cm">// Envoy handles load balancing, retries, circuit breaking, mTLS</span>
+);</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">gRPC load balancing — why TCP LB fails and what to use instead</span><span class="viz-badge">LIVE SIM</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="viz-btn grpclb-btn active" onclick="setGrpcLBMode('tcp',this)" style="border-color:var(--red);color:var(--red)">TCP LB (broken)</button>
+      <button class="viz-btn grpclb-btn" onclick="setGrpcLBMode('l7',this)">L7 LB (Envoy/ALB)</button>
+      <button class="viz-btn grpclb-btn" onclick="setGrpcLBMode('client',this)">Client-side LB</button>
+      <button class="viz-btn" id="grpclb-start" onclick="grpcLBStart()" style="border-color:var(--green);color:var(--green)">&#9654; Simulate calls</button>
+    </div>
+    <div id="grpclb-backends" style="margin-bottom:12px"></div>
+    <div id="grpclb-note" style="font-size:13px;color:var(--text2);min-height:36px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S8: gRPC VS REST -->
+<div class="section" id="s-vsrest">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>gRPC vs REST: when to use which</h2>
+
+  <p>This is not a debate with a winner. They're tools with different tradeoffs. The right choice depends on who your clients are, what your communication patterns are, and what your team is willing to operate.</p>
+
+  <h3>Use REST when:</h3>
+  <ul>
+    <li><strong>External/public API:</strong> Browsers, mobile apps, third-party developers, any client you don't control. REST is universally understood. gRPC requires generated client libraries or transcoding. External developers expect REST.</li>
+    <li><strong>Simple CRUD operations:</strong> Creating, reading, updating, deleting resources with no streaming. REST's resource model is elegant and well understood. gRPC is overkill.</li>
+    <li><strong>Human-readable debugging matters:</strong> REST+JSON can be inspected with curl, browser DevTools, Postman. No special tooling required. gRPC requires grpcurl or Evans.</li>
+    <li><strong>The team is small or REST-experienced:</strong> gRPC introduces proto files, code generation, a new mental model for streaming, and unfamiliar error codes. This overhead is real and shouldn't be underestimated.</li>
+  </ul>
+
+  <h3>Use gRPC when:</h3>
+  <ul>
+    <li><strong>Internal service-to-service:</strong> You control both client and server. Generated clients are an advantage, not a burden. Binary encoding and deadline propagation have clear value. This is the primary use case.</li>
+    <li><strong>Streaming is required:</strong> Real-time updates, large data exports, bidirectional communication. gRPC streaming is vastly cleaner than WebSockets or polling.</li>
+    <li><strong>High-frequency, low-latency internal calls:</strong> Hundreds of thousands of small messages per second between services. The encoding efficiency and HTTP/2 multiplexing make a measurable difference.</li>
+    <li><strong>Polyglot services:</strong> Protobuf generates idiomatic clients in Go, Rust, Python, Java, TypeScript simultaneously from one schema. REST has OpenAPI generators but they're inconsistent across languages.</li>
+    <li><strong>Schema enforcement is critical:</strong> Proto files are the contract. Breaking changes are caught by tooling (buf) before deployment. REST contract enforcement requires discipline; gRPC enforces it structurally.</li>
+  </ul>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Factor</th><th>REST</th><th>gRPC</th></tr></thead>
+      <tbody>
+        <tr><td>Client type</td><td>Any — browser, mobile, third-party</td><td>Generated clients — internal services</td></tr>
+        <tr><td>Protocol</td><td>HTTP/1.1 or HTTP/2</td><td>HTTP/2 required</td></tr>
+        <tr><td>Encoding</td><td>JSON (text, verbose, flexible)</td><td>Protobuf (binary, compact, schema-enforced)</td></tr>
+        <tr><td>Streaming</td><td>Awkward (SSE, WebSocket workarounds)</td><td>First-class, 4 patterns</td></tr>
+        <tr><td>Deadlines</td><td>Manual propagation if at all</td><td>First-class, automatic propagation</td></tr>
+        <tr><td>Schema contract</td><td>Optional (OpenAPI)</td><td>Required (proto files)</td></tr>
+        <tr><td>Breaking change detection</td><td>Manual / tests</td><td>Automated (buf breaking)</td></tr>
+        <tr><td>Debugging</td><td>curl, browser, Postman</td><td>grpcurl, Evans (more setup)</td></tr>
+        <tr><td>Browser support</td><td>Native</td><td>Requires gRPC-Web + proxy</td></tr>
+        <tr><td>Payload size</td><td>Larger (JSON verbosity)</td><td>3-10x smaller</td></tr>
+        <tr><td>Error model</td><td>HTTP status codes</td><td>Rich status codes + details</td></tr>
+        <tr><td>Load balancing</td><td>Standard L7 LB</td><td>Requires HTTP/2-aware LB</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">gRPC vs REST — pick your use case, get a clear recommendation</span><span class="viz-badge">DECISION</span></div>
+  <div class="viz-body">
+    <div style="margin-bottom:14px">
+      <select id="grpc-usecase" class="viz-btn" style="padding:8px 14px;cursor:pointer;min-width:280px" onchange="renderGrpcDecision()">
+        <option value="internal">Internal service-to-service API</option>
+        <option value="external">Public / external API</option>
+        <option value="streaming">Real-time streaming required</option>
+        <option value="lowlatency">High-frequency, low-latency calls</option>
+        <option value="crud">Simple CRUD operations</option>
+      </select>
+    </div>
+    <div id="grpc-decision-out" class="mono-out" style="min-height:180px;font-size:12px;line-height:2"></div>
+  </div>
+</div>
+
+<!-- S9: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality: gRPC surprises</h2>
+
+  <h3>gRPC-Web: the browser gap</h3>
+  <p>Standard gRPC requires HTTP/2 trailers — a feature browsers don't support via the Fetch API. You cannot call gRPC directly from a browser. The solutions: gRPC-Web (a modified protocol that works with browsers, requires an Envoy proxy to translate), or just use REST for the browser layer and gRPC for internal services. Most production architectures do the latter: REST gateway → gRPC internal services.</p>
+
+  <h3>Error codes don't map to HTTP status codes cleanly</h3>
+  <p>gRPC has 16 status codes: <code>OK</code>, <code>CANCELLED</code>, <code>UNKNOWN</code>, <code>INVALID_ARGUMENT</code>, <code>NOT_FOUND</code>, <code>ALREADY_EXISTS</code>, <code>PERMISSION_DENIED</code>, <code>UNAUTHENTICATED</code>, <code>RESOURCE_EXHAUSTED</code>, and others. When exposing gRPC services via an HTTP transcoding layer (grpc-gateway, Envoy HTTP transcoding), mapping these to HTTP status codes requires explicit configuration. <code>INVALID_ARGUMENT</code> → 400, <code>NOT_FOUND</code> → 404, <code>UNAUTHENTICATED</code> → 401 — but <code>RESOURCE_EXHAUSTED</code> might mean 429 (rate limited) or 503 (overloaded) depending on context.</p>
+
+  <h3>Proto files are your API contract — treat them like production code</h3>
+  <p>Teams that treat <code>.proto</code> files as implementation details rather than API contracts end up with exactly the problems Protobuf was designed to prevent. Run <code>buf breaking</code> in CI. Review schema changes as carefully as code changes. Version your packages (<code>payments.v1</code>, <code>payments.v2</code>) rather than making breaking changes in place. The schema is the contract that every client in every language is compiled against.</p>
+
+  <h3>The health check protocol</h3>
+  <p>gRPC has a standard health check protocol: <code>grpc.health.v1.Health</code>. Implement it. Kubernetes, Envoy, and AWS ALB all know how to use it for readiness and liveness probes. Using a custom <code>/healthz</code> HTTP endpoint alongside a gRPC service means running two servers or adding an HTTP bridge. The gRPC health protocol is one service, works natively with your gRPC server, and is understood by the entire gRPC ecosystem.</p>
+</div>
+
+<!-- S10: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Proto3 has no required fields — this is intentional and you need to validate manually</h3>
+  <p>Proto2 had <code>required</code> fields. Proto3 removed them. Every field in proto3 is optional. If a client sends a message with no <code>amount_paise</code>, the server receives 0 (the default for int64). You won't get an error — you'll process a charge of ₹0. This means proto3 validation is entirely your responsibility. Use a validation library (<code>protoc-gen-validate</code> or manual checks) to enforce business rules that proto3 won't.</p>
+
+  <h3>Default values are indistinguishable from missing values in proto3</h3>
+  <p>In proto3, if a field has its default value (0 for numbers, "" for strings, false for bool), it's not encoded on the wire. You cannot tell if a field was explicitly set to 0 or simply not included. If your business logic cares about "user explicitly set amount to 0" vs "user didn't set amount" — you need a wrapper type (<code>google.protobuf.Int64Value</code>) or a boolean "has_amount" field. Proto2 had <code>hasField()</code> to check presence; proto3 does not for scalar fields (though proto3 optional in newer versions adds this back).</p>
+
+  <h3>Multiplexing means one slow RPC starves others — sometimes</h3>
+  <p>HTTP/2 multiplexing allows many gRPC calls to share one connection. But if one call is downloading a large server-streaming response at full speed, it can consume the connection's bandwidth and delay other calls sharing the same connection. This is TCP-level head-of-line blocking reappearing. The mitigation: separate channels for bulk streaming and latency-sensitive unary calls, or use gRPC's flow control to limit stream bandwidth.</p>
+
+  <h3>Your Protobuf messages are logs, not just wire formats</h3>
+  <p>In many systems, gRPC request and response messages get logged for debugging and audit. Sensitive fields (payment card numbers, PII, secrets) encoded in proto messages end up in your log infrastructure. Add field-level annotations to mark sensitive fields, and configure your logging middleware to redact them. The same care you apply to JSON logging applies to Protobuf logging.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision framework</div>
+  <h2>Adopting gRPC — decide in this order</h2>
+  <p class="ds-sub">These questions determine whether gRPC is the right tool and how to deploy it safely. Answer them before writing the first proto file.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Who are your clients? External/public → REST. Internal only → gRPC is a fit.</div>
+        <div class="ds-detail">If browsers or third-party developers will call this API, REST is almost always the right choice. The tooling gap (no curl, no browser DevTools) is a real burden for external clients. If the callers are your own backend services where you control the generated client, gRPC's contract enforcement and deadline propagation pay off immediately. The most common pattern: REST at the edge, gRPC internally.
+          <br><span class="ds-tag ds-tag-info">external clients = REST gateway + gRPC backend</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Do you need streaming or high-frequency small messages? These are gRPC's strongest cases.</div>
+        <div class="ds-detail">Real-time feeds, bidirectional communication, large dataset export, telemetry ingestion — these are where gRPC's streaming patterns genuinely replace solutions that would otherwise require WebSockets or polling hacks. If your communication is simple request-response CRUD with no streaming requirements and moderate volume, REST is simpler and the gRPC overhead isn't justified.
+          <br><span class="ds-tag ds-tag-ok">streaming need = gRPC's biggest advantage</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Set up buf.build before writing any proto files. Lint and breaking change detection from day one.</div>
+        <div class="ds-detail">The most expensive gRPC decision to fix retroactively is a broken schema. <code>buf lint</code> in CI catches naming convention violations. <code>buf breaking</code> catches field number changes, type changes, and removed fields before they reach production. Add both to your CI pipeline before the first service goes live. Adding them after you have 10 services with schema debt is painful.
+          <br><span class="ds-tag ds-tag-stop">no buf breaking in CI = silent schema corruption risk</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Always set deadlines. Every call. No exceptions.</div>
+        <div class="ds-detail">A gRPC call without a deadline is a resource leak waiting to happen. If the downstream service hangs, your call hangs indefinitely, holding a goroutine/thread/connection. At scale, a few hung calls can exhaust your connection pool. The gRPC framework makes deadline propagation trivial — use it. The rule: every gRPC call gets a deadline, every server checks the deadline before starting expensive work.
+          <br><span class="ds-tag ds-tag-stop">no deadline = unbounded resource hold</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Implement grpc.health.v1.Health for every service. Use it for k8s probes.</div>
+        <div class="ds-detail">The standard gRPC health protocol is one import and a few lines. It gives you readiness and liveness probes that work natively with Kubernetes, Envoy, AWS ALB, and every gRPC-aware tool. Skipping it and using a separate HTTP health endpoint means running a second server or adding HTTP bridging code. The standard protocol exists — use it.
+          <br><span class="ds-tag ds-tag-ok">standard protocol = zero config with k8s + Envoy</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Use an L7-aware load balancer. Don't put gRPC behind a plain TCP load balancer.</div>
+        <div class="ds-detail">A TCP load balancer distributes connections — with gRPC's long-lived HTTP/2 connections, this means one client sticks to one backend indefinitely. Use an HTTP/2-aware L7 balancer (Envoy, nginx 1.13.10+, AWS ALB, GCP Cloud LB) that distributes individual gRPC calls, not just connections. Or use client-side load balancing with DNS-based discovery. Discovering this in production after launch means a maintenance window to restructure your load balancing.
+          <br><span class="ds-tag ds-tag-stop">TCP LB + gRPC = all traffic to one backend</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12 — Week 1 Complete</div>
+  <h2>Production gRPC checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">DL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Deadlines</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every call sets a deadline. Every server checks it before expensive work. No exceptions.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">buf</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Schema safety</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">buf lint + buf breaking in CI. Breaking change detection before every deploy.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">RSV</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Reserved fields</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Reserve deleted field numbers and names. Never reuse a field number.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">LB</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Load balancing</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">HTTP/2-aware L7 LB (Envoy, ALB) or client-side LB. Never plain TCP LB.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">HC</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Health checks</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Implement grpc.health.v1.Health. Use for k8s readiness + liveness probes.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">VAL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Validate inputs</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Proto3 has no required fields. Validate all inputs manually or with protoc-gen-validate.</p>
+    </div>
+  </div>
+
+  <!-- Week 1 completion banner -->
+  <div style="margin-top:48px;background:linear-gradient(135deg,rgba(91,143,255,.1),rgba(62,207,142,.1));border:1px solid rgba(91,143,255,.3);border-radius:12px;padding:32px;text-align:center">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Week 1 Complete</div>
+    <div style="font-family:'Lora',serif;font-size:24px;font-weight:600;color:var(--text);margin-bottom:12px">Networking &amp; APIs</div>
+    <p style="font-size:14px;color:var(--text2);max-width:500px;margin:0 auto 20px;line-height:1.7">You now understand the full stack from TCP sockets to gRPC streaming — every layer between your code and the network. Week 2 starts with databases.</p>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 1: HTTP</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 2: TCP/IP</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 3: DNS</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 4: REST</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 5: Load Balancing</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(91,143,255,.12);color:var(--accent);border:1px solid rgba(91,143,255,.3);padding:4px 12px;border-radius:20px">Day 6: API Gateway</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(62,207,142,.12);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:4px 12px;border-radius:20px">Day 7: gRPC ✓</span>
+    </div>
+  </div>
+</div>
+
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){var pos=window.scrollY+120,active=null;document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s){if(s.offsetTop<=pos)active=s.id;});tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});},{passive:true});
+function mkDiv(css){var d=document.createElement('div');d.style.cssText=css;return d;}
+
+// ════ VIZ 1 — Protobuf vs JSON comparison ════
+var PROTO_FIELDS=[
+  {name:'idempotency_key', num:1, type:'string',  value:'idem_abc123',  jsonBytes:28, protoBytes:14},
+  {name:'amount_paise',    num:2, type:'int64',   value:'50000',        jsonBytes:21, protoBytes:4},
+  {name:'user_id',         num:3, type:'string',  value:'usr_789',      jsonBytes:17, protoBytes:9},
+  {name:'currency',        num:4, type:'string',  value:'INR',          jsonBytes:15, protoBytes:5},
+  {name:'status',          num:5, type:'string',  value:'PENDING',      jsonBytes:17, protoBytes:8},
+];
+var pbSelectedFields=PROTO_FIELDS.map(function(_,i){return i;});
+
+function toggleProtoField(i){
+  var idx=pbSelectedFields.indexOf(i);
+  if(idx>=0) pbSelectedFields.splice(idx,1); else pbSelectedFields.push(i);
+  renderProto();
+}
+function renderProto(){
+  var cont=document.getElementById('proto-fields');if(!cont)return;
+  cont.innerHTML=PROTO_FIELDS.map(function(f,i){
+    var sel=pbSelectedFields.includes(i);
+    return '<div onclick="toggleProtoField('+i+')" style="background:var(--bg3);border:1px solid '+(sel?'rgba(62,207,142,.4)':'var(--border)')+';border-radius:6px;padding:8px 12px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;transition:all .15s">' +
+      '<div style="width:13px;height:13px;border-radius:3px;border:2px solid '+(sel?'var(--green)':'var(--border2)')+';background:'+(sel?'var(--green)':'transparent')+';flex-shrink:0"></div>' +
+      '<code style="font-size:11px;color:var(--purple);min-width:140px">'+f.name+' = '+f.num+'</code>' +
+      '<span style="font-size:11px;color:var(--text3)">'+f.type+'</span>' +
+      '<code style="font-size:11px;color:var(--orange);margin-left:auto">"'+f.value+'"</code>' +
+      '</div>';
+  }).join('');
+
+  var sel=PROTO_FIELDS.filter(function(_,i){return pbSelectedFields.includes(i);});
+  var jsonBytes=2;// {}
+  var protoBytes=0;
+  sel.forEach(function(f){jsonBytes+=f.jsonBytes;protoBytes+=f.protoBytes;});
+
+  var saving=jsonBytes>0?Math.round((1-protoBytes/jsonBytes)*100):0;
+  var col=saving>40?'var(--green)':saving>20?'var(--orange)':'var(--text3)';
+
+  var out=document.getElementById('proto-output');if(!out)return;
+  out.innerHTML=[
+    '<span style="color:var(--text3)">// Selected fields — wire format comparison</span>',
+    '',
+    '<span style="color:var(--red)">JSON encoding:</span>',
+    '{',
+    sel.map(function(f){return '  "'+f.name+'": '+(f.type==='string'?'"'+f.value+'"':f.value)+',';}).join('\n'),
+    '}',
+    'Size: <span style="color:var(--red)">'+jsonBytes+'B</span>',
+    '',
+    '<span style="color:var(--green)">Protobuf wire format (hex):</span>',
+    sel.map(function(f){
+      var tag=(f.num<<3)|(f.type==='string'||f.type==='bytes'?2:0);
+      return '  <span style="color:var(--text3)">field_'+f.num+':</span> <span style="color:var(--green)">0x'+tag.toString(16).padStart(2,'0')+'</span> <span style="color:var(--orange)">'+f.value+'</span>  <span style="color:var(--text3)">(~'+f.protoBytes+'B)</span>';
+    }).join('\n'),
+    'Size: <span style="color:var(--green)">~'+protoBytes+'B</span>',
+    '',
+    'Saving: <span style="color:'+col+'">'+saving+'% smaller on the wire</span>',
+    '',
+    '<span style="color:var(--text3)">Note: field NAMES are absent from the binary format.</span>',
+    '<span style="color:var(--text3)">Only field numbers + wire types + values are encoded.</span>',
+    '<span style="color:var(--text3)">"idempotency_key" (16 chars) becomes field number 1 (1 byte).</span>',
+  ].join('\n');
+}
+
+// ════ VIZ 2 — Streaming pattern animator ════
+var streamMode='unary';
+var streamTimer=null;
+var streamRunning=false;
+var streamFrames=[];
+var streamTick=0;
+
+function setStreamMode(m,btn){
+  streamMode=m;
+  document.querySelectorAll('.stream-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if(streamRunning){streamRunning=false;clearInterval(streamTimer);}
+  streamFrames=[];streamTick=0;
+  renderStreamDiagram();
+}
+
+function streamStart(){
+  if(streamRunning){streamRunning=false;clearInterval(streamTimer);document.getElementById('stream-start').textContent='&#9654; Animate';return;}
+  streamRunning=true;streamFrames=[];streamTick=0;
+  document.getElementById('stream-start').textContent='&#9632; Stop';
+  var configs={
+    unary:{frames:[
+      {dir:'right',label:'Request',col:'var(--accent)',t:0},
+      {dir:'left', label:'Response',col:'var(--green)', t:8},
+    ], totalTicks:20},
+    server:{frames:[
+      {dir:'right',label:'Request',col:'var(--accent)',t:0},
+      {dir:'left', label:'Response 1',col:'var(--green)',t:6},
+      {dir:'left', label:'Response 2',col:'var(--green)',t:9},
+      {dir:'left', label:'Response 3',col:'var(--green)',t:12},
+      {dir:'left', label:'Response 4',col:'var(--green)',t:15},
+      {dir:'left', label:'Stream END',col:'var(--text3)',t:18},
+    ], totalTicks:25},
+    client:{frames:[
+      {dir:'right',label:'Req chunk 1',col:'var(--accent)',t:0},
+      {dir:'right',label:'Req chunk 2',col:'var(--accent)',t:3},
+      {dir:'right',label:'Req chunk 3',col:'var(--accent)',t:6},
+      {dir:'right',label:'Stream END',col:'var(--text3)', t:9},
+      {dir:'left', label:'Response',col:'var(--green)',  t:14},
+    ], totalTicks:20},
+    bidi:{frames:[
+      {dir:'right',label:'Req 1',col:'var(--accent)',t:0},
+      {dir:'left', label:'Resp 1',col:'var(--green)',t:3},
+      {dir:'right',label:'Req 2',col:'var(--accent)',t:4},
+      {dir:'left', label:'Resp 2',col:'var(--green)',t:6},
+      {dir:'right',label:'Req 3',col:'var(--accent)',t:7},
+      {dir:'left', label:'Resp 3',col:'var(--green)',t:9},
+      {dir:'right',label:'Req 4',col:'var(--accent)',t:10},
+      {dir:'left', label:'Resp 4',col:'var(--green)',t:12},
+    ], totalTicks:20},
+  };
+  var cfg=configs[streamMode]||configs.unary;
+  streamTimer=setInterval(function(){
+    streamTick++;
+    cfg.frames.forEach(function(fr){
+      if(fr.t===streamTick-1) streamFrames.push(Object.assign({},fr,{age:0}));
+    });
+    streamFrames=streamFrames.map(function(fr){return Object.assign({},fr,{age:fr.age+1});}).filter(function(fr){return fr.age<12;});
+    if(streamTick>=cfg.totalTicks){streamRunning=false;clearInterval(streamTimer);document.getElementById('stream-start').textContent='&#9654; Animate';}
+    renderStreamDiagram();
+  },200);
+}
+
+function renderStreamDiagram(){
+  var canvas=document.getElementById('stream-canvas');if(!canvas)return;
+  canvas.innerHTML='';
+  var W=canvas.offsetWidth||400;var H=120;
+  // client line
+  var cl=mkDiv('position:absolute;left:8%;top:0;bottom:0;width:2px;background:var(--accent);opacity:.4');
+  canvas.appendChild(cl);
+  var cll=mkDiv('position:absolute;left:0;top:4px;font-size:9px;color:var(--accent);font-weight:600;width:8%');
+  cll.textContent='CLIENT';canvas.appendChild(cll);
+  // server line
+  var sl=mkDiv('position:absolute;right:8%;top:0;bottom:0;width:2px;background:var(--green);opacity:.4');
+  canvas.appendChild(sl);
+  var sll=mkDiv('position:absolute;right:0;top:4px;font-size:9px;color:var(--green);font-weight:600;width:8%;text-align:right');
+  sll.textContent='SERVER';canvas.appendChild(sll);
+
+  streamFrames.forEach(function(fr,i){
+    var progress=fr.age/11;
+    var fromX=fr.dir==='right'?(W*0.08):(W*0.92);
+    var toX=fr.dir==='right'?(W*0.92):(W*0.08);
+    var x=fromX+(toX-fromX)*progress;
+    var y=10+i*20;
+    var dot=mkDiv('position:absolute;width:8px;height:8px;border-radius:50%;background:'+fr.col+';left:'+(x-4)+'px;top:'+(y-4)+'px;opacity:'+(1-progress*0.5));
+    canvas.appendChild(dot);
+    if(progress>0.1&&progress<0.9){
+      var lbl=mkDiv('position:absolute;font-size:9px;color:'+fr.col+';left:'+(x+6)+'px;top:'+(y-6)+'px;white-space:nowrap;font-family:JetBrains Mono,monospace');
+      lbl.textContent=fr.label;canvas.appendChild(lbl);
+    }
+  });
+
+  var notes={
+    unary:'One request → one response. Like REST. Most common pattern.',
+    server:'One request → stream of responses. Server controls when stream ends. Use for: dataset export, live feeds.',
+    client:'Stream of requests → one response. Client controls input. Use for: batch ingestion, file upload.',
+    bidi:'Both sides stream simultaneously. Neither waits. Use for: real-time chat, live collaboration, trading feeds.'
+  };
+  var noteEl=document.getElementById('stream-note');
+  if(noteEl) noteEl.innerHTML='<span style="color:var(--text2)">'+notes[streamMode]+'</span>';
+}
+
+// ════ VIZ 3 — Deadline propagation stepper ════
+var DL_STEPS=[
+  {actor:'client',  label:'Client sets deadline: now + 5000ms',                  col:'var(--accent)',
+   explain:'Client creates a deadline: 5 seconds from now (wall clock time, not duration). This deadline is encoded in the gRPC metadata as <code>grpc-timeout: 5000m</code> (milliseconds). It travels with the request to every service in the chain.'},
+  {actor:'svc-a',   label:'Service A receives request. Remaining: ~4850ms',       col:'var(--green)',
+   explain:'Service A receives the call after ~150ms network time. It reads the remaining deadline: approximately 4850ms left. Before starting expensive work, it checks: is there enough time? If remaining &lt; 100ms, fail fast with DEADLINE_EXCEEDED.'},
+  {actor:'svc-a',   label:'Service A processes (200ms), calls Service B',         col:'var(--green)',
+   explain:'Service A processes for 200ms, then calls Service B. The gRPC framework automatically calculates the remaining deadline: 4850ms - 200ms = 4650ms. It encodes this in the outgoing call\'s metadata. Service B receives the remaining time, NOT a fresh 5 seconds.'},
+  {actor:'svc-b',   label:'Service B receives: remaining ~4650ms',                col:'var(--orange)',
+   explain:'Service B sees it has 4650ms to complete its work. If Service B\'s DB query is known to take 6 seconds, it can immediately return DEADLINE_EXCEEDED instead of doing 6 seconds of work that will be abandoned. This is deadline-aware processing.'},
+  {actor:'svc-b',   label:'Service B processes (1200ms), calls Service C',        col:'var(--orange)',
+   explain:'Service B completes in 1200ms and calls Service C with remaining: 4650 - 1200 = 3450ms. Service C can make smart decisions about what it can accomplish in 3.45 seconds.'},
+  {actor:'svc-c',   label:'Service C receives: remaining ~3450ms',                col:'var(--purple)',
+   explain:'Service C has 3450ms. It checks before its DB query: "I know this query takes ~500ms — I have time." It proceeds. Contrast with REST: Service C would have no idea about the original 5-second client deadline.'},
+  {actor:'client',  label:'Client deadline fires at T+5000ms (if not yet resolved)',col:'var(--red)',
+   explain:'If any service in the chain is slow enough that the total exceeds 5 seconds, the client\'s deadline fires. All services that are still processing receive a context cancellation signal. They abort their DB queries and return. No orphaned work continues beyond the deadline.'},
+];
+var dlStep=0;
+var DL_ACTORS={client:10,svc_a:33,svc_b:60,svc_c:83};
+function dlReset(){dlStep=0;var el=document.getElementById('dl-arrows');if(el)el.innerHTML='';var ex=document.getElementById('dl-explain');if(ex)ex.innerHTML='<span style="color:var(--text3)">Click Next &#x2192; to trace a deadline through a 3-service call chain.</span>';var ctr=document.getElementById('dl-counter');if(ctr)ctr.textContent='0 / '+DL_STEPS.length;var p=document.getElementById('dl-prev');if(p)p.disabled=true;var n=document.getElementById('dl-next');if(n)n.disabled=false;}
+function dlNext(){if(dlStep>=DL_STEPS.length)return;var s=DL_STEPS[dlStep];addDlArrow(s,dlStep);var ex=document.getElementById('dl-explain');if(ex)ex.innerHTML='<strong style="color:'+s.col+'">'+s.label+'</strong><br>'+s.explain;dlStep++;var ctr=document.getElementById('dl-counter');if(ctr)ctr.textContent=dlStep+' / '+DL_STEPS.length;var p=document.getElementById('dl-prev');if(p)p.disabled=false;var n=document.getElementById('dl-next');if(n)n.disabled=dlStep>=DL_STEPS.length;}
+function dlPrev(){if(dlStep<=0)return;dlStep--;var el=document.getElementById('dl-arrows');if(el)el.innerHTML='';for(var i=0;i<dlStep;i++)addDlArrow(DL_STEPS[i],i);var prev=dlStep>0?DL_STEPS[dlStep-1]:null;var ex=document.getElementById('dl-explain');if(ex)ex.innerHTML=prev?'<strong style="color:'+prev.col+'">'+prev.label+'</strong><br>'+prev.explain:'<span style="color:var(--text3)">Click Next &#x2192;</span>';var ctr=document.getElementById('dl-counter');if(ctr)ctr.textContent=dlStep+' / '+DL_STEPS.length;var p=document.getElementById('dl-prev');if(p)p.disabled=dlStep<=0;var n=document.getElementById('dl-next');if(n)n.disabled=false;}
+function addDlArrow(s,idx){
+  var container=document.getElementById('dl-arrows');if(!container)return;
+  var actorMap={client:5,'svc-a':28,'svc-b':55,'svc-c':80};
+  var x=actorMap[s.actor]||5;
+  var top=10+idx*34;
+  var div=document.createElement('div');
+  div.style.cssText='position:absolute;left:'+x+'%;top:'+top+'px;animation:fadeIn .25s ease;max-width:90%;';
+  div.innerHTML='<span style="font-family:JetBrains Mono,monospace;font-size:10px;color:'+s.col+';background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid '+s.col+';white-space:nowrap">'+s.label+'</span>';
+  container.appendChild(div);
+}
+
+// ════ VIZ 4 — Schema evolution validator ════
+var CHANGE_TYPES=[
+  {label:'Add new field with new number',        safe:true,  example:'string new_field = 7;',                   why:'Old clients ignore unknown fields. New servers return defaults for missing fields. Fully compatible.'},
+  {label:'Delete a field (with reserved)',        safe:true,  example:'reserved 3; reserved "user_id";',        why:'Deleted field data is ignored. Reserved prevents reuse. Old clients sending field 3 have data silently dropped (acceptable).'},
+  {label:'Rename a field (keep same number)',     safe:true,  example:'string customer_id = 3; // was user_id', why:'Field names don\'t exist in wire format. Only the number matters. Renaming is purely a schema/code change.'},
+  {label:'Change field from singular to repeated',safe:true,  example:'repeated string tags = 8;',              why:'A single value becomes a one-element repeated. Old messages with one value are read as a list of one. Compatible.'},
+  {label:'Change a field\'s number',              safe:false, example:'string user_id = 5; // was 3',           why:'BREAKING: old clients send field 3, new server expects field 5. Data silently dropped. Never do this.'},
+  {label:'Change int32 to string (type change)',  safe:false, example:'string amount = 2; // was int64',        why:'BREAKING: wire types differ (varint vs length-delimited). Decoder misinterprets bytes. Silent data corruption.'},
+  {label:'Reuse a deleted field number',          safe:false, example:'string refund_id = 3; // 3 was user_id',why:'BREAKING: old messages with the old field 3 are decoded as the new field 3. Data corruption or crash.'},
+  {label:'Remove a field without reserving',      safe:false, example:'// deleted field 3, no reserved',       why:'Not immediately breaking but dangerous: someone will reuse field 3 later. Always reserve deleted numbers.'},
+];
+var selectedChange=null;
+function initSchemaValidator(){
+  var cont=document.getElementById('schema-changes');if(!cont)return;
+  cont.innerHTML=CHANGE_TYPES.map(function(c,i){
+    var col=c.safe?'var(--green)':'var(--red)';
+    var icon=c.safe?'✓':'✗';
+    return '<div onclick="showSchemaChange('+i+')" id="sc-'+i+'" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 14px;cursor:pointer;margin-bottom:6px;display:flex;gap:10px;align-items:center;transition:all .12s">' +
+      '<span style="color:'+col+';font-size:14px;flex-shrink:0">'+icon+'</span>' +
+      '<span style="font-size:13px;color:var(--text2)">'+c.label+'</span>' +
+      '<span style="margin-left:auto;font-size:10px;color:'+(c.safe?'var(--green)':'var(--red)')+';font-family:JetBrains Mono,monospace;white-space:nowrap">'+(c.safe?'SAFE':'BREAKING')+'</span>' +
+      '</div>';
+  }).join('');
+}
+function showSchemaChange(i){
+  selectedChange=i;
+  document.querySelectorAll('[id^="sc-"]').forEach(function(el){el.style.borderColor='var(--border)';});
+  var el=document.getElementById('sc-'+i);if(el){el.style.borderColor=CHANGE_TYPES[i].safe?'rgba(62,207,142,.5)':'rgba(240,96,96,.5)';}
+  var c=CHANGE_TYPES[i];
+  var out=document.getElementById('schema-detail');if(!out)return;
+  var col=c.safe?'var(--green)':'var(--red)';
+  out.innerHTML='<span style="color:'+col+'">'+(c.safe?'&#x2713; SAFE':'&#x2717; BREAKING')+'</span>  '+c.label+'\n\n' +
+    '<span style="color:var(--text3)">Example:</span>\n'+c.example+'\n\n' +
+    '<span style="color:var(--text3)">Why:</span>\n<span style="color:var(--text2)">'+c.why+'</span>';
+}
+
+// ════ VIZ 5 — buf workflow ════
+function renderBufWorkflow(){
+  var step=document.getElementById('buf-step')?parseInt(document.getElementById('buf-step').value):1;
+  document.getElementById('buf-step-val').textContent='Step '+step+' / 4';
+  var steps=[
+    {label:'1. Write .proto file',
+     output:'// payments/v1/charge.proto\nsyntax = "proto3";\npackage payments.v1;\n\nmessage ChargeRequest {\n  string idempotency_key = 1;\n  int64  amount_paise    = 2;\n  string user_id         = 3;\n}\n\nservice PaymentService {\n  rpc Charge (ChargeRequest) returns (ChargeResponse);\n}',
+     note:'Define your schema. Field names follow snake_case. Services are PascalCase. buf.yaml defines lint rules.'},
+    {label:'2. buf lint — catch style violations',
+     output:'$ buf lint\n\npayments/v1/charge.proto:8:3:Field name "user_Id" should be lower_snake_case, not "user_Id".\npayments/v1/charge.proto:12:1:Service name "payment_service" should be PascalCase, not "payment_service".\n\n2 errors found. Fix before commit.',
+     note:'buf lint enforces naming conventions, package structure, comment requirements. Catches issues before code review.'},
+    {label:'3. buf breaking — catch schema breaks',
+     output:'$ buf breaking --against .git#branch=main\n\npayments/v1/charge.proto:4:3:\n  Field "3" on message "ChargeRequest" changed type from\n  "TYPE_STRING" to "TYPE_INT64".\n  Breaking change detected.\n\npayments/v1/charge.proto:8:3:\n  Field "2" on message "ChargeRequest" changed number from\n  "2" to "5".\n  Breaking change detected.\n\n2 breaking changes. Merge blocked.',
+     note:'buf breaking compares current schema to a previous version (git branch, tag, or buf registry). Runs in CI. Blocks breaking changes.'},
+    {label:'4. buf generate — create client/server code',
+     output:'$ buf generate\n\nGenerated:\n  gen/go/payments/v1/charge.pb.go\n  gen/go/payments/v1/charge_grpc.pb.go\n  gen/ts/payments/v1/charge_pb.ts\n  gen/ts/payments/v1/charge_connect.ts\n  gen/python/payments_v1/charge_pb2.py\n  gen/python/payments_v1/charge_pb2_grpc.py\n\nAll generated from payments/v1/charge.proto\nSame schema → Go server + TypeScript client + Python scripts',
+     note:'One .proto file generates idiomatic code in any language. All clients share the same schema. Type mismatches are caught at compile time.'},
+  ];
+  var s=steps[step-1]||steps[0];
+  var out=document.getElementById('buf-output');if(out)out.textContent=s.output;
+  var note=document.getElementById('buf-note');if(note)note.innerHTML='<span style="color:var(--accent)">'+s.label+'</span>: <span style="color:var(--text2)">'+s.note+'</span>';
+}
+
+// ════ VIZ 6 — gRPC LB visualiser ════
+var lbGrpcMode='tcp';
+var lbGrpcTimer=null;
+var lbGrpcRunning=false;
+var lbGrpcBackends=[0,0,0,0];
+var lbGrpcTick=0;
+
+function setGrpcLBMode(m,btn){
+  lbGrpcMode=m;
+  document.querySelectorAll('.grpclb-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  lbGrpcBackends=[0,0,0,0];lbGrpcTick=0;
+  if(lbGrpcRunning){lbGrpcRunning=false;clearInterval(lbGrpcTimer);}
+  renderGrpcLB();
+}
+
+function grpcLBStart(){
+  if(lbGrpcRunning){lbGrpcRunning=false;clearInterval(lbGrpcTimer);document.getElementById('grpclb-start').textContent='&#9654; Simulate calls';return;}
+  lbGrpcRunning=true;lbGrpcBackends=[0,0,0,0];lbGrpcTick=0;
+  document.getElementById('grpclb-start').textContent='&#9632; Stop';
+  // simulate a client that made its connection to backend[1] via TCP LB
+  var stickyConn=lbGrpcMode==='tcp'?1:null;
+  lbGrpcTimer=setInterval(function(){
+    lbGrpcTick++;
+    var chosen;
+    if(lbGrpcMode==='tcp'){
+      chosen=stickyConn; // all traffic to same backend
+    } else if(lbGrpcMode==='l7'){
+      // L7 LB distributes each call
+      chosen=lbGrpcTick%4;
+    } else {
+      // client-side round robin
+      chosen=lbGrpcTick%4;
+    }
+    lbGrpcBackends[chosen]++;
+    renderGrpcLB();
+  },150);
+}
+
+function renderGrpcLB(){
+  var total=Math.max(lbGrpcBackends.reduce(function(a,b){return a+b;},0),1);
+  var out=document.getElementById('grpclb-backends');if(!out)return;
+  out.innerHTML=lbGrpcBackends.map(function(c,i){
+    var pct=Math.round(c/total*100);
+    var col=lbGrpcMode==='tcp'&&i===1?'var(--red)':pct>30?'var(--red)':pct>20?'var(--orange)':'var(--green)';
+    return '<div style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px">' +
+      '<span>Backend '+(i+1)+'</span><span style="color:'+col+'">'+pct+'% ('+c+' calls)</span></div>' +
+      '<div style="background:var(--bg);border-radius:3px;height:14px;overflow:hidden;border:1px solid var(--border)">' +
+      '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px;transition:width .2s"></div></div>' +
+      '</div>';
+  }).join('');
+
+  var notes={
+    tcp:'TCP LB: HTTP/2 connection pinned to Backend 2. All gRPC calls route there. Backends 1, 3, 4 idle. This is the failure mode.',
+    l7:'L7 LB (Envoy/nginx): terminates HTTP/2. Routes each gRPC call independently. Even distribution across all backends.',
+    client:'Client-side LB: client connects to all backends directly, round-robins. Even distribution. No proxy in the path.'
+  };
+  var note=document.getElementById('grpclb-note');
+  if(note) note.innerHTML='<span style="color:var(--text2)">'+notes[lbGrpcMode]+'</span>';
+}
+
+// ════ VIZ 7 — gRPC vs REST decision ════
+function renderGrpcDecision(){
+  var useCase=document.getElementById('grpc-usecase')?document.getElementById('grpc-usecase').value:'internal';
+  var out=document.getElementById('grpc-decision-out');if(!out)return;
+  var cases={
+    internal:{verdict:'gRPC',col:'var(--green)',
+      reasons:['You control both client and server — generated clients are an advantage','Deadline propagation prevents cascading failures across service boundaries','Binary encoding reduces bandwidth and CPU at high call volumes','Breaking change detection (buf) enforced in CI','"protoc" error at compile time beats a runtime crash in prod'],
+      caution:'Add server reflection for debugging. Use grpcurl for ad-hoc testing.'},
+    external:{verdict:'REST',col:'var(--accent)',
+      reasons:['External developers expect REST — no generated client setup friction','Browser clients work natively with REST/JSON','curl and Postman work without any configuration','OpenAPI spec is universally understood for documentation','gRPC-Web requires a proxy — adds operational complexity'],
+      caution:'If you need gRPC internally, use a REST gateway in front that translates to gRPC downstream.'},
+    streaming:{verdict:'gRPC',col:'var(--green)',
+      reasons:['Server streaming for live feeds is cleaner than SSE + polling','Client streaming for bulk ingestion handles backpressure natively','Bidirectional streaming replaces WebSockets with schema enforcement','Deadline propagation limits runaway stream lifetimes','Single HTTP/2 connection handles all stream types efficiently'],
+      caution:'Set deadlines on streaming calls. Long-lived streams need keepalive config.'},
+    lowlatency:{verdict:'gRPC',col:'var(--green)',
+      reasons:['Protobuf encoding is 3-10x smaller than JSON — less to send and parse','HTTP/2 multiplexing: multiple calls share one connection, no setup overhead','Binary decoding is significantly faster than JSON parsing at scale','Smaller payloads = lower network latency'],
+      caution:'Measure the actual difference in your system. For <1000 calls/sec the difference may not justify the tooling overhead.'},
+    crud:{verdict:'REST',col:'var(--accent)',
+      reasons:['Simple CRUD maps naturally to HTTP methods and status codes','No code generation step — immediate productivity','URL structure is self-documenting for humans and machines','Caching (CDN, browser, reverse proxy) works natively with GET semantics','Team is likely REST-experienced — lower onboarding cost'],
+      caution:'If you later need streaming or the API becomes internal-only, gRPC migration is feasible but not trivial.'},
+  };
+  var c=cases[useCase]||cases.internal;
+  var lines=[
+    '<span style="color:'+c.col+'">Recommendation: '+c.verdict+'</span>',
+    '',
+    '<span style="color:var(--text3)">Reasons:</span>',
+    c.reasons.map(function(r){return '  <span style="color:var(--green)">&#x2713;</span> '+r;}).join('\n'),
+    '',
+    '<span style="color:var(--orange)">&#x26A0; Note:</span> <span style="color:var(--text2)">'+c.caution+'</span>',
+  ];
+  out.innerHTML=lines.join('\n');
+}
+
+// ── Init ──
+setTimeout(function(){
+  pbSelectedFields=PROTO_FIELDS.map(function(_,i){return i;});
+  renderProto();renderStreamDiagram();dlReset();initSchemaValidator();renderBufWorkflow();renderGrpcLB();renderGrpcDecision();
+},100);
+</script>
+</body>
+</html>

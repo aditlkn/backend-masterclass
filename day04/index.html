@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 4: REST API Design at Scale — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--bg4:#1d2230;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--text);font-style:italic;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0 8px;overflow:hidden;font-family:'JetBrains Mono',monospace;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:10px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+@keyframes slideRight{from{width:0}to{width:var(--tw)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Decision sequence strip ── */
+.decision-strip {
+  margin: 56px 0 0;
+}
+.decision-strip-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.decision-strip h2 {
+  font-family: 'Lora', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.decision-strip .ds-sub {
+  font-size: 14px;
+  color: var(--text3);
+  margin-bottom: 24px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ds-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ds-step {
+  display: flex;
+  gap: 0;
+  position: relative;
+}
+.ds-step:not(:last-child) .ds-line {
+  position: absolute;
+  left: 19px;
+  top: 40px;
+  bottom: -1px;
+  width: 2px;
+  background: var(--border);
+}
+.ds-num {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text3);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+  transition: all 0.15s;
+}
+.ds-step.active .ds-num,
+.ds-step:hover .ds-num {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(91,143,255,0.1);
+}
+.ds-body {
+  flex: 1;
+  padding: 2px 0 28px 18px;
+}
+.ds-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.ds-detail {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+.ds-detail code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--purple);
+}
+.ds-detail strong { color: var(--text); }
+.ds-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+.ds-tag-warn  { background: rgba(245,166,35,0.1);  color: var(--orange); border: 1px solid rgba(245,166,35,0.3); }
+.ds-tag-ok    { background: rgba(62,207,142,0.1);  color: var(--green);  border: 1px solid rgba(62,207,142,0.3); }
+.ds-tag-info  { background: rgba(91,143,255,0.1);  color: var(--accent); border: 1px solid rgba(91,143,255,0.3); }
+.ds-tag-stop  { background: rgba(240,96,96,0.1);   color: var(--red);    border: 1px solid rgba(240,96,96,0.3);  }
+
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 04 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-model">Resource Design</a>
+  <a href="#s-pagination">Pagination at Scale</a>
+  <a href="#s-idempotency">Idempotency</a>
+  <a href="#s-errors">Error Design</a>
+  <a href="#s-semantics">HTTP Semantics</a>
+  <a href="#s-versioning">Versioning</a>
+  <a href="#s-ratelimit">Rate Limiting</a>
+  <a href="#s-fields">Sparse Fieldsets</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Design Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+</nav>
+<article class="content">
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 1 · Day 4 · Networking &amp; APIs</div>
+  <h1>REST APIs are a <em>contract</em>,<br>not a convention</h1>
+  <p class="hero-sub">Most engineers can build a REST API. Far fewer can design one that survives a million requests per day, three breaking changes, a mobile client that retries everything, and a team that wasn't there when you wrote it. The gap between "it works" and "it scales" is almost entirely in the decisions you make before writing the first handler.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>Stripe-level API design</div>
+  </div>
+</div>
+
+<!-- S1: RESOURCE DESIGN -->
+<div class="section" id="s-model">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Resource design: URLs are a user interface</h2>
+
+  <p>The most consequential decisions in REST API design are URL structure decisions. They're hard to change (breaking change), widely seen (documentation, logs, client code), and immediately signal whether the API was designed or just evolved. The mental model shift: <strong>your URL hierarchy is the information architecture of your domain, not a reflection of your database schema.</strong></p>
+
+  <h3>Resources, not actions</h3>
+  <p>The single most common REST mistake: naming endpoints after actions rather than resources. <code>POST /createOrder</code>, <code>GET /getOrderById</code>, <code>POST /cancelOrder</code> — this is RPC dressed up as REST. The HTTP methods are the verbs; your URLs should be nouns.</p>
+
+  <p>The correct model: <code>POST /orders</code> (create), <code>GET /orders/{id}</code> (read), <code>PATCH /orders/{id}</code> (update), <code>DELETE /orders/{id}</code> (cancel). The resource is <code>orders</code>. The action is implicit in the method. This matters because HTTP infrastructure — caches, proxies, monitoring — understands methods. A CDN knows <code>GET</code> is cacheable and <code>POST</code> is not. A monitoring system can automatically track <code>4xx</code> rates by resource. When you use <code>POST /getOrder</code>, you break all of that.</p>
+
+  <h3>Nesting: when to and when not to</h3>
+  <p>Nested resources (<code>/users/{userId}/orders/{orderId}</code>) express ownership: this order belongs to this user. The rule: nest when the child resource only makes sense in the context of the parent, and when the parent ID is part of the child's identity. Don't nest more than 2 levels — it creates brittle URLs that break when the ownership relationship changes.</p>
+
+  <p>The anti-pattern: nesting for filtering. <code>/users/{userId}/orders</code> to get a user's orders is fine. But if you also need orders by product, by date range, by status — you'd need <code>/products/{productId}/orders</code>, <code>/dates/{date}/orders</code>, etc. The cleaner pattern: flat resource with query parameters. <code>/orders?user_id={userId}&status=pending&after=2024-01-01</code>.</p>
+
+  <h3>Naming conventions that don't age badly</h3>
+  <ul>
+    <li><strong>Plural nouns for collections:</strong> <code>/orders</code> not <code>/order</code>. <code>GET /orders</code> returns a list; <code>GET /orders/{id}</code> returns one. Consistent.</li>
+    <li><strong>snake_case for JSON fields, kebab-case for URL segments:</strong> <code>/payment-methods</code> in the URL, <code>payment_method_id</code> in the body. URLs are case-insensitive; JSON fields are not. Be consistent — pick one and enforce it.</li>
+    <li><strong>No file extensions:</strong> <code>/orders/{id}</code> not <code>/orders/{id}.json</code>. Content negotiation belongs in <code>Accept</code> headers.</li>
+    <li><strong>No version in every endpoint:</strong> version the API, not each resource. <code>/v1/orders</code> means everything under <code>/v1/</code> is a coherent API version, not that just <code>orders</code> is versioned.</li>
+  </ul>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">URL Design Validator — click an example or type your own</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Click any URL below to see what’s wrong (or right) about it. Or type your own in the input.</p>
+    <div id="url-examples" style="margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="url-custom-input" placeholder="/api/v1/yourEndpoint" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-family:JetBrains Mono,monospace;font-size:12px;color:var(--text);outline:none" onkeydown="if(event.key==='Enter')urlCheckCustom()">
+      <button class="viz-btn" onclick="urlCheckCustom()" style="border-color:var(--accent);color:var(--accent)">▶ Check</button>
+    </div>
+    <div id="url-custom-output" class="mono-out" style="min-height:60px"><span style="color:var(--text3)">// Result appears here</span></div>
+  </div>
+</div>
+
+<!-- S2: PAGINATION -->
+<div class="section" id="s-pagination">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Pagination at scale: why offset pagination breaks and what to use instead</h2>
+
+  <p>Pagination is one of the most deceptively simple API problems. Every beginner implementation uses offset pagination: <code>GET /orders?offset=0&limit=20</code>, <code>?offset=20&limit=20</code>, and so on. It works fine in development with 1,000 rows. It breaks in production with 10 million.</p>
+
+  <h3>The offset pagination problem</h3>
+  <p>SQL's <code>OFFSET n</code> clause doesn't skip rows efficiently. It reads <em>all n rows</em> up to the offset, discards them, and returns the next batch. <code>SELECT * FROM orders ORDER BY created_at OFFSET 1000000 LIMIT 20</code> reads 1,000,020 rows from disk to return 20. At page 50,000, you're scanning half your table to deliver a page of results.</p>
+
+  <p>The second problem: data instability. If a new order is inserted while a user is paging through results, every page after that point shifts by one. The user either sees a duplicate (the item that shifted into the previous page range) or misses an item (the one that shifted out). At high insert rates, paginated results are meaningless.</p>
+
+  <h3>Cursor-based pagination: the right answer</h3>
+  <p>Cursor pagination uses a pointer into the dataset instead of a position. The cursor encodes enough information to resume from an exact point: typically the ID or <code>(timestamp, id)</code> tuple of the last item seen. The query becomes: <code>SELECT * FROM orders WHERE (created_at, id) &lt; ($cursor_time, $cursor_id) ORDER BY created_at DESC, id DESC LIMIT 20</code>.</p>
+
+  <p>This uses a composite index efficiently — the B-tree seeks directly to the cursor position and reads forward. Cost is O(page size), not O(offset). Doesn't matter if you're on page 1 or page 500,000. And because the cursor is anchored to specific rows, new inserts don't shift pages.</p>
+
+  <p>The tradeoff: you lose the ability to jump to an arbitrary page number ("go to page 47"). For most UIs, this is fine — infinite scroll, "load more", "next/prev" navigation don't need page numbers. For analytics exports or admin tools that need arbitrary access, offset pagination (with a limit on max offset) may be acceptable.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Cursor pagination — production implementation</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="cm">// Cursor encodes (created_at, id) — enough to resume exactly</span>
+<span class="kw">function</span> <span class="fn">encodeCursor</span>(item: { created_at: Date; id: <span class="ty">string</span> }): <span class="ty">string</span> {
+  <span class="kw">return</span> Buffer.<span class="fn">from</span>(
+    <span class="fn">JSON.stringify</span>({ t: item.created_at.<span class="fn">toISOString</span>(), id: item.id })
+  ).<span class="fn">toString</span>(<span class="str">'base64url'</span>);
+}
+
+<span class="kw">function</span> <span class="fn">decodeCursor</span>(cursor: <span class="ty">string</span>): { t: <span class="ty">string</span>; id: <span class="ty">string</span> } {
+  <span class="kw">return</span> <span class="fn">JSON.parse</span>(Buffer.<span class="fn">from</span>(cursor, <span class="str">'base64url'</span>).<span class="fn">toString</span>());
+}
+
+<span class="kw">async function</span> <span class="fn">listOrders</span>(params: {
+  cursor?: <span class="ty">string</span>; limit?: <span class="ty">number</span>; userId: <span class="ty">string</span>
+}) {
+  <span class="kw">const</span> <span class="var">limit</span> = Math.<span class="fn">min</span>(params.limit ?? <span class="num">20</span>, <span class="num">100</span>); <span class="cm">// cap at 100</span>
+  <span class="kw">let</span> <span class="var">query</span> = db.<span class="fn">from</span>(<span class="str">'orders'</span>)
+    .<span class="fn">where</span>({ user_id: params.userId })
+    .<span class="fn">orderBy</span>([{ column: <span class="str">'created_at'</span>, order: <span class="str">'desc'</span> }, { column: <span class="str">'id'</span>, order: <span class="str">'desc'</span> }])
+    .<span class="fn">limit</span>(limit + <span class="num">1</span>); <span class="cm">// fetch one extra to determine has_more</span>
+
+  <span class="kw">if</span> (params.cursor) {
+    <span class="kw">const</span> { t, id } = <span class="fn">decodeCursor</span>(params.cursor);
+    <span class="cm">// Seek: rows where (created_at, id) < cursor</span>
+    query = query.<span class="fn">where</span>(
+      db.<span class="fn">raw</span>(<span class="str">'(created_at, id) < (?, ?)'</span>, [t, id])
+    );
+  }
+
+  <span class="kw">const</span> <span class="var">rows</span> = <span class="kw">await</span> query;
+  <span class="kw">const</span> <span class="var">hasMore</span> = rows.length > limit;
+  <span class="kw">const</span> <span class="var">items</span>   = rows.<span class="fn">slice</span>(<span class="num">0</span>, limit);
+
+  <span class="kw">return</span> {
+    data:        items,
+    has_more:    hasMore,
+    next_cursor: hasMore ? <span class="fn">encodeCursor</span>(items[items.length - <span class="num">1</span>]) : <span class="kw">null</span>,
+    <span class="cm">// Expose total count only when cheap (add a count query if needed)</span>
+  };
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Pagination cost — offset scans the whole table, cursor doesn’t</span><span class="viz-badge">SLIDER</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">TOTAL ROWS: <span id="pag-rows-val" style="color:var(--accent)">1,000,000</span></div>
+        <input type="range" class="viz-slider" id="pag-rows" min="1000" max="50000000" value="1000000" oninput="updatePagination()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">PAGE SIZE: <span id="pag-size-val" style="color:var(--accent)">20</span></div>
+        <input type="range" class="viz-slider" id="pag-size" min="5" max="100" value="20" oninput="updatePagination()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">PAGE NUMBER: <span id="pag-page-val" style="color:var(--accent)">1</span></div>
+        <input type="range" class="viz-slider" id="pag-page" min="1" max="10000" value="1" oninput="updatePagination()">
+      </div>
+    </div>
+    <div id="pag-output" class="mono-out" style="min-height:160px"></div>
+  </div>
+</div>
+
+<!-- S3: IDEMPOTENCY -->
+<div class="section" id="s-idempotency">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Idempotency: the difference between a retry and a disaster</h2>
+
+  <p>Networks are unreliable. Mobile clients lose connectivity mid-request. Load balancers time out. Servers restart mid-flight. The client doesn't know if its request was received, processed, or lost. So it retries. If your API isn't idempotent, that retry creates a double charge, a duplicate order, or a second email to the user.</p>
+
+  <p>An operation is <strong>idempotent</strong> if performing it multiple times has the same effect as performing it once. <code>GET</code>, <code>PUT</code>, and <code>DELETE</code> are idempotent by definition (though your implementation might violate this). <code>POST</code> is not — <code>POST /orders</code> twice creates two orders. Making <code>POST</code> safe to retry requires explicit design.</p>
+
+  <h3>The Idempotency-Key header</h3>
+  <p>The pattern: the client generates a unique key (UUID v4) and sends it in the <code>Idempotency-Key</code> header. The server stores the key and the response. On retry, the server detects the key has been seen before and returns the stored response without re-executing. The client gets the same result. No double charge.</p>
+
+  <p>Implementation details that matter:</p>
+  <ul>
+    <li><strong>Key scope:</strong> keys should be scoped to a specific operation. An idempotency key for <code>POST /charges</code> should not be reusable for <code>POST /refunds</code>. Stripe enforces this — the same key on a different endpoint type returns a 422.</li>
+    <li><strong>Key expiry:</strong> 24 hours is the standard. Long enough for retry storms. Short enough not to fill your Redis indefinitely.</li>
+    <li><strong>Race conditions:</strong> two requests with the same key arriving simultaneously. Use Redis <code>SET NX EX</code> as a distributed lock — only one wins, the other waits and then gets the stored response.</li>
+    <li><strong>Storage:</strong> Redis with TTL is the right backend. Don't use your primary database for idempotency key storage — it's on the critical path of every mutation.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Idempotency middleware — production-ready</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="kw">import</span> { Request, Response, NextFunction } <span class="kw">from</span> <span class="str">'express'</span>;
+<span class="kw">import</span> redis <span class="kw">from</span> <span class="str">'./redis'</span>;
+
+<span class="kw">const</span> IDEMPOTENCY_TTL = <span class="num">86400</span>; <span class="cm">// 24 hours</span>
+
+<span class="kw">export async function</span> <span class="fn">idempotencyMiddleware</span>(
+  req: Request, res: Response, next: NextFunction
+) {
+  <span class="kw">const</span> <span class="var">key</span> = req.headers[<span class="str">'idempotency-key'</span>] <span class="kw">as</span> <span class="ty">string</span>;
+  <span class="kw">if</span> (!key || !/<span class="str">^[0-9a-f-]{36}$</span>/i.<span class="fn">test</span>(key)) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>({
+      error: { code: <span class="str">'MISSING_IDEMPOTENCY_KEY'</span>, message: <span class="str">'Valid UUID required in Idempotency-Key header'</span> }
+    });
+  }
+
+  <span class="kw">const</span> <span class="var">storeKey</span> = <span class="str">`idem:\${req.path}:\${key}`</span>; <span class="cm">// scoped to endpoint</span>
+
+  <span class="cm">// Try to acquire lock — SET NX = only set if not exists</span>
+  <span class="kw">const</span> <span class="var">lock</span> = <span class="kw">await</span> redis.<span class="fn">set</span>(storeKey + <span class="str">':lock'</span>, <span class="str">'1'</span>, <span class="str">'NX'</span>, <span class="str">'EX'</span>, <span class="num">30</span>);
+  <span class="kw">if</span> (!lock) {
+    <span class="cm">// Another request with this key is in-flight — wait for it</span>
+    <span class="kw">const</span> <span class="var">stored</span> = <span class="kw">await</span> <span class="fn">pollForResult</span>(storeKey, <span class="num">10_000</span>);
+    <span class="kw">if</span> (stored) <span class="kw">return</span> <span class="fn">replayStoredResponse</span>(res, stored);
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">409</span>).<span class="fn">json</span>({ error: { code: <span class="str">'CONCURRENT_REQUEST'</span> } });
+  }
+
+  <span class="cm">// Check for existing result</span>
+  <span class="kw">const</span> <span class="var">existing</span> = <span class="kw">await</span> redis.<span class="fn">get</span>(storeKey);
+  <span class="kw">if</span> (existing) {
+    <span class="kw">await</span> redis.<span class="fn">del</span>(storeKey + <span class="str">':lock'</span>);
+    <span class="kw">return</span> <span class="fn">replayStoredResponse</span>(res, <span class="fn">JSON.parse</span>(existing));
+  }
+
+  <span class="cm">// Intercept response to store it</span>
+  <span class="kw">const</span> <span class="var">originalJson</span> = res.json.<span class="fn">bind</span>(res);
+  res.json = <span class="kw">function</span>(body) {
+    <span class="kw">const</span> <span class="var">stored</span> = { status: res.statusCode, body };
+    redis.<span class="fn">setex</span>(storeKey, IDEMPOTENCY_TTL, <span class="fn">JSON.stringify</span>(stored));
+    redis.<span class="fn">del</span>(storeKey + <span class="str">':lock'</span>);
+    <span class="kw">return</span> <span class="fn">originalJson</span>(body);
+  };
+
+  <span class="fn">next</span>();
+}
+
+<span class="kw">function</span> <span class="fn">replayStoredResponse</span>(res: Response, stored: { status: <span class="ty">number</span>; body: <span class="kw">unknown</span> }) {
+  res.<span class="fn">set</span>(<span class="str">'Idempotent-Replayed'</span>, <span class="str">'true'</span>); <span class="cm">// signal to client it's a replay</span>
+  res.<span class="fn">status</span>(stored.status).<span class="fn">json</span>(stored.body);
+}</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Idempotency simulator — retry a payment with and without a key</span><span class="viz-badge">SIMULATION</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <button class="viz-btn idem-btn active" onclick="setIdemMode('no-key',this)" style="border-color:var(--red);color:var(--red)">No idempotency key</button>
+      <button class="viz-btn idem-btn" onclick="setIdemMode('with-key',this)" style="border-color:var(--green);color:var(--green)">With Idempotency-Key</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="viz-btn" onclick="idemFireRequest()" style="border-color:var(--accent);color:var(--accent)">▶ Fire Request</button>
+      <button class="viz-btn" onclick="idemFireRequest()" style="border-color:var(--orange);color:var(--orange)">↺ Retry (simulate network failure)</button>
+      <button class="viz-btn" onclick="idemRequests=[];idemRequestCount=0;renderIdem()">× Reset</button>
+    </div>
+    <div id="idem-output" class="mono-out" style="min-height:120px;margin-bottom:12px"></div>
+    <div id="idem-charges"></div>
+  </div>
+</div>
+
+<!-- S4: ERRORS -->
+<div class="section" id="s-errors">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Error design: the API surface that gets the least attention and causes the most pain</h2>
+
+  <p>Error responses are your API's most important feature. When things go right, any response body structure works. When things go wrong, the error response is the only signal your client has to decide what to do next — retry, show a user-facing message, alert the engineering team, or silently log and continue.</p>
+
+  <p>Most APIs return errors as an afterthought: <code>{"error": "something went wrong"}</code> or the classic <code>{"success": false, "message": "Invalid email"}</code>. These are useless to machines. The machine can't distinguish a retryable error from a permanent failure, a validation error from an authentication error, or a problem with field "email" from a problem with field "phone".</p>
+
+  <h3>The anatomy of a good error response</h3>
+  <p>A production error response needs:</p>
+  <ul>
+    <li><strong><code>error.code</code></strong> — a stable machine-readable string, never changes. <code>INSUFFICIENT_FUNDS</code>, not "Insufficient funds." Clients switch on this.</li>
+    <li><strong><code>error.message</code></strong> — a human-readable description for developers, not users. Can change between versions.</li>
+    <li><strong><code>error.details</code></strong> — field-level validation errors, structured. <code>[{ field: "email", issue: "invalid_format" }]</code></li>
+    <li><strong><code>error.request_id</code></strong> — the correlation ID for this request. The user can give this to support; support can find the server-side trace in seconds.</li>
+    <li><strong><code>error.docs_url</code></strong> — a link to documentation for this error code. Stripe does this; it's the fastest path from "what does this mean" to "I know what to do."</li>
+  </ul>
+
+  <h3>HTTP status codes are not optional</h3>
+  <p>The status code must be semantically correct. Not as a formality — because every layer of infrastructure between you and the client makes decisions based on it:</p>
+  <ul>
+    <li><code>400</code> — bad request (client error, don't retry)</li>
+    <li><code>401</code> — unauthenticated (no credentials or invalid credentials)</li>
+    <li><code>403</code> — unauthorised (valid credentials, insufficient permission)</li>
+    <li><code>404</code> — not found (the resource doesn't exist)</li>
+    <li><code>409</code> — conflict (state conflict — concurrent edit, duplicate key)</li>
+    <li><code>422</code> — unprocessable entity (validation error — correct format, wrong content)</li>
+    <li><code>429</code> — rate limited (retry after <code>Retry-After</code> seconds)</li>
+    <li><code>500</code> — server error (your fault, client should retry with backoff)</li>
+    <li><code>503</code> — service unavailable (retry, with <code>Retry-After</code>)</li>
+  </ul>
+  <p>The worst sin: <code>200 OK</code> with an error body. CDNs cache 200s. Monitoring doesn't alert on 200s. Retry logic doesn't trigger on 200s. You've broken every automatic system that depends on HTTP semantics.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-title">Consistent error response structure — Node.js/Express</span>
+      <span class="code-block-lang">TYPESCRIPT</span>
+    </div>
+    <pre><span class="cm">// Error envelope — consistent across all endpoints</span>
+<span class="kw">interface</span> <span class="ty">ApiError</span> {
+  error: {
+    code:       <span class="ty">string</span>;          <span class="cm">// machine-readable, stable</span>
+    message:    <span class="ty">string</span>;          <span class="cm">// developer-readable</span>
+    details?:   <span class="ty">FieldError</span>[];    <span class="cm">// validation errors</span>
+    request_id: <span class="ty">string</span>;          <span class="cm">// correlation ID</span>
+    docs_url?:  <span class="ty">string</span>;          <span class="cm">// link to error docs</span>
+  };
+}
+
+<span class="cm">// Usage examples</span>
+<span class="cm">// 400: validation</span>
+res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>({
+  error: {
+    code: <span class="str">'VALIDATION_ERROR'</span>,
+    message: <span class="str">'Request body failed validation'</span>,
+    details: [
+      { field: <span class="str">'email'</span>, issue: <span class="str">'invalid_format'</span>, value: <span class="str">'not-an-email'</span> },
+      { field: <span class="str">'amount'</span>, issue: <span class="str">'must_be_positive'</span> }
+    ],
+    request_id: req.id,
+    docs_url: <span class="str">'https://docs.example.com/errors#VALIDATION_ERROR'</span>
+  }
+});
+
+<span class="cm">// 429: rate limited</span>
+res.<span class="fn">set</span>({ <span class="str">'Retry-After'</span>: <span class="str">'30'</span>, <span class="str">'X-RateLimit-Limit'</span>: <span class="str">'1000'</span>, <span class="str">'X-RateLimit-Remaining'</span>: <span class="str">'0'</span> });
+res.<span class="fn">status</span>(<span class="num">429</span>).<span class="fn">json</span>({
+  error: { code: <span class="str">'RATE_LIMITED'</span>, message: <span class="str">'Too many requests. Retry after 30s.'</span>, request_id: req.id }
+});
+
+<span class="cm">// 500: internal — never expose internals</span>
+res.<span class="fn">status</span>(<span class="num">500</span>).<span class="fn">json</span>({
+  error: {
+    code: <span class="str">'INTERNAL_ERROR'</span>,
+    message: <span class="str">'An unexpected error occurred'</span>,
+    request_id: req.id  <span class="cm">// caller uses this to file a support ticket</span>
+    <span class="cm">// NEVER: error.stack, error.query, error.detail (db internals)</span>
+  }
+});</pre>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Error response builder — toggle fields, watch the quality score change</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Toggle each component of the error response. See how much each one adds to debuggability.</p>
+        <div id="err-fields"></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px"><span>Error Quality</span><span id="err-score-label">0 / 100</span></div>
+            <div style="background:var(--bg);border-radius:4px;height:8px;border:1px solid var(--border)"><div id="err-score-bar" style="height:100%;border-radius:4px;background:var(--red);transition:width .3s,background .3s;width:0%"></div></div>
+          </div>
+          <div id="err-grade" style="font-family:JetBrains Mono,monospace;font-size:28px;font-weight:700;color:var(--red)">F</div>
+        </div>
+        <div id="err-output" class="mono-out" style="min-height:220px;font-size:11.5px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: HTTP SEMANTICS -->
+<div class="section" id="s-semantics">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>HTTP semantics: the rules most teams quietly ignore</h2>
+
+  <p>REST is built on top of HTTP's semantics. When you follow them, you get caching, retry logic, and monitoring for free. When you violate them, you pay the cost — manually reimplementing all of that, badly.</p>
+
+  <h3>GET: safe and idempotent</h3>
+  <p><code>GET</code> must be safe (no side effects) and idempotent (multiple calls = same result). Browsers prefetch <code>GET</code> requests. CDNs cache them. Load balancers retry them on failure. Violating this — <code>GET /orders/confirm/{id}</code> that actually confirms an order — can result in orders being confirmed twice by a retry, or a browser prefetch that fires an irreversible action.</p>
+
+  <h3>POST: neither safe nor idempotent by default</h3>
+  <p><code>POST</code> creates new resources or triggers actions. It is neither safe nor idempotent. Browsers warn before re-submitting a form via POST. CDNs don't cache POST responses. Client libraries don't auto-retry POST. This is why the idempotency key pattern exists — you opt into idempotency explicitly when you need it.</p>
+
+  <h3>PUT vs PATCH: the difference that matters</h3>
+  <p><code>PUT</code> replaces the entire resource. <code>PATCH</code> applies a partial update. If your users object has 20 fields and you want to update just the email, <code>PUT</code> requires sending all 20 fields (or you'll null out the ones you omit). <code>PATCH</code> only requires sending the changed fields. The rule: use <code>PATCH</code> for partial updates, <code>PUT</code> only when you genuinely intend to replace the entire resource (uploading a file, replacing config).</p>
+
+  <h3>DELETE: idempotent, but tricky</h3>
+  <p><code>DELETE</code> is idempotent — deleting something twice should have the same result as deleting it once. But many implementations return <code>404</code> on the second delete (the resource is already gone). Strictly speaking, returning <code>404</code> on a second delete violates idempotency — the response changed. The correct response for an already-deleted resource is <code>204 No Content</code>, same as the first delete. Stripe gets this right.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Safe</th><th>Idempotent</th><th>Has body</th><th>Cacheable</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>✅ Yes</td><td>✅ Yes</td><td>No</td><td>✅ Yes</td><td>Read resource(s)</td></tr>
+        <tr><td>POST</td><td>❌ No</td><td>❌ No</td><td>Yes</td><td>❌ No</td><td>Create, trigger actions</td></tr>
+        <tr><td>PUT</td><td>❌ No</td><td>✅ Yes</td><td>Yes</td><td>❌ No</td><td>Full replacement</td></tr>
+        <tr><td>PATCH</td><td>❌ No</td><td>⚠ Depends</td><td>Yes</td><td>❌ No</td><td>Partial update</td></tr>
+        <tr><td>DELETE</td><td>❌ No</td><td>✅ Yes</td><td>Rarely</td><td>❌ No</td><td>Remove resource</td></tr>
+        <tr><td>HEAD</td><td>✅ Yes</td><td>✅ Yes</td><td>No</td><td>✅ Yes</td><td>Check existence/metadata</td></tr>
+        <tr><td>OPTIONS</td><td>✅ Yes</td><td>✅ Yes</td><td>No</td><td>❌ No</td><td>CORS preflight, capabilities</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">HTTP method × scenario matrix — click a cell to see if it’s correct</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Green (✓) = correct method. Red (✗) = common mistake. Click any cell for an explanation.</p>
+    <div id="method-matrix"></div>
+    <div id="matrix-note" style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text2);min-height:36px;line-height:1.6"><span style="color:var(--text3)">Click a cell above →</span></div>
+  </div>
+</div>
+
+<!-- S6: VERSIONING -->
+<div class="section" id="s-versioning">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>API versioning: the decision you can't easily undo</h2>
+
+  <p>At some point you'll need to make a breaking change. A field rename, a type change, a removed endpoint, a different authentication mechanism. The question isn't whether to version — it's how. The three main strategies each make different tradeoffs between client simplicity, server complexity, and REST purity.</p>
+
+  <h3>URI versioning: /v1/, /v2/</h3>
+  <p>The most common approach. Version is in the URL: <code>/v1/orders</code>, <code>/v2/orders</code>. Clean, visible, easy to route in a reverse proxy (<code>location /v1/ { proxy_pass backend_v1; }</code>). Browsers can bookmark versioned URLs. Logs clearly show which version is being called.</p>
+  <p>The downsides: it "breaks REST" purists (a resource has one URL, not two). You end up maintaining <code>/v1/</code> indefinitely because someone always has clients on the old version. And you can't easily serve different versions of different resources — <code>/v2/orders</code> but <code>/v1/users</code> requires explicit routing rules.</p>
+
+  <h3>Accept header versioning</h3>
+  <p><code>Accept: application/vnd.example.v2+json</code>. Theoretically the most RESTful — the resource URL is stable, the representation version is in content negotiation. The reality: most HTTP clients, logging systems, and reverse proxies don't surface the Accept header. Caches must include <code>Vary: Accept</code> or they'll serve the wrong version. Debugging is harder — you can't tell from a URL which version is being called.</p>
+
+  <h3>Query parameter versioning</h3>
+  <p><code>GET /orders?version=2</code>. Simplest to implement. Easiest to test (just change the URL). Works without custom HTTP client configuration. The problem: query parameters are supposed to filter/sort resources, not change the API contract. And caches treat <code>?version=1</code> and <code>?version=2</code> as different resources (usually correct behaviour, but semantically odd).</p>
+
+  <h3>The practical answer</h3>
+  <p>For almost all production APIs: use URI versioning. It's not the most theoretically pure, but it's the most operationally sane. Stripe, GitHub, Twilio — all use URI versioning. The REST purity argument is less important than the reality that your ops team can route, monitor, and debug by URL.</p>
+
+  <p>Regardless of strategy: add versioning <em>before you need it</em>. An unversioned API that needs a breaking change has no escape hatch. The cost of starting with <code>/v1/</code> upfront is two characters in every URL. The cost of retrofitting versioning is a multi-month migration project.</p>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">API versioning strategies — request/response preview for each approach</span><span class="viz-badge">COMPARISON</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="viz-btn version-btn active" onclick="setVersionMode('uri',this)">URI versioning (/v2/)</button>
+      <button class="viz-btn version-btn" onclick="setVersionMode('header',this)">Accept header</button>
+      <button class="viz-btn version-btn" onclick="setVersionMode('queryparam',this)">Query param (?version=)</button>
+    </div>
+    <div id="version-output" class="mono-out" style="min-height:220px;font-size:12px;line-height:1.9"></div>
+  </div>
+</div>
+
+<!-- S7: RATE LIMITING -->
+<div class="section" id="s-ratelimit">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Rate limiting: protecting your API and teaching clients to be good citizens</h2>
+
+  <p>Rate limiting serves two purposes: protecting your infrastructure from abuse (intentional or accidental), and giving clients a clear signal to slow down. The second purpose is as important as the first — a client that gets 429 with a <code>Retry-After</code> header can back off gracefully. A client that gets connection timeouts because your server is overloaded has no idea what to do.</p>
+
+  <h3>The token bucket algorithm</h3>
+  <p>Token bucket is the most intuitive rate limiting algorithm. Imagine a bucket with a capacity of N tokens. The bucket refills at a constant rate (R tokens per second). Each request consumes one token. If the bucket is empty, the request is rejected.</p>
+  <p>The key property: token bucket allows short bursts. A bucket with capacity 100 that refills at 10/second allows 100 requests in one second as long as the bucket was full, then falls back to 10/second. This is correct behaviour for real clients — they have bursty patterns, and you don't want to penalise bursts if the sustained rate is within limit.</p>
+
+  <h3>What to rate limit on</h3>
+  <p>The answer is usually "multiple things simultaneously": per API key (primary), per IP address (secondary, for unauthenticated endpoints), per user ID (for authenticated endpoints where one user can have multiple API keys). Each dimension catches a different abuse pattern.</p>
+
+  <h3>The headers clients need</h3>
+  <p>A 429 without guidance is useless. Always include:</p>
+  <ul>
+    <li><code>X-RateLimit-Limit</code> — the total limit for the window</li>
+    <li><code>X-RateLimit-Remaining</code> — how many requests are left</li>
+    <li><code>X-RateLimit-Reset</code> — Unix timestamp when the window resets</li>
+    <li><code>Retry-After</code> — seconds until the client can retry (on 429)</li>
+  </ul>
+  <p>Return these headers on <em>every response</em>, not just 429s. Clients can use them to self-throttle before hitting the limit — a well-designed client watches <code>X-RateLimit-Remaining</code> and slows down proactively.</p>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Token bucket rate limiter — adjust rates and watch the bucket drain</span><span class="viz-badge">LIVE SIMULATION</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">BUCKET CAPACITY: <span id="bucket-cap-val" style="color:var(--accent)">100</span> tokens</div>
+        <input type="range" class="viz-slider" id="bucket-cap" min="10" max="500" value="100" oninput="updateBucketConfig()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">REFILL RATE: <span id="bucket-refill-val" style="color:var(--green)">10/s</span></div>
+        <input type="range" class="viz-slider" id="bucket-refill" min="1" max="100" value="10" oninput="updateBucketConfig()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">REQUEST RATE: <span id="bucket-reqrate-val" style="color:var(--orange)">20/s</span></div>
+        <input type="range" class="viz-slider" id="bucket-reqrate" min="1" max="200" value="20" oninput="updateBucketConfig()">
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
+      <div style="width:60px;height:120px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;overflow:hidden;position:relative;flex-shrink:0">
+        <div id="bucket-fill" style="position:absolute;bottom:0;left:0;right:0;background:var(--green);transition:height .2s,background .2s;height:100%"></div>
+      </div>
+      <div style="flex:1">
+        <div id="bucket-label" style="font-size:13px;color:var(--text2);margin-bottom:8px">100 / 100 tokens</div>
+        <div id="bucket-sparkline" style="height:40px;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="viz-btn" id="bucket-start" onclick="bucketStart()" style="border-color:var(--green);color:var(--green)">▶ Start simulation</button>
+    </div>
+    <div id="bucket-note" style="font-size:13px;color:var(--text2);min-height:32px;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S8: SPARSE FIELDSETS -->
+<div class="section" id="s-fields">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Sparse fieldsets: the bandwidth win nobody implements</h2>
+
+  <p>Your order object has 40 fields. Your mobile feed view needs 4 of them: <code>id</code>, <code>status</code>, <code>total_amount</code>, <code>created_at</code>. But your <code>GET /orders</code> endpoint returns all 40, including nested objects, embedded metadata, and computed fields. You're sending 10x more data than needed on every request.</p>
+
+  <p>Sparse fieldsets (or field selection) let the client specify exactly which fields to return: <code>GET /orders?fields=id,status,total_amount,created_at</code>. For a mobile client on a slow connection making this call 100 times per session, the bandwidth and parse time savings are substantial.</p>
+
+  <h3>Implementation approaches</h3>
+  <p>The simplest approach: parse the <code>fields</code> query parameter, validate each field name against an allowlist, then either project at the database level (<code>SELECT id, status, total_amount, created_at FROM orders</code>) or filter the full object in application code before serialising. Database-level projection is more efficient (less data transferred from DB), but application-level filtering is simpler to implement and still saves network bandwidth.</p>
+
+  <p>For nested fields, a dot-notation syntax works well: <code>?fields=id,status,payment.method,shipping.address.city</code>. This is how the Google API Design Guide specifies field masks, and how many gRPC-based APIs expose it.</p>
+
+  <div class="callout prod">
+    <div class="callout-icon">🚀</div>
+    <div class="callout-inner">
+      <strong>GraphQL vs REST field selection</strong>
+      <p>GraphQL was largely invented to solve exactly this problem — clients specifying exactly what data they need. If you find yourself building increasingly complex <code>?fields=</code> and <code>?embed=</code> and <code>?expand=</code> parameters, you've reinvented a subset of GraphQL. At that complexity level, consider whether GraphQL (or gRPC with field masks) is the right tool. For most APIs, simple <code>?fields=</code> is sufficient and much simpler to maintain.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Sparse fieldsets — toggle fields on/off, watch payload bytes drop</span><span class="viz-badge">CALCULATOR</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:11px;color:var(--text3);padding-top:6px">Presets:</span>
+      <button class="viz-btn" onclick="setPreset('mobile_feed')">Mobile feed (4 fields)</button>
+      <button class="viz-btn" onclick="setPreset('admin_view')">Admin view (9 fields)</button>
+      <button class="viz-btn" onclick="setPreset('full')">Full response (all)</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div id="ff-fields"></div>
+      </div>
+      <div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Response size</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px"><span>Selected</span><span id="ff-total"></span></div>
+          <div style="background:var(--bg3);border-radius:3px;height:14px;overflow:hidden;margin-bottom:6px"><div id="ff-bar" style="height:100%;background:var(--accent);transition:width .2s;border-radius:3px"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span id="ff-selected" style="font-size:22px;font-weight:700;color:var(--accent);font-family:JetBrains Mono,monospace"></span>
+            <span id="ff-saving" style="font-size:13px;font-weight:600"></span>
+          </div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Generated URL</div>
+          <code id="ff-url" style="font-size:11px;color:var(--purple);word-break:break-all;line-height:1.6"></code>
+        </div>
+        <div id="ff-scale" style="font-size:13px;color:var(--text2);line-height:1.7;padding:10px 14px;background:var(--bg3);border-radius:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S9: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality: the API mistakes that hurt</h2>
+
+  <h3>The 200 OK lie</h3>
+  <p>I've seen this in production at multiple companies: an API that returns <code>200 OK</code> with <code>{"success": false, "error": "Payment declined"}</code>. The developer who built it thought they were being helpful by always returning 200. The consequence: the CDN caches the payment declined response and serves it to the next user. The monitoring system never fires a payment failure alert (it's watching 4xx/5xx rates). The client-side retry logic doesn't kick in. The transaction just silently disappears.</p>
+
+  <h3>The integer ID migration</h3>
+  <p>You launched with integer IDs: <code>{"id": 12345}</code>. You scale to 10 billion records. Integer overflow. Now you need UUIDs. Except every client has hard-coded <code>parseInt(order.id)</code> because it was an integer. The migration requires a versioned breaking change and touching every client. The fix is to always return IDs as strings, even if they're currently integers: <code>{"id": "12345"}</code>. JavaScript loses precision on integers above 2^53 anyway — string IDs are universally safer.</p>
+
+  <h3>Leaking internals through errors</h3>
+  <p>Stack traces, SQL query text, internal service names, table names, column names — all have appeared in production API error responses. Beyond being a security risk (attackers learn your schema from your errors), it creates a maintenance nightmare: now your DB schema is part of your API contract. Always sanitise error responses at the boundary. Never <code>res.json({ error: err.stack })</code>.</p>
+
+  <h3>The missing Retry-After</h3>
+  <p>You add rate limiting. You return 429. But you forget <code>Retry-After</code>. Your mobile clients hit the limit, see 429, don't know when to retry, so they retry immediately with exponential backoff. But they start the backoff from "now" — which means the first retry is in 1 second, the second in 2 seconds, etc. If your rate limit window resets in 30 seconds, the first 5 retries all fail. The client exponential-backoffs for 30 seconds doing wasted retries, then recovers. With <code>Retry-After: 30</code>, the client waits exactly 30 seconds and the first retry succeeds.</p>
+</div>
+
+<!-- S10: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Your API is never truly versioned — it's your clients that are</h3>
+  <p>When you release <code>/v2/</code>, you don't get to retire <code>/v1/</code>. There's always a client that didn't upgrade — an old mobile app still in use, a third-party integration that was set up and never updated, a B2B partner whose engineering team is "getting to it." Stripe still serves <code>/v1/</code> from 2011. Plan for it: <code>/v1/</code> is a commitment you're making to your clients, not a temporary measure.</p>
+
+  <h3>HATEOAS sounds good in theory and fails in practice</h3>
+  <p>HATEOAS (Hypermedia As The Engine Of Application State) is the theoretical ideal: responses embed links to related actions, clients discover the API from the responses rather than documentation. In practice, nobody has made this work at scale. Clients are built with explicit knowledge of the API. Every real production API uses documentation-driven contracts, not hypermedia discovery. Don't implement HATEOAS; document your API well instead.</p>
+
+  <h3>Your documentation is your API</h3>
+  <p>At the client layer, the documentation is the contract. If your docs say a field is always present and your code occasionally omits it, your clients break — not because your code is wrong, but because you violated the documented contract. Treat your API documentation like production code: version it, review it, test it. The best APIs (Stripe, Twilio) have documentation that's as carefully crafted as the code itself.</p>
+
+  <h3>Null vs missing field: a breaking change you might not notice</h3>
+  <p>If your API returns <code>{"shipping_address": null}</code> and you later change it to omit the field entirely (because "null and missing are the same thing, right?"), you've broken every client that does <code>if (order.shipping_address !== undefined)</code> vs <code>if (order.shipping_address !== null)</code>. They're different. Pick one convention (prefer <code>null</code> for "present but empty," omit for "not applicable") and never change it.</p>
+</div>
+
+<!-- CHECKLIST -->
+
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">API design decisions</div>
+  <h2>Designing a new endpoint — ask in this order</h2>
+  <p class="ds-sub">These questions surface the decisions that are expensive to reverse. Answer them before writing the handler.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">What is the resource? Name it as a noun, not an action.</div>
+        <div class="ds-detail">If you find yourself typing a verb into the URL (<code>/createOrder</code>, <code>/getUser</code>, <code>/cancelSubscription</code>), stop. The noun is your resource (<code>orders</code>, <code>users</code>, <code>subscriptions</code>). The HTTP method is the verb. Locking in action-based URLs means every new action needs a new endpoint — you end up with 40 endpoints where 8 would do.
+          <br><span class="ds-tag ds-tag-info">rule: URL = noun, method = verb</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Will this endpoint mutate state? Add a version prefix now.</div>
+        <div class="ds-detail">If the answer is yes — or even "maybe someday" — start the URL with <code>/v1/</code>. The cost is 4 characters. The cost of retrofitting versioning after clients are in production is months of migration work. You will need a breaking change eventually. Whether you have an escape hatch when that day comes depends on a decision you make today.
+          <br><span class="ds-tag ds-tag-stop">no version prefix = no escape hatch for breaking changes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Can this endpoint be called twice safely? If not, add idempotency.</div>
+        <div class="ds-detail">Mobile clients retry on network failure. Load balancers retry on timeout. Your client SDK probably has automatic retry. If <code>POST /v1/charges</code> is called twice with the same intent, does the customer get charged twice? If yes, require an <code>Idempotency-Key</code> header and deduplicate in Redis. This decision made after launch requires a client-side migration. Made now, it's 30 lines of middleware.
+          <br><span class="ds-tag ds-tag-stop">any money/order/email endpoint needs this</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Could this return more than 100 rows? Design cursor pagination now.</div>
+        <div class="ds-detail">Offset pagination works fine at 1,000 rows and breaks at 1,000,000. The fix (cursor pagination) requires a different query structure and a different API contract — you can't switch transparently after clients depend on <code>?page=47</code>. If there's any chance this list grows, use cursor pagination from day one. The cursor-based contract is a strict superset of what clients actually need from a list endpoint.
+          <br><span class="ds-tag ds-tag-warn">offset pagination = technical debt with a deadline</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">What's the error contract? Define the error codes now.</div>
+        <div class="ds-detail">Decide your machine-readable error codes before you write the happy path. <code>INSUFFICIENT_FUNDS</code>, <code>DUPLICATE_ORDER</code>, <code>RATE_LIMITED</code> — these are part of the API contract. Clients switch on them. If you ship "error": "something went wrong" and clients start handling it with string matching, you can never change the message. Machine codes are stable; messages can evolve.
+          <br><span class="ds-tag ds-tag-info">error codes = the contract clients actually depend on</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Will mobile clients use this? Add sparse fieldset support.</div>
+        <div class="ds-detail">If yes: your order object with 40 fields costs the same bandwidth whether a mobile feed needs 4 of them or all 40. Add <code>?fields=id,status,total,created_at</code> support. At 1M requests/day, the difference between sending 4 fields vs 40 is often hundreds of MB of bandwidth per day. This is a query parameter and a filter — add it to any endpoint that returns more than 5 fields and has mobile consumers.
+          <br><span class="ds-tag ds-tag-ok">10 minutes to add, 80% bandwidth reduction on mobile</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Production REST API checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">/v1</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Versioning</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">URI versioning from day one. Commit to supporting all published versions.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">IK</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Idempotency</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Require Idempotency-Key on all mutation endpoints. 24h TTL in Redis.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">4xx</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Error codes</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Structured errors with machine codes, request_id, docs_url. Never 200 with error body.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">CUR</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Pagination</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Cursor pagination for all list endpoints. Offset only for bounded small datasets.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">429</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Rate limiting</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Rate limit at gateway. Always include Retry-After and X-RateLimit-* headers.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">STR</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">IDs as strings</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Always return IDs as strings. Avoid future integer overflow migrations.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+// TOC
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){ if (s.offsetTop<=pos) active=s.id; });
+  tocLinks.forEach(function(a){ a.classList.toggle('active', a.getAttribute('href')==='#'+active); });
+},{passive:true});
+
+// ══════════ VIZ 1 — URL Design Validator ══════════
+var urlExamples = [
+  { url:'/api/createOrder',              ok:false, issue:'Action verb in URL. Use POST /orders instead.' },
+  { url:'/api/orders/getById/123',       ok:false, issue:'RPC-style naming. Use GET /orders/123.' },
+  { url:'/api/orders/123/cancel',        ok:'warn', issue:'Acceptable as a sub-resource action, but PATCH /orders/123 with {status:"cancelled"} is cleaner.' },
+  { url:'/api/v1/orders',                ok:true,  issue:'Correct: versioned, plural noun, no verb.' },
+  { url:'/api/v1/users/456/orders',      ok:true,  issue:'Correct: 2-level nesting showing ownership.' },
+  { url:'/api/v1/users/456/orders/789/items/1/variants/2/price', ok:false, issue:'Too deep (5 levels). Flatten: /variants/2/price with query params for context.' },
+  { url:'/api/Order',                    ok:false, issue:'Singular noun and wrong case. Use /orders (plural, lowercase).' },
+  { url:'/api/v1/payment-methods',       ok:true,  issue:'Correct: kebab-case, versioned, plural.' },
+  { url:'/api/v1/orders?status=pending', ok:true,  issue:'Correct: filtering via query params, not nested URL.' },
+  { url:'/api/v1/orders.json',           ok:false, issue:'File extension in URL. Use Accept header for content type.' },
+];
+var customUrl = '';
+
+function validateUrl(url) {
+  var issues = [];
+  var score = 100;
+  if (/\/(get|create|update|delete|list|fetch|add|remove|cancel|approve|reject)[A-Z_]/i.test(url)) { issues.push({ msg:'Verb in URL path — use HTTP method instead', sev:'error' }); score -= 30; }
+  if (/\/v\d+/.test(url) === false && url.startsWith('/api')) { issues.push({ msg:'No API version prefix (/v1/, /v2/)', sev:'warn' }); score -= 15; }
+  if ((url.match(/\//g)||[]).length > 6) { issues.push({ msg:'URL depth > 5 levels — consider flattening', sev:'warn' }); score -= 10; }
+  if (/[A-Z]/.test(url.split('?')[0])) { issues.push({ msg:'Uppercase in URL path — use lowercase', sev:'error' }); score -= 20; }
+  if (/\.(json|xml|html)/.test(url)) { issues.push({ msg:'File extension in URL — use Accept header', sev:'error' }); score -= 20; }
+  if (/\/[a-z]+\/\d+\/[a-z]+\/\d+\/[a-z]+\/\d+/.test(url)) { issues.push({ msg:'More than 2 levels of ID nesting detected', sev:'warn' }); score -= 15; }
+  if (issues.length === 0) issues.push({ msg:'Looks good! Follows REST conventions.', sev:'ok' });
+  return { issues: issues, score: Math.max(score, 0) };
+}
+
+function renderUrlValidator() {
+  var container = document.getElementById('url-examples'); if (!container) return;
+  container.innerHTML = urlExamples.map(function(ex, i) {
+    var col = ex.ok === true ? 'var(--green)' : ex.ok === 'warn' ? 'var(--orange)' : 'var(--red)';
+    var icon = ex.ok === true ? '✓' : ex.ok === 'warn' ? '⚠' : '✗';
+    return '<div onclick="urlCheck(\'' + ex.url.replace(/'/g,"\\'") + '\')" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;cursor:pointer;transition:all .15s" id="url-ex-' + i + '">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<span style="color:' + col + ';font-size:13px">' + icon + '</span>' +
+      '<code style="font-size:12px;color:var(--text)">' + ex.url + '</code></div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:22px">' + ex.issue + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function urlCheck(url) {
+  var res = validateUrl(url);
+  var out = document.getElementById('url-custom-output'); if (!out) return;
+  var scoreCol = res.score >= 80 ? 'var(--green)' : res.score >= 50 ? 'var(--orange)' : 'var(--red)';
+  var lines = ['<span style="color:var(--text2)">Analysing: </span><span style="color:var(--accent)">' + url + '</span>',
+    'Score: <span style="color:' + scoreCol + ';font-size:16px;font-weight:700">' + res.score + '/100</span>', ''];
+  res.issues.forEach(function(issue) {
+    var c = issue.sev === 'ok' ? 'var(--green)' : issue.sev === 'warn' ? 'var(--orange)' : 'var(--red)';
+    var i = issue.sev === 'ok' ? '✓' : issue.sev === 'warn' ? '⚠' : '✗';
+    lines.push('<span style="color:' + c + '">' + i + ' ' + issue.msg + '</span>');
+  });
+  out.innerHTML = lines.join('\n');
+}
+
+function urlCheckCustom() {
+  var inp = document.getElementById('url-custom-input');
+  if (inp && inp.value) urlCheck(inp.value.trim());
+}
+
+// ══════════ VIZ 2 — Pagination cost ══════════
+function updatePagination() {
+  var totalRows  = parseInt(document.getElementById('pag-rows').value);
+  var pageSize   = parseInt(document.getElementById('pag-size').value);
+  var pageNum    = parseInt(document.getElementById('pag-page').value);
+  document.getElementById('pag-rows-val').textContent = totalRows.toLocaleString();
+  document.getElementById('pag-size-val').textContent = pageSize;
+  document.getElementById('pag-page-val').textContent = pageNum;
+
+  var offsetRows = Math.min((pageNum - 1) * pageSize + pageSize, totalRows);
+  var cursorRows = pageSize;
+  var offsetCost = ((pageNum - 1) * pageSize + pageSize);
+  var cursorCost = pageSize;
+
+  var out = document.getElementById('pag-output'); if (!out) return;
+  var pct = Math.min(offsetRows / totalRows * 100, 100).toFixed(1);
+  var worse = (offsetCost / cursorCost).toFixed(0);
+  var col = pageNum > 100 ? 'var(--red)' : pageNum > 10 ? 'var(--orange)' : 'var(--green)';
+
+  var W = (out.parentElement || out).offsetWidth - 40 || 400;
+  var barOffset = Math.min(offsetCost / totalRows * (W - 20), W - 20);
+  var barCursor = Math.max(cursorCost / totalRows * (W - 20), 4);
+
+  out.innerHTML = [
+    '<span style="color:var(--text3)">// Fetching page ' + pageNum + ' of ' + pageSize + ' rows from ' + totalRows.toLocaleString() + ' total rows</span>',
+    '',
+    '<span style="color:var(--red)">OFFSET (' + ((pageNum-1)*pageSize).toLocaleString() + '):</span>',
+    '  SQL: SELECT * FROM orders ORDER BY created_at OFFSET ' + ((pageNum-1)*pageSize).toLocaleString() + ' LIMIT ' + pageSize,
+    '  Rows scanned: <span style="color:' + col + '">' + offsetCost.toLocaleString() + '</span>  (' + pct + '% of table)',
+    '  <div style="background:var(--bg3);border-radius:3px;height:12px;margin:4px 0;overflow:hidden"><div style="width:' + Math.min(barOffset, W-20) + 'px;height:100%;background:' + col + '"></div></div>',
+    '',
+    '<span style="color:var(--green)">CURSOR:</span>',
+    '  SQL: SELECT * FROM orders WHERE (created_at, id) < ($cursor) ORDER BY ... LIMIT ' + pageSize,
+    '  Rows scanned: <span style="color:var(--green)">' + cursorRows + '</span>  (always just page size)',
+    '  <div style="background:var(--bg3);border-radius:3px;height:12px;margin:4px 0;overflow:hidden"><div style="width:' + barCursor + 'px;height:100%;background:var(--green)"></div></div>',
+    '',
+    pageNum > 1 ? '<span style="color:' + col + '">At page ' + pageNum + ': offset scans ' + worse + 'x more rows than cursor.</span>' :
+      '<span style="color:var(--text3)">At page 1, both are equivalent. The gap grows with every page.</span>',
+    pageNum > 500 ? '\n<span style="color:var(--red)">⚠ At this page depth, offset pagination is likely causing noticeable latency in production.</span>' : '',
+  ].filter(Boolean).join('\n');
+}
+
+// ══════════ VIZ 3 — Idempotency simulator ══════════
+var idemMode = 'no-key';
+var idemRequests = [];
+var idemRequestCount = 0;
+
+function setIdemMode(m, btn) {
+  idemMode = m;
+  document.querySelectorAll('.idem-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  idemRequests = []; idemRequestCount = 0;
+  renderIdem();
+}
+
+function idemFireRequest() {
+  var chargeId = idemMode === 'with-key' && idemRequests.length > 0 ? idemRequests[0].chargeId : 'ch_' + Math.random().toString(36).slice(2, 10);
+  var key = idemMode === 'with-key' ? 'idem_key_abc123' : null;
+  var isRetry = idemRequests.length > 0;
+  var isReplayed = idemMode === 'with-key' && isRetry;
+
+  idemRequestCount++;
+  var req = {
+    num: idemRequestCount,
+    key: key,
+    isRetry: isRetry,
+    isReplayed: isReplayed,
+    chargeId: chargeId,
+    amount: 1000,
+    status: isReplayed ? 'replayed' : 'created',
+  };
+  idemRequests.push(req);
+  renderIdem();
+}
+
+function renderIdem() {
+  var out = document.getElementById('idem-output'); if (!out) return;
+  var charges = document.getElementById('idem-charges'); if (!charges) return;
+
+  if (!idemRequests.length) {
+    out.innerHTML = '<span style="color:var(--text3)">// Click "Fire Request" to simulate a payment. Then "Retry (simulate network failure)" to retry.</span>';
+    charges.innerHTML = '';
+    return;
+  }
+
+  var lines = [];
+  idemRequests.forEach(function(r) {
+    var isFirst = r.num === 1;
+    var col = r.isReplayed ? 'var(--green)' : r.isRetry && !r.isReplayed ? 'var(--red)' : 'var(--accent)';
+    lines.push('<span style="color:' + col + '">Request #' + r.num + (r.isRetry ? ' (RETRY)' : '') + '</span>');
+    if (r.key) lines.push('  Idempotency-Key: ' + r.key);
+    lines.push('  POST /v1/charges { amount: 1000, currency: "INR" }');
+    if (r.isReplayed) {
+      lines.push('  <span style="color:var(--green)">→ 200 OK (Idempotent-Replayed: true)</span>');
+      lines.push('  <span style="color:var(--green)">→ charge_id: ' + r.chargeId + ' (same as original)</span>');
+    } else {
+      lines.push('  <span style="color:var(--accent)">→ 201 Created</span>');
+      lines.push('  <span style="color:var(--accent)">→ charge_id: ' + r.chargeId + '</span>');
+    }
+    lines.push('');
+  });
+
+  // Show charges created
+  var uniqueCharges = idemMode === 'with-key' ? 1 : idemRequests.length;
+  var extraCharges = uniqueCharges - 1;
+  var chargesHtml = '';
+  var seen = {};
+  idemRequests.forEach(function(r) {
+    if (!seen[r.chargeId]) {
+      seen[r.chargeId] = true;
+      chargesHtml += '<div style="background:var(--bg3);border:1px solid ' + (extraCharges > 0 ? 'rgba(240,96,96,.4)' : 'rgba(62,207,142,.4)') + ';border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:12px;display:flex;gap:10px;align-items:center">' +
+        '<span style="font-size:16px">💳</span>' +
+        '<span style="color:var(--text)">Charge ' + r.chargeId + '</span>' +
+        '<span style="color:var(--text3)">₹' + (r.amount/100).toFixed(2) + '</span>' +
+        '</div>';
+    }
+  });
+  charges.innerHTML = '<div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Charges created in database</div>' + chargesHtml;
+
+  if (extraCharges > 0) {
+    lines.push('<span style="color:var(--red)">⚠ ' + extraCharges + ' DUPLICATE CHARGE(S) CREATED — customer billed ' + (extraCharges+1) + 'x</span>');
+  } else if (idemRequests.length > 1) {
+    lines.push('<span style="color:var(--green)">✓ ' + idemRequests.length + ' requests, 1 charge. Idempotency key prevented duplicate billing.</span>');
+  }
+
+  out.innerHTML = lines.join('\n');
+}
+
+// ══════════ VIZ 4 — Error builder ══════════
+var ERROR_FIELDS = [
+  { key:'error.code',       label:'Machine code',   ex:'"INSUFFICIENT_FUNDS"',     pts:25, desc:'Stable string clients switch on. Never change. Never localise.' },
+  { key:'error.message',    label:'Human message',  ex:'"Insufficient balance"',    pts:15, desc:'For developers in logs. OK to change between versions.' },
+  { key:'error.details',    label:'Field errors',   ex:'[{field:"amount",issue:"too_low"}]', pts:20, desc:'Required for validation errors. Lets clients highlight the specific field.' },
+  { key:'error.request_id', label:'Request ID',     ex:'"req_a1b2c3d4"',            pts:25, desc:'Correlation ID. User gives to support → finds trace in seconds.' },
+  { key:'error.docs_url',   label:'Docs link',      ex:'"https://docs.x/errors#INSUFFICIENT_FUNDS"', pts:10, desc:'From error code to solution in one click.' },
+  { key:'http.status',      label:'Correct status', ex:'402 (not 200)',             pts:5,  desc:'Correct HTTP status so infrastructure makes right decisions.' },
+];
+var errState = {};
+ERROR_FIELDS.forEach(function(f){ errState[f.key] = false; });
+
+function initErrorBuilder() {
+  var cont = document.getElementById('err-fields'); if (!cont) return;
+  cont.innerHTML = ERROR_FIELDS.map(function(f) {
+    var id = f.key.replace(/\./g,'_');
+    return '<div onclick="toggleErrField(\'' + f.key + '\')" id="ef-' + id + '" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .15s;margin-bottom:8px">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">' +
+      '<div id="ef-chk-' + id + '" style="width:14px;height:14px;border-radius:3px;border:2px solid var(--border2);flex-shrink:0;transition:all .15s"></div>' +
+      '<span style="font-size:12px;font-weight:600;color:var(--text)">' + f.label + '</span>' +
+      '<code style="font-size:11px;color:var(--purple);margin-left:4px">' + f.key + '</code>' +
+      '<span style="margin-left:auto;font-size:10px;color:var(--accent)">+' + f.pts + 'pts</span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text3);padding-left:24px">' + f.desc + '</div>' +
+      '</div>';
+  }).join('');
+  renderErrorOutput();
+}
+
+function toggleErrField(key) {
+  errState[key] = !errState[key];
+  var id = key.replace(/\./g,'_');
+  var chk = document.getElementById('ef-chk-' + id);
+  var card = document.getElementById('ef-' + id);
+  if (chk){ chk.style.background = errState[key] ? 'var(--green)' : ''; chk.style.borderColor = errState[key] ? 'var(--green)' : 'var(--border2)'; }
+  if (card){ card.style.borderColor = errState[key] ? 'rgba(62,207,142,.4)' : 'var(--border)'; card.style.background = errState[key] ? 'rgba(62,207,142,.04)' : 'var(--bg3)'; }
+  renderErrorOutput();
+}
+
+function renderErrorOutput() {
+  var score = ERROR_FIELDS.reduce(function(s,f){ return s + (errState[f.key] ? f.pts : 0); }, 0);
+  var grade = score >= 90 ? 'A' : score >= 70 ? 'B' : score >= 50 ? 'C' : score >= 30 ? 'D' : 'F';
+  var col = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--orange)' : 'var(--red)';
+
+  var sl = document.getElementById('err-score-label'); if (sl) sl.textContent = score + ' / 100';
+  var sb = document.getElementById('err-score-bar'); if (sb){ sb.style.width = score+'%'; sb.style.background = col; }
+  var gd = document.getElementById('err-grade'); if (gd){ gd.textContent = grade; gd.style.color = col; }
+
+  var out = document.getElementById('err-output'); if (!out) return;
+  var obj = { error: {} };
+  if (errState['http.status']) { /* shown as comment */ }
+  if (errState['error.code'])       obj.error.code = 'INSUFFICIENT_FUNDS';
+  if (errState['error.message'])    obj.error.message = 'Account balance too low for this charge';
+  if (errState['error.details'])    obj.error.details = [{ field: 'amount', issue: 'exceeds_balance', available: 45000 }];
+  if (errState['error.request_id']) obj.error.request_id = 'req_a1b2c3d4e5f6';
+  if (errState['error.docs_url'])   obj.error.docs_url = 'https://docs.example.com/errors#INSUFFICIENT_FUNDS';
+
+  var statusLine = errState['http.status'] ? '<span style="color:var(--green)">HTTP/1.1 402 Payment Required</span>' : '<span style="color:var(--red)">HTTP/1.1 200 OK  ← ⚠ wrong status</span>';
+  out.innerHTML = statusLine + '\nContent-Type: application/json\n\n' + syntaxHighlight(JSON.stringify(obj, null, 2));
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+    var cls = 'var(--num)';
+    if (/^"/.test(match)) cls = /:$/.test(match) ? 'var(--purple)' : 'var(--green)';
+    else if (/true|false/.test(match)) cls = 'var(--accent)';
+    else if (/null/.test(match)) cls = 'var(--text3)';
+    return '<span style="color:' + cls + '">' + match + '</span>';
+  });
+}
+
+// ══════════ VIZ 5 — HTTP semantics matrix ══════════
+var MATRIX = {
+  methods: ['GET','POST','PUT','PATCH','DELETE'],
+  scenarios: [
+    { label:'List resources',    correct:'GET',   wrong:['POST'],          note:'GET /orders — safe, cacheable. POST would create, not list.' },
+    { label:'Create resource',   correct:'POST',  wrong:['GET','PUT'],     note:'POST /orders — creates new, not idempotent. GET would be unsafe. PUT would require known ID.' },
+    { label:'Full replace',      correct:'PUT',   wrong:['POST','PATCH'],  note:'PUT /orders/123 — replaces entire resource. POST creates new. PATCH is partial.' },
+    { label:'Partial update',    correct:'PATCH', wrong:['PUT','POST'],    note:'PATCH /orders/123 — sends only changed fields. PUT requires full body.' },
+    { label:'Delete resource',   correct:'DELETE',wrong:['GET','POST'],    note:'DELETE /orders/123. GET is read-only. POST would create.' },
+    { label:'Check existence',   correct:'HEAD',  wrong:['GET'],           note:'HEAD returns headers without body — same as GET but lighter. Use for cache validation.' },
+    { label:'Trigger action',    correct:'POST',  wrong:['GET'],           note:'POST /orders/123/refund — actions that don\'t map to CRUD. GET would be unsafe (side effects).' },
+  ],
+};
+var matrixSelected = null;
+
+function initMatrix() {
+  var cont = document.getElementById('method-matrix'); if (!cont) return;
+  var header = '<div style="display:grid;grid-template-columns:160px repeat(5,1fr);gap:4px;margin-bottom:4px">' +
+    '<div></div>' + MATRIX.methods.map(function(m){ return '<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px">' + m + '</div>'; }).join('') + '</div>';
+  var rows = MATRIX.scenarios.map(function(s, si) {
+    return '<div style="display:grid;grid-template-columns:160px repeat(5,1fr);gap:4px;margin-bottom:4px">' +
+      '<div style="font-size:11px;color:var(--text2);padding:6px 4px;display:flex;align-items:center">' + s.label + '</div>' +
+      MATRIX.methods.map(function(m) {
+        var isCorrect = m === s.correct;
+        var isWrong = s.wrong && s.wrong.includes(m);
+        var col = isCorrect ? 'var(--green)' : isWrong ? 'var(--red)' : 'var(--border)';
+        var bg = isCorrect ? 'rgba(62,207,142,.12)' : isWrong ? 'rgba(240,96,96,.08)' : 'var(--bg3)';
+        var icon = isCorrect ? '✓' : isWrong ? '✗' : '';
+        return '<div onclick="showMatrixNote(' + si + ',\'' + m + '\')" style="height:32px;border-radius:5px;border:1px solid ' + col + ';background:' + bg + ';display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:' + col + ';transition:all .12s">' + icon + '</div>';
+      }).join('') + '</div>';
+  }).join('');
+  cont.innerHTML = header + rows;
+}
+
+function showMatrixNote(si, method) {
+  var s = MATRIX.scenarios[si];
+  var note = document.getElementById('matrix-note'); if (!note) return;
+  var isCorrect = method === s.correct;
+  var col = isCorrect ? 'var(--green)' : s.wrong && s.wrong.includes(method) ? 'var(--red)' : 'var(--text3)';
+  note.innerHTML = '<span style="color:' + col + '">' + method + ' for "' + s.label + '": </span>' + s.note;
+}
+
+// ══════════ VIZ 6 — Versioning comparison ══════════
+var versionMode = 'uri';
+function setVersionMode(m, btn) {
+  versionMode = m;
+  document.querySelectorAll('.version-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderVersioning();
+}
+function renderVersioning() {
+  var out = document.getElementById('version-output'); if (!out) return;
+  var configs = {
+    uri: {
+      request: 'GET /v2/orders/123 HTTP/1.1\nHost: api.example.com\nAuthorization: Bearer token',
+      response: 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{\n  "id": "ord_123",\n  "status": "fulfilled",\n  "amount_cents": 1000\n}',
+      pros: ['Visible in URLs, logs, browser bookmarks', 'Easy nginx/proxy routing by path prefix', 'Clear: old clients on /v1, new on /v2'],
+      cons: ['"Not pure REST" (resource has two URLs)', 'Must maintain /v1 indefinitely', 'URL changes on every version bump'],
+      used_by: 'Stripe, GitHub, Twilio, Shopify'
+    },
+    header: {
+      request: 'GET /orders/123 HTTP/1.1\nHost: api.example.com\nAccept: application/vnd.example.v2+json\nAuthorization: Bearer token',
+      response: 'HTTP/1.1 200 OK\nContent-Type: application/vnd.example.v2+json\nVary: Accept\n\n{\n  "id": "ord_123",\n  "status": "fulfilled"\n}',
+      pros: ['Resource URL is stable across versions', 'Theoretically most RESTful', 'Content negotiation built into HTTP'],
+      cons: ['Hard to test (must set Accept header)', 'Invisible in browser URL bar / logs', 'Cache must include Vary: Accept or wrong version served'],
+      used_by: 'GitHub (partial), some enterprise APIs'
+    },
+    queryparam: {
+      request: 'GET /orders/123?api_version=2024-01-01 HTTP/1.1\nHost: api.example.com\nAuthorization: Bearer token',
+      response: 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{\n  "id": "ord_123",\n  "status": "fulfilled"\n}',
+      pros: ['Easy to test in browser', 'No nginx config changes needed', 'Date-based versions (Stripe style) are human-readable'],
+      cons: ['Query params semantically mean "filter", not "version"', 'Clutters every URL', 'Caches may or may not vary by query param'],
+      used_by: 'Stripe (date-based: ?api_version=2024-01-01), some internal APIs'
+    }
+  };
+  var c = configs[versionMode];
+  out.innerHTML = [
+    '<span style="color:var(--text3)">── Request ──────────────────────────────────────────────────────</span>',
+    '<span style="color:var(--accent)">' + c.request + '</span>',
+    '',
+    '<span style="color:var(--text3)">── Response ─────────────────────────────────────────────────────</span>',
+    '<span style="color:var(--green)">' + c.response + '</span>',
+    '',
+    '<span style="color:var(--green)">Pros:</span>',
+    c.pros.map(function(p){ return '  ✓ ' + p; }).join('\n'),
+    '',
+    '<span style="color:var(--red)">Cons:</span>',
+    c.cons.map(function(p){ return '  ✗ ' + p; }).join('\n'),
+    '',
+    '<span style="color:var(--text3)">Used by: ' + c.used_by + '</span>',
+  ].join('\n');
+}
+
+// ══════════ VIZ 7 — Token bucket ══════════
+var bucketTokens = 100;
+var bucketMax = 100;
+var bucketRefillRate = 10; // per second
+var bucketTimer = null;
+var bucketRunning = false;
+var bucketRequestRate = 20;
+var bucketLog = [];
+
+function updateBucketConfig() {
+  bucketMax = parseInt(document.getElementById('bucket-cap').value);
+  bucketRefillRate = parseInt(document.getElementById('bucket-refill').value);
+  bucketRequestRate = parseInt(document.getElementById('bucket-reqrate').value);
+  bucketTokens = Math.min(bucketTokens, bucketMax);
+  document.getElementById('bucket-cap-val').textContent = bucketMax;
+  document.getElementById('bucket-refill-val').textContent = bucketRefillRate + '/s';
+  document.getElementById('bucket-reqrate-val').textContent = bucketRequestRate + '/s';
+  renderBucket();
+}
+
+function bucketStart() {
+  if (bucketRunning) {
+    bucketRunning = false; clearInterval(bucketTimer);
+    document.getElementById('bucket-start').textContent = '▶ Start simulation';
+    return;
+  }
+  bucketRunning = true;
+  bucketLog = [];
+  document.getElementById('bucket-start').textContent = '■ Stop';
+  var TICK = 200; // ms
+  bucketTimer = setInterval(function() {
+    // Refill
+    bucketTokens = Math.min(bucketMax, bucketTokens + bucketRefillRate * TICK / 1000);
+    // Consume
+    var reqsThisTick = bucketRequestRate * TICK / 1000;
+    var allowed = Math.min(Math.floor(bucketTokens), Math.floor(reqsThisTick));
+    var denied = Math.floor(reqsThisTick) - allowed;
+    bucketTokens -= allowed;
+    bucketLog.push({ t: Date.now(), allowed: allowed, denied: denied, level: bucketTokens / bucketMax });
+    if (bucketLog.length > 30) bucketLog.shift();
+    renderBucket();
+  }, TICK);
+}
+
+function renderBucket() {
+  var pct = Math.min(bucketTokens / bucketMax * 100, 100);
+  var col = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--orange)' : 'var(--red)';
+  var fill = document.getElementById('bucket-fill'); if (fill){ fill.style.height = pct + '%'; fill.style.background = col; }
+  var label = document.getElementById('bucket-label'); if (label) label.textContent = Math.round(bucketTokens) + ' / ' + bucketMax + ' tokens';
+
+  // Sparkline
+  var spark = document.getElementById('bucket-sparkline'); if (!spark) return;
+  var W = spark.offsetWidth || 300; var H = 40;
+  if (!bucketLog.length) { spark.innerHTML = ''; return; }
+  var pts = bucketLog.map(function(l, i){ return (i / (bucketLog.length-1) * W) + ',' + ((1 - l.level) * H); }).join(' ');
+  spark.innerHTML = '<svg width="' + W + '" height="' + H + '" style="overflow:visible">' +
+    '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2"/></svg>';
+
+  var last = bucketLog[bucketLog.length-1] || {};
+  var note = document.getElementById('bucket-note'); if (!note) return;
+  if (last.denied > 0) {
+    note.innerHTML = '<span style="color:var(--red)">⚠ Rate limiting active: ' + last.denied + ' req(s)/tick denied. Clients should receive 429 with Retry-After: ' + Math.ceil(bucketMax / bucketRefillRate) + 's</span>';
+  } else {
+    note.innerHTML = '<span style="color:var(--green)">✓ All requests served. Bucket at ' + Math.round(pct) + '% capacity.</span>';
+  }
+}
+
+// ══════════ VIZ 8 — Sparse fieldsets ══════════
+var ORDER_FIELDS = [
+  { key:'id',                 bytes:20,  always:true,  desc:'Order identifier' },
+  { key:'status',             bytes:12,  always:false, desc:'Order status enum' },
+  { key:'total_amount_cents', bytes:8,   always:false, desc:'Total amount' },
+  { key:'currency',           bytes:8,   always:false, desc:'ISO currency code' },
+  { key:'created_at',         bytes:32,  always:false, desc:'Creation timestamp (ISO 8601)' },
+  { key:'updated_at',         bytes:32,  always:false, desc:'Last update timestamp' },
+  { key:'user_id',            bytes:16,  always:false, desc:'Owner user ID' },
+  { key:'payment_method',     bytes:80,  always:false, desc:'Nested: type, last4, brand, exp_month, exp_year' },
+  { key:'shipping_address',   bytes:160, always:false, desc:'Nested: line1, line2, city, state, pincode, country' },
+  { key:'line_items',         bytes:320, always:false, desc:'Array: sku, name, qty, price, tax per item (avg 5 items)' },
+  { key:'metadata',           bytes:200, always:false, desc:'Arbitrary key-value store, often large' },
+  { key:'audit_log',          bytes:400, always:false, desc:'Array of status transitions with timestamps' },
+  { key:'fulfillment',        bytes:120, always:false, desc:'Nested: carrier, tracking_number, estimated_delivery' },
+  { key:'discount',           bytes:60,  always:false, desc:'Applied coupon, amount, percentage' },
+];
+var fieldState = {};
+ORDER_FIELDS.forEach(function(f){ fieldState[f.key] = f.always; });
+
+function toggleField(key) {
+  var f = ORDER_FIELDS.find(function(x){ return x.key === key; });
+  if (f && f.always) return;
+  fieldState[key] = !fieldState[key];
+  var chk = document.getElementById('ff-chk-' + key);
+  var card = document.getElementById('ff-card-' + key);
+  if (chk){ chk.style.background = fieldState[key] ? 'var(--green)' : ''; chk.style.borderColor = fieldState[key] ? 'var(--green)' : 'var(--border2)'; }
+  if (card){ card.style.borderColor = fieldState[key] ? 'rgba(62,207,142,.3)' : 'var(--border)'; card.style.opacity = fieldState[key] ? '1' : '0.6'; }
+  renderFieldset();
+}
+
+function setPreset(preset) {
+  ORDER_FIELDS.forEach(function(f){ fieldState[f.key] = f.always; });
+  var presets = {
+    mobile_feed: ['id','status','total_amount_cents','created_at'],
+    admin_view:  ['id','status','total_amount_cents','currency','created_at','updated_at','user_id','payment_method','line_items'],
+    full:        ORDER_FIELDS.map(function(f){ return f.key; }),
+  };
+  (presets[preset] || []).forEach(function(k){ fieldState[k] = true; });
+  ORDER_FIELDS.forEach(function(f){
+    var chk = document.getElementById('ff-chk-' + f.key);
+    var card = document.getElementById('ff-card-' + f.key);
+    if (chk){ chk.style.background = fieldState[f.key] ? 'var(--green)' : ''; chk.style.borderColor = fieldState[f.key] ? 'var(--green)' : 'var(--border2)'; }
+    if (card){ card.style.borderColor = fieldState[f.key] ? 'rgba(62,207,142,.3)' : 'var(--border)'; card.style.opacity = fieldState[f.key] ? '1' : '0.6'; }
+  });
+  renderFieldset();
+}
+
+function initFieldset() {
+  var cont = document.getElementById('ff-fields'); if (!cont) return;
+  cont.innerHTML = ORDER_FIELDS.map(function(f) {
+    var locked = f.always ? ' (always included)' : '';
+    return '<div onclick="toggleField(\'' + f.key + '\')" id="ff-card-' + f.key + '" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 12px;cursor:pointer;transition:all .15s;margin-bottom:5px;display:flex;align-items:center;gap:10px' + (fieldState[f.key] ? ';border-color:rgba(62,207,142,.3)' : '') + '">' +
+      '<div id="ff-chk-' + f.key + '" style="width:13px;height:13px;border-radius:3px;border:2px solid ' + (fieldState[f.key] ? 'var(--green)' : 'var(--border2)') + ';flex-shrink:0;background:' + (fieldState[f.key] ? 'var(--green)' : '') + ';transition:all .15s"></div>' +
+      '<code style="font-size:11px;color:var(--purple);min-width:150px">' + f.key + '</code>' +
+      '<span style="font-size:10px;color:var(--orange)">~' + f.bytes + 'B</span>' +
+      '<span style="font-size:11px;color:var(--text3)">' + f.desc + locked + '</span>' +
+      '</div>';
+  }).join('');
+  renderFieldset();
+}
+
+function renderFieldset() {
+  var totalBytes = ORDER_FIELDS.reduce(function(s,f){ return s + f.bytes; }, 0);
+  var selectedBytes = ORDER_FIELDS.reduce(function(s,f){ return s + (fieldState[f.key] ? f.bytes : 0); }, 0);
+  var saving = totalBytes - selectedBytes;
+  var savingPct = Math.round(saving / totalBytes * 100);
+  var selectedFields = ORDER_FIELDS.filter(function(f){ return fieldState[f.key]; }).map(function(f){ return f.key; });
+
+  var barEl = document.getElementById('ff-bar'); if (barEl){ barEl.style.width = (selectedBytes/totalBytes*100) + '%'; }
+  var sel = document.getElementById('ff-selected'); if (sel) sel.textContent = selectedBytes + 'B';
+  var tot = document.getElementById('ff-total'); if (tot) tot.textContent = totalBytes + 'B';
+  var sv = document.getElementById('ff-saving'); if (sv){ sv.textContent = savingPct + '% smaller'; sv.style.color = savingPct > 50 ? 'var(--green)' : savingPct > 0 ? 'var(--orange)' : 'var(--text3)'; }
+
+  var url = document.getElementById('ff-url');
+  if (url) {
+    if (selectedFields.length === ORDER_FIELDS.length) {
+      url.textContent = 'GET /v1/orders?limit=20  (no field selection)';
+    } else {
+      url.textContent = 'GET /v1/orders?fields=' + selectedFields.join(',') + '&limit=20';
+    }
+  }
+
+  var atScale = document.getElementById('ff-scale');
+  if (atScale) {
+    var reqPerDay = 1000000;
+    var savedPerDay = Math.round(saving * reqPerDay / 1024 / 1024);
+    atScale.innerHTML = savingPct > 0
+      ? 'At 1M requests/day: <span style="color:var(--green)">' + savedPerDay.toLocaleString() + ' MB/day saved</span>.'
+      : '<span style="color:var(--text3)">Select fewer fields to see bandwidth savings.</span>';
+  }
+}
+
+// ── Init ──
+setTimeout(function() {
+  renderUrlValidator();
+  updatePagination();
+  renderIdem();
+  initErrorBuilder();
+  initMatrix();
+  renderVersioning();
+  updateBucketConfig();
+  renderBucket();
+  initFieldset();
+}, 100);
+</script>
+</body>
+</html>
