@@ -23,6 +23,7 @@
     { "source": "/day04", "destination": "/day04/index.html" },
     { "source": "/day05", "destination": "/day05/index.html" },
     { "source": "/day06", "destination": "/day06/index.html" },
+    { "source": "/day06/deep", "destination": "/day06/deep.html" },
     { "source": "/day07", "destination": "/day07/index.html" }
   ]
 }
