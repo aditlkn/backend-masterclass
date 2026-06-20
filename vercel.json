@@ -5,24 +5,86 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
       ]
     },
     {
       "source": "/day(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/day01", "destination": "/day01/index.html" },
-    { "source": "/day02", "destination": "/day02/index.html" },
-    { "source": "/day03", "destination": "/day03/index.html" },
-    { "source": "/day04", "destination": "/day04/index.html" },
-    { "source": "/day05", "destination": "/day05/index.html" },
-    { "source": "/day06", "destination": "/day06/index.html" },
-    { "source": "/day07", "destination": "/day07/index.html" }
+    {
+      "source": "/day01",
+      "destination": "/day01/index.html"
+    },
+    {
+      "source": "/day02",
+      "destination": "/day02/index.html"
+    },
+    {
+      "source": "/day03",
+      "destination": "/day03/index.html"
+    },
+    {
+      "source": "/day04",
+      "destination": "/day04/index.html"
+    },
+    {
+      "source": "/day05",
+      "destination": "/day05/index.html"
+    },
+    {
+      "source": "/day06",
+      "destination": "/day06/index.html"
+    },
+    {
+      "source": "/day07",
+      "destination": "/day07/index.html"
+    },
+    {
+      "source": "/day06/deep",
+      "destination": "/day06/deep.html"
+    },
+    {
+      "source": "/day06/lab",
+      "destination": "/day06/lab.html"
+    },
+    {
+      "source": "/day01/lab",
+      "destination": "/day01/lab.html"
+    },
+    {
+      "source": "/day02/lab",
+      "destination": "/day02/lab.html"
+    },
+    {
+      "source": "/day03/lab",
+      "destination": "/day03/lab.html"
+    },
+    {
+      "source": "/day04/lab",
+      "destination": "/day04/lab.html"
+    },
+    {
+      "source": "/day05/lab",
+      "destination": "/day05/lab.html"
+    },
+    {
+      "source": "/day07/lab",
+      "destination": "/day07/lab.html"
+    }
   ]
 }

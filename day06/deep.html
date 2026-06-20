@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 6 Deep Dive: JWKS, Kong Internals, Cost-Based Rate Limiting</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{
+  --bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--bg4:#1d2230;
+  --border:#232840;--border2:#2e3550;
+  --text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;
+  --accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+
+/* NAV */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(13,15,20,.93);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;letter-spacing:.5px;display:flex;align-items:center;gap:6px;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.topbar-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:1px;}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+
+/* CONTENT */
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+
+/* HERO */
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:36px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+
+/* SECTIONS */
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+.deep-section h4{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:28px 0 10px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+
+/* CODE BLOCKS */
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+
+/* CALLOUTS */
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+
+/* VERIFY BLOCK */
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;margin-top:1px;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+
+/* FAILURE MODES */
+.failure-grid{display:grid;gap:10px;margin:20px 0;}
+.failure-item{background:var(--bg3);border:1px solid rgba(240,96,96,.2);border-radius:8px;padding:14px 18px;}
+.failure-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.failure-desc{font-size:13px;color:var(--text2);line-height:1.65;}
+.failure-fix{font-size:12px;color:var(--green);margin-top:6px;font-family:'JetBrains Mono',monospace;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+
+/* PHASE DIAGRAM */
+.phase-row{display:flex;margin:20px 0;}
+.phase-label{width:120px;min-width:120px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);padding-top:10px;}
+.phase-bar{flex:1;display:flex;gap:6px;flex-wrap:wrap;}
+.phase-chip{font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);color:var(--text2);background:var(--bg3);cursor:default;}
+.phase-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.1);}
+.phase-chip.warn{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.08);}
+
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day06" class="back-link">&#8592; Day 6: API Gateway</a>
+    <span style="color:var(--border2)">|</span>
+    <span class="topbar-title">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="deep-hero">
+    <div class="deep-eyebrow">Day 6 · API Gateway Patterns · Deep Dive</div>
+    <h1>The parts that matter<br>when you actually <em>build</em> it</h1>
+    <p>The main lesson covered what the gateway does and why. This page covers three things that trip up implementations every time: JWKS key rotation with proper caching, Kong's plugin phase system and rate-limiting internals, and cost-based rate limiting that goes beyond counting requests.</p>
+    <div class="deep-topics">
+      <div class="deep-topic">
+        <span class="deep-topic-num">01</span>
+        <span class="deep-topic-title">JWKS caching &amp; key rotation</span>
+        <span class="deep-topic-sub">— the kid miss dance, overlap windows, JWKS endpoint failures</span>
+      </div>
+      <div class="deep-topic">
+        <span class="deep-topic-num">02</span>
+        <span class="deep-topic-title">Kong plugin phases &amp; rate limiting internals</span>
+        <span class="deep-topic-sub">— execution order, sliding window, cross-node state, consumer policies</span>
+      </div>
+      <div class="deep-topic">
+        <span class="deep-topic-num">03</span>
+        <span class="deep-topic-title">Cost-based rate limiting</span>
+        <span class="deep-topic-sub">— request units, cost assignment, atomic deduction, fanout pricing</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: JWKS ── -->
+  <div class="deep-section">
+    <div class="section-num">Deep Dive 01</div>
+    <h2>JWKS caching &amp; <em>key rotation</em></h2>
+    <p class="lead">The concept is simple: validate JWTs using public keys fetched from a JWKS endpoint. The implementation has five non-obvious problems that will all bite you in production if you don't design for them upfront.</p>
+
+    <h3>How JWKS validation actually works</h3>
+    <p>A JWT has three parts. The header contains a <code>kid</code> (Key ID) field — a string identifying which signing key was used. The gateway needs the corresponding public key to verify the signature. That public key lives at your auth provider's JWKS endpoint: <code>https://auth.example.com/.well-known/jwks.json</code>.</p>
+
+    <p>The JWKS response is a JSON object containing an array of keys. Each key has a <code>kid</code>, a <code>kty</code> (key type, e.g. <code>RSA</code>), and the key material (<code>n</code> and <code>e</code> for RSA public keys). To validate a token, you find the key whose <code>kid</code> matches the token's header <code>kid</code>, reconstruct the public key from the key material, and verify the signature.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">JWKS response structure</span><span class="code-block-lang">JSON</span></div>
+      <pre>{
+  <span class="var">"keys"</span>: [
+    {
+      <span class="var">"kid"</span>: <span class="str">"key-2024-01"</span>,       <span class="cm">// key identifier — must match JWT header</span>
+      <span class="var">"kty"</span>: <span class="str">"RSA"</span>,             <span class="cm">// key type</span>
+      <span class="var">"alg"</span>: <span class="str">"RS256"</span>,           <span class="cm">// algorithm</span>
+      <span class="var">"use"</span>: <span class="str">"sig"</span>,             <span class="cm">// purpose: signature verification</span>
+      <span class="var">"n"</span>:   <span class="str">"0vx7agoebGcQ..."</span>,  <span class="cm">// RSA modulus (base64url)</span>
+      <span class="var">"e"</span>:   <span class="str">"AQAB"</span>             <span class="cm">// RSA public exponent</span>
+    },
+    {
+      <span class="var">"kid"</span>: <span class="str">"key-2024-02"</span>,       <span class="cm">// ← new key added during rotation</span>
+      <span class="var">"kty"</span>: <span class="str">"RSA"</span>,
+      <span class="var">"alg"</span>: <span class="str">"RS256"</span>,
+      <span class="var">"use"</span>: <span class="str">"sig"</span>,
+      <span class="var">"n"</span>:   <span class="str">"1abc9xgoebGcP..."</span>,
+      <span class="var">"e"</span>:   <span class="str">"AQAB"</span>
+    }
+  ]
+}</pre>
+    </div>
+
+    <h3>The five problems you need to design for</h3>
+
+    <h4>Problem 1 — Fetching on every request</h4>
+    <p>Without caching, every JWT validation is an HTTP call to your auth provider. At 5,000 requests/second, that's 5,000 JWKS fetches per second — instant DDoS of your own auth service. The gateway must cache the full JWKS response in memory. Standard TTL: 5 minutes, with a background refresh before expiry so the cache never goes cold.</p>
+
+    <h4>Problem 2 — The kid miss: when a token's key isn't in cache</h4>
+    <p>This is the one that breaks naive implementations. Your auth provider rotates keys. It adds <code>key-2024-02</code> to the JWKS endpoint. Immediately it starts issuing tokens signed with the new key. Your gateway's cache still has only the old key. A request arrives with a token whose <code>kid</code> is <code>key-2024-02</code>. The gateway doesn't find it in cache. What do you do?</p>
+
+    <p><strong>Wrong answer:</strong> Return 401. You've just broken all logins for up to 5 minutes (your cache TTL) until the cache refreshes.</p>
+    <p><strong>Right answer:</strong> On a kid miss, fetch the JWKS endpoint once, update the cache, retry validation. If the key still isn't there after the fresh fetch, return 401. This is the <em>kid miss dance</em> — it handles rotation transparently while still rejecting genuinely invalid tokens.</p>
+
+    <h4>Problem 3 — The rotation overlap window</h4>
+    <p>When a key is rotated, there's an overlap window where both the old key and the new key must be valid. Users who authenticated before the rotation have tokens signed with the old key — those tokens can be valid for hours. The auth provider must keep the old key in the JWKS response until all tokens signed with it have expired. Your gateway must cache and support <em>all</em> keys in the JWKS response, not just the newest one. This is why the JWKS is an array — multiple keys coexist during rotation.</p>
+
+    <h4>Problem 4 — The JWKS endpoint going down</h4>
+    <p>Your auth service goes down. Your gateway's JWKS cache expires. Now every JWT validation fails. Every API call returns 401. Your entire product is broken, even though the user's token is perfectly valid. The fix: serve stale JWKS on fetch failure. Keep the last successful response in cache indefinitely as a fallback. Log a loud alert on stale-serve. Return 401 only if you've never successfully fetched the JWKS at all.</p>
+
+    <h4>Problem 5 — The thundering herd on cache expiry</h4>
+    <p>At the moment your in-memory JWKS cache expires, all concurrent requests try to fetch the JWKS simultaneously. One network call becomes hundreds. The fix: use a mutex/lock around the refresh. Only one goroutine/thread fetches — others wait. Or proactively refresh in the background before expiry (background refresh pattern).</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">Production JWKS cache — kid miss dance, stale fallback, mutex refresh</span><span class="code-block-lang">TYPESCRIPT</span></div>
+      <pre><span class="kw">import</span> { createPublicKey, createVerify } <span class="kw">from</span> <span class="str">'crypto'</span>;
+<span class="kw">import</span> jwkToPem <span class="kw">from</span> <span class="str">'jwk-to-pem'</span>;
+
+<span class="kw">interface</span> <span class="ty">JWK</span> { kid: <span class="ty">string</span>; kty: <span class="ty">string</span>; n: <span class="ty">string</span>; e: <span class="ty">string</span>; alg: <span class="ty">string</span>; }
+
+<span class="kw">class</span> <span class="ty">JWKSCache</span> {
+  <span class="kw">private</span> keys      = <span class="kw">new</span> Map&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt;(); <span class="cm">// kid → PEM</span>
+  <span class="kw">private</span> fetchedAt = <span class="num">0</span>;
+  <span class="kw">private</span> staleFallback = <span class="kw">new</span> Map&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt;();
+  <span class="kw">private</span> fetching  = <span class="kw">false</span>;
+  <span class="kw">private</span> waiters: Array&lt;() => <span class="ty">void</span>&gt; = [];
+  <span class="kw">private</span> TTL_MS    = <span class="num">5</span> * <span class="num">60</span> * <span class="num">1000</span>; <span class="cm">// 5 minutes</span>
+
+  <span class="kw">constructor</span>(<span class="kw">private</span> jwksUri: <span class="ty">string</span>) {
+    <span class="cm">// Background refresh: fetch 30s before expiry, prevents cold cache</span>
+    <span class="fn">setInterval</span>(() => {
+      <span class="kw">if</span> (Date.<span class="fn">now</span>() - <span class="kw">this</span>.fetchedAt > (this.TTL_MS - <span class="num">30_000</span>)) {
+        <span class="kw">this</span>.<span class="fn">refresh</span>().<span class="fn">catch</span>(err =>
+          logger.<span class="fn">warn</span>({ err }, <span class="str">'JWKS background refresh failed'</span>)
+        );
+      }
+    }, <span class="num">10_000</span>);
+  }
+
+  <span class="kw">private async</span> <span class="fn">refresh</span>(): <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt; {
+    <span class="cm">// Mutex: only one fetch at a time</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.fetching) {
+      <span class="kw">await new</span> <span class="fn">Promise</span>&lt;<span class="ty">void</span>&gt;(r => <span class="kw">this</span>.waiters.<span class="fn">push</span>(r));
+      <span class="kw">return</span>;
+    }
+    <span class="kw">this</span>.fetching = <span class="kw">true</span>;
+    <span class="kw">try</span> {
+      <span class="kw">const</span> <span class="var">res</span>  = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="kw">this</span>.jwksUri, { signal: AbortSignal.<span class="fn">timeout</span>(<span class="num">5000</span>) });
+      <span class="kw">const</span> <span class="var">json</span> = <span class="kw">await</span> res.<span class="fn">json</span>();
+      <span class="kw">const</span> <span class="var">fresh</span> = <span class="kw">new</span> <span class="fn">Map</span>&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt;();
+      <span class="kw">for</span> (<span class="kw">const</span> <span class="var">key</span> <span class="kw">of</span> json.keys <span class="kw">as</span> <span class="ty">JWK</span>[]) {
+        fresh.<span class="fn">set</span>(key.kid, <span class="fn">jwkToPem</span>(key)); <span class="cm">// convert JWK → PEM once</span>
+      }
+      <span class="kw">this</span>.keys = fresh;
+      <span class="kw">this</span>.staleFallback = fresh;  <span class="cm">// always update stale copy on success</span>
+      <span class="kw">this</span>.fetchedAt = Date.<span class="fn">now</span>();
+      logger.<span class="fn">info</span>({ keyCount: fresh.size }, <span class="str">'JWKS refreshed'</span>);
+    } <span class="kw">catch</span> (err) {
+      <span class="cm">// JWKS endpoint down — serve stale rather than breaking auth</span>
+      <span class="kw">if</span> (<span class="kw">this</span>.staleFallback.size > <span class="num">0</span>) {
+        <span class="kw">this</span>.keys = <span class="kw">this</span>.staleFallback;
+        logger.<span class="fn">error</span>({ err }, <span class="str">'JWKS fetch failed — serving stale keys. ALERT!'</span>);
+      } <span class="kw">else</span> {
+        <span class="kw">throw</span> err; <span class="cm">// first-ever fetch failed — cannot validate anything</span>
+      }
+    } <span class="kw">finally</span> {
+      <span class="kw">this</span>.fetching = <span class="kw">false</span>;
+      <span class="kw">this</span>.waiters.<span class="fn">forEach</span>(r => <span class="fn">r</span>());
+      <span class="kw">this</span>.waiters = [];
+    }
+  }
+
+  <span class="kw">async</span> <span class="fn">getKey</span>(kid: <span class="ty">string</span>): <span class="kw">Promise</span>&lt;<span class="ty">string</span>&gt; {
+    <span class="cm">// Cold or expired cache: refresh first</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.keys.size === <span class="num">0</span> || Date.<span class="fn">now</span>() - <span class="kw">this</span>.fetchedAt > <span class="kw">this</span>.TTL_MS) {
+      <span class="kw">await this</span>.<span class="fn">refresh</span>();
+    }
+    <span class="cm">// kid found in cache — fast path</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.keys.<span class="fn">has</span>(kid)) <span class="kw">return</span> <span class="kw">this</span>.keys.<span class="fn">get</span>(kid)!;
+
+    <span class="cm">// kid NOT in cache — could be a new key after rotation</span>
+    <span class="cm">// Fetch once and retry. If still missing: the token is invalid.</span>
+    logger.<span class="fn">info</span>({ kid }, <span class="str">'kid not in cache — fetching JWKS (key rotation?)'</span>);
+    <span class="kw">await this</span>.<span class="fn">refresh</span>();
+    <span class="kw">const</span> <span class="var">pem</span> = <span class="kw">this</span>.keys.<span class="fn">get</span>(kid);
+    <span class="kw">if</span> (!pem) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">`Unknown kid: \${kid}`</span>); <span class="cm">// → 401</span>
+    <span class="kw">return</span> pem;
+  }
+}
+
+<span class="cm">// Gateway middleware using the cache</span>
+<span class="kw">const</span> <span class="var">jwksCache</span> = <span class="kw">new</span> <span class="ty">JWKSCache</span>(<span class="str">'https://auth.example.com/.well-known/jwks.json'</span>);
+
+<span class="kw">export async function</span> <span class="fn">jwtMiddleware</span>(req: Request, res: Response, next: NextFunction) {
+  <span class="kw">const</span> <span class="var">token</span> = req.headers.authorization?.<span class="fn">slice</span>(<span class="num">7</span>); <span class="cm">// strip "Bearer "</span>
+  <span class="kw">if</span> (!token) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: { code: <span class="str">'MISSING_TOKEN'</span> } });
+
+  <span class="kw">try</span> {
+    <span class="cm">// 1. Decode header without verifying (to get kid)</span>
+    <span class="kw">const</span> <span class="var">headerB64</span> = token.<span class="fn">split</span>(<span class="str">'.'</span>)[<span class="num">0</span>];
+    <span class="kw">const</span> <span class="var">header</span>   = <span class="fn">JSON.parse</span>(Buffer.<span class="fn">from</span>(headerB64, <span class="str">'base64url'</span>).<span class="fn">toString</span>());
+    <span class="kw">if</span> (!header.kid) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'No kid in JWT header'</span>);
+
+    <span class="cm">// 2. Get public key (cached, with rotation handling)</span>
+    <span class="kw">const</span> <span class="var">pem</span> = <span class="kw">await</span> jwksCache.<span class="fn">getKey</span>(header.kid);
+
+    <span class="cm">// 3. Verify signature + claims</span>
+    <span class="kw">const</span> <span class="var">payload</span> = <span class="fn">verifyJWT</span>(token, pem, {
+      algorithms: [<span class="str">'RS256'</span>],
+      issuer:     <span class="str">'https://auth.example.com'</span>,
+      audience:   <span class="str">'api.example.com'</span>,
+    });
+
+    <span class="cm">// 4. Strip token, inject identity headers downstream</span>
+    <span class="kw">delete</span> req.headers.authorization;
+    req.headers[<span class="str">'x-user-id'</span>]    = payload.sub;
+    req.headers[<span class="str">'x-user-role'</span>]  = payload.role;
+    req.headers[<span class="str">'x-tenant-id'</span>]  = payload.tenant_id;
+    req.headers[<span class="str">'x-token-exp'</span>]  = String(payload.exp); <span class="cm">// useful for audit logs</span>
+    <span class="fn">next</span>();
+  } <span class="kw">catch</span> (err: <span class="kw">any</span>) {
+    <span class="kw">const</span> <span class="var">code</span> = err.message.<span class="fn">includes</span>(<span class="str">'expired'</span>) ? <span class="str">'TOKEN_EXPIRED'</span>
+                : err.message.<span class="fn">includes</span>(<span class="str">'kid'</span>)     ? <span class="str">'INVALID_TOKEN'</span>
+                : <span class="str">'INVALID_TOKEN'</span>;
+    res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: { code, request_id: req.id } });
+  }
+}</pre>
+    </div>
+
+    <h3>Key rotation procedure</h3>
+    <p>The correct key rotation sequence — every step matters. Skipping step 2 will break users.</p>
+    <ol>
+      <li><strong>Generate the new key pair</strong> at your auth provider.</li>
+      <li><strong>Publish the new public key to JWKS</strong> — add it to the array alongside the old key. Do NOT remove the old key yet. Both keys are now in the JWKS.</li>
+      <li><strong>Wait for gateway JWKS caches to refresh</strong> — at least one full TTL (5 minutes). Every gateway instance now knows about the new key.</li>
+      <li><strong>Switch the auth provider to sign new tokens with the new key.</strong> Tokens issued from this point forward use the new key. Old tokens (still valid) use the old key. Both validate correctly because both keys are still in JWKS.</li>
+      <li><strong>Wait for all old tokens to expire.</strong> Your token TTL determines this — if access tokens expire in 15 minutes, wait 15 minutes.</li>
+      <li><strong>Remove the old key from JWKS.</strong> Only now is it safe — no valid tokens are signed with it anymore.</li>
+    </ol>
+
+    <div class="callout danger">
+      <div class="callout-icon">🔴</div>
+      <div class="callout-inner">
+        <strong>The rotation mistake that breaks prod</strong>
+        <p>The most common mistake: rotating the key and removing the old one simultaneously. All in-flight tokens (valid for another 14 minutes) immediately start failing. Users get 401. Every active session is broken. The fix is always step 2 + waiting — the overlap window is not optional.</p>
+      </div>
+    </div>
+
+    <div class="verify-block">
+      <div class="verify-block-title">Verify in production</div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">JWKS cache hit rate metric — should be >99.9%. Any miss indicates a rotation event or misconfiguration.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>kid_miss_count</code> metric — alert if >0 outside of known rotation windows.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">JWKS fetch latency P99 — should be <200ms. Spikes indicate auth service degradation.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Stale-serve alert — if your gateway serves stale JWKS, you need to know immediately. The auth service is down.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Both old and new keys in JWKS during rotation — verify with <code>curl https://auth.example.com/.well-known/jwks.json | jq '.keys | length'</code></span></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: KONG ── -->
+  <div class="deep-section">
+    <div class="section-num">Deep Dive 02</div>
+    <h2>Kong plugin phases &amp; <em>rate limiting internals</em></h2>
+    <p class="lead">Kong's plugin system has 7 execution phases. Most engineers only think about what a plugin does — not which phase it runs in, which determines what data it has access to and what it can modify. Getting phase order wrong means your auth runs after your rate limiter, your logs don't include user IDs, or your circuit breaker fires before you've set the correlation ID.</p>
+
+    <h3>The 7 plugin phases</h3>
+    <p>Every Kong plugin can implement one or more phases. They run in this order on every request/response cycle:</p>
+
+    <div class="phase-row">
+      <div class="phase-label">REQUEST</div>
+      <div class="phase-bar">
+        <div class="phase-chip warn">init_worker</div>
+        <div class="phase-chip active">rewrite</div>
+        <div class="phase-chip active">access</div>
+        <div class="phase-chip">header_filter</div>
+        <div class="phase-chip">body_filter</div>
+        <div class="phase-chip">log</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-label">RESPONSE</div>
+      <div class="phase-bar">
+        <div class="phase-chip active">header_filter</div>
+        <div class="phase-chip">body_filter</div>
+        <div class="phase-chip active">log</div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>init_worker:</strong> Runs once when the worker process starts. Used to initialise shared state, timers, background jobs. Not per-request.</li>
+      <li><strong>rewrite:</strong> Runs before routing. No upstream has been selected yet. Used to rewrite URLs, set variables, route based on headers before Kong decides which service to call.</li>
+      <li><strong>access:</strong> The main request phase. Upstream has been selected. This is where auth, rate limiting, and request transformation happen. Most plugins live here. Can terminate the request (return 401, 429, etc.) before it reaches the upstream.</li>
+      <li><strong>header_filter:</strong> Runs after the upstream responds. Can read and modify response headers. Cannot modify the body. Used to add <code>X-Request-Id</code> to responses, remove internal headers, add CORS headers.</li>
+      <li><strong>body_filter:</strong> Can read and modify the response body. Called potentially multiple times for streaming responses (once per chunk). Expensive — avoid unless necessary.</li>
+      <li><strong>log:</strong> Runs after the response is sent to the client. Cannot modify anything. Used for logging, metrics emission, audit trail writing. Has access to the full request/response including timing data.</li>
+    </ul>
+
+    <div class="callout insight">
+      <div class="callout-icon">💡</div>
+      <div class="callout-inner">
+        <strong>The phase ordering implication</strong>
+        <p>Auth must run in <code>access</code> phase before rate limiting — otherwise unauthenticated requests consume rate limit quota for legitimate users. Correlation ID generation must happen in <code>rewrite</code> or early <code>access</code> so all subsequent plugins (including <code>log</code>) can reference it. Response logging must happen in <code>log</code> phase — never <code>header_filter</code>, where the response hasn't been fully sent yet.</p>
+      </div>
+    </div>
+
+    <h3>Kong rate limiting: fixed window vs sliding window</h3>
+    <p>The built-in <code>rate-limiting</code> plugin uses a <strong>fixed window</strong> counter. It divides time into 1-minute (or 1-hour) buckets and counts requests per bucket. This has a known vulnerability: a client can make 100 requests at 11:59:59 and 100 more at 12:00:01 — 200 requests in 2 seconds, with both batches within their respective windows.</p>
+
+    <p>The <code>rate-limiting-advanced</code> plugin (Kong Enterprise or community port) uses a <strong>sliding window</strong> algorithm, which prevents this burst. It maintains a rolling window that always looks back exactly N seconds from now, regardless of clock boundaries.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Plugin</th><th>Algorithm</th><th>Redis data structure</th><th>Burst vulnerability</th><th>Available in</th></tr></thead>
+        <tbody>
+          <tr><td>rate-limiting</td><td>Fixed window</td><td>INCR + EXPIRE on time-bucket key</td><td>Yes — 2× burst at window boundary</td><td>OSS + Enterprise</td></tr>
+          <tr><td>rate-limiting-advanced</td><td>Sliding window</td><td>Sorted set (ZADD + ZREMRANGEBYSCORE)</td><td>No</td><td>Enterprise / community port</td></tr>
+          <tr><td>Custom Lua</td><td>Token bucket / leaky bucket</td><td>Hash + Lua script atomic</td><td>No (configurable burst)</td><td>Custom</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Rate limiting across Kong nodes: local vs Redis</h3>
+    <p>Kong typically runs as multiple instances (horizontal scaling). Each instance has its own memory. If you use the <code>local</code> strategy for rate limiting, each instance counts independently. A client with 4 connections (one per Kong instance) gets 4× the configured limit. You must use the <code>redis</code> strategy to share state across nodes.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">Kong rate-limiting-advanced — sliding window, Redis, consumer-level + service-level</span><span class="code-block-lang">YAML</span></div>
+      <pre><span class="cm"># Global rate limit: applies to all traffic through the gateway</span>
+plugins:
+  - name: rate-limiting-advanced
+    config:
+      limit:             [1000]        <span class="cm"># 1000 requests...</span>
+      window_size:       [60]          <span class="cm"># ...per 60 seconds (sliding window)</span>
+      window_type:       sliding       <span class="cm"># sliding (not fixed)</span>
+      identifier:        consumer      <span class="cm"># key by: consumer | ip | header</span>
+      sync_rate:         -1            <span class="cm"># -1 = sync every request (accurate but slower)</span>
+                                       <span class="cm"># 0.25 = sync every 250ms (faster, slight over-count)</span>
+      strategy:          redis         <span class="cm"># shared state across all Kong nodes</span>
+      redis:
+        host:            redis.internal
+        port:            6379
+        password:        ${REDIS_PASSWORD}
+        database:        0
+        timeout:         2000          <span class="cm"># 2s timeout — fail open if Redis is down</span>
+      hide_client_headers: false       <span class="cm"># expose X-RateLimit-* headers</span>
+      error_code:        429
+      error_message:     Rate limit exceeded. See Retry-After header.
+
+---
+<span class="cm"># Consumer-level override: premium plan gets 10x limit</span>
+<span class="cm"># Applied to a specific consumer, overrides the global plugin</span>
+plugins:
+  - name: rate-limiting-advanced
+    consumer: premium-api-key-consumer
+    config:
+      limit:       [10000]
+      window_size: [60]
+      window_type: sliding
+      strategy:    redis
+
+---
+<span class="cm"># Service-level: expensive endpoint gets its own lower limit</span>
+<span class="cm"># /v1/reports has a separate, stricter limit regardless of consumer plan</span>
+services:
+  - name: reports-service
+    plugins:
+      - name: rate-limiting-advanced
+        config:
+          limit:       [10]            <span class="cm"># only 10 report generations per minute</span>
+          window_size: [60]
+          window_type: sliding
+          identifier:  consumer
+          strategy:    redis</pre>
+    </div>
+
+    <h3>The Redis key structure Kong uses internally</h3>
+    <p>Understanding what Kong writes to Redis helps when debugging rate limit issues with <code>redis-cli</code>:</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">Kong rate limit Redis keys — inspect with redis-cli</span><span class="code-block-lang">BASH</span></div>
+      <pre><span class="cm"># Kong writes sorted sets for sliding window</span>
+<span class="cm"># Key pattern: kong_rla:{plugin_uuid}:{identifier_value}:{window_size}</span>
+
+redis-cli KEYS "kong_rla:*"
+<span class="cm"># → kong_rla:abc123:usr_456:60</span>
+<span class="cm">#   kong_rla:abc123:10.0.0.1:60</span>
+
+<span class="cm"># Count current requests in window (sorted set cardinality)</span>
+redis-cli ZCARD "kong_rla:abc123:usr_456:60"
+<span class="cm"># → 347   (347 requests in the current 60s window)</span>
+
+<span class="cm"># See timestamps of requests in window</span>
+redis-cli ZRANGE "kong_rla:abc123:usr_456:60" 0 -1 WITHSCORES | head -20
+<span class="cm"># Score = Unix timestamp in milliseconds of each request</span>
+
+<span class="cm"># Manually clear a consumer's rate limit (e.g. for support)</span>
+redis-cli DEL "kong_rla:abc123:usr_456:60"
+
+<span class="cm"># Check Redis memory impact</span>
+redis-cli MEMORY USAGE "kong_rla:abc123:usr_456:60"
+<span class="cm"># → 2048 bytes per consumer per window — very lightweight</span>
+
+<span class="cm"># What happens when Redis is down?</span>
+<span class="cm"># sync_rate: -1 → Kong fails CLOSED (allows traffic, logs error)</span>
+<span class="cm"># This is the right default — a Redis outage shouldn't break your API</span>
+<span class="cm"># Kong will log: "failed to get rate-limiting counter, allowing request"</span></pre>
+    </div>
+
+    <div class="failure-grid">
+      <div class="failure-item">
+        <div class="failure-label">Redis timeout causing 429 storms</div>
+        <div class="failure-desc">If Redis is slow and Kong's Redis timeout is too low, every rate limit check times out. Kong can be configured to fail open (allow) or fail closed (reject). Default is fail open — correct. If you set it to fail closed, a Redis blip takes down your entire API.</div>
+        <div class="failure-fix">→ Set redis.timeout: 2000ms. Never fail closed on Redis timeout.</div>
+      </div>
+      <div class="failure-item">
+        <div class="failure-label">sync_rate causing inaccurate limits at scale</div>
+        <div class="failure-desc">With sync_rate: 0.25, each Kong node flushes its local counter to Redis every 250ms. Between syncs, the node uses its local count. Under high traffic, you can overshoot the limit by (local requests per 250ms × number of nodes). At 10,000 req/s across 4 nodes, you could overshoot by ~625 requests per sync interval.</div>
+        <div class="failure-fix">→ Use sync_rate: -1 for payment/sensitive endpoints. Accept 0.25 for general API limits.</div>
+      </div>
+      <div class="failure-item">
+        <div class="failure-label">Consumer not identified — all traffic bucketed to IP</div>
+        <div class="failure-desc">If auth fails (or is skipped for a route) and identifier is set to consumer, Kong falls back to IP limiting. All unauthenticated traffic from a shared IP (corporate NAT, mobile carrier) hits a single bucket.</div>
+        <div class="failure-fix">→ Ensure auth plugin runs before rate limiting. Add explicit IP fallback limits for unauthenticated routes.</div>
+      </div>
+    </div>
+
+    <div class="verify-block">
+      <div class="verify-block-title">Verify Kong rate limiting in production</div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Every response has <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Reset</code> headers.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">429 responses include <code>Retry-After</code> header. Clients should wait, not immediately retry.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Redis key count scales linearly with active consumers — <code>redis-cli KEYS "kong_rla:*" | wc -l</code></span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Plugin order in Kong Admin API: <code>curl kong:8001/plugins?size=100 | jq '[.data[] | {name,priority}] | sort_by(.priority) | reverse'</code></span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Test boundary burst: send 100 requests at 11:59:55 and 100 at 12:00:05. With sliding window, second batch should be rate limited. With fixed window, it won't be.</span></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: COST-BASED RATE LIMITING ── -->
+  <div class="deep-section">
+    <div class="section-num">Deep Dive 03</div>
+    <h2>Cost-based rate limiting:<br><em>request units</em>, not request counts</h2>
+    <p class="lead">Counting requests treats a health check ping and a PDF report generation as identical. Stripe's API doesn't. Every API call costs "request units" — cheap endpoints cost 1, expensive endpoints cost 10 or 25. The customer's plan gives them a budget of units per minute, not a count of requests. This section covers how to implement it without adding per-request overhead.</p>
+
+    <h3>The problem with counting requests</h3>
+    <p>Consider three endpoints on the same API:</p>
+    <ul>
+      <li><code>GET /health</code> — 0ms, reads nothing, costs essentially zero</li>
+      <li><code>GET /orders/{id}</code> — 5ms, one DB read</li>
+      <li><code>POST /reports/generate</code> — 2,000ms, full table scan, PDF rendering, S3 upload</li>
+    </ul>
+    <p>A customer with a 1,000 requests/minute limit can call <code>GET /orders</code> 1,000 times and barely stress your infrastructure. Or they can call <code>POST /reports/generate</code> 1,000 times and bring your DB to its knees. Same count, completely different infrastructure impact. Request counting doesn't capture this.</p>
+
+    <h3>Designing the cost table</h3>
+    <p>Assign costs during API design, not retroactively. The cost should approximate actual infrastructure cost — CPU, DB queries, external service calls, memory. It doesn't need to be precise; it needs to create correct relative ordering.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">Cost table — config-driven, not hardcoded in handlers</span><span class="code-block-lang">TYPESCRIPT</span></div>
+      <pre><span class="cm">// costs.config.ts — owned by platform team, reviewed like code</span>
+<span class="kw">export const</span> <span class="var">ENDPOINT_COSTS</span>: Record&lt;<span class="ty">string</span>, <span class="ty">number</span>&gt; = {
+  <span class="cm">// Pattern: "METHOD:path-pattern" → cost in request units</span>
+
+  <span class="cm">// Reads — cheap</span>
+  <span class="str">'GET:/v1/orders/:id'</span>:           <span class="num">1</span>,
+  <span class="str">'GET:/v1/users/:id'</span>:            <span class="num">1</span>,
+  <span class="str">'GET:/v1/products'</span>:             <span class="num">1</span>,
+  <span class="str">'GET:/healthz'</span>:                  <span class="num">0</span>,  <span class="cm">// free — never counts against limit</span>
+
+  <span class="cm">// Writes — medium</span>
+  <span class="str">'POST:/v1/orders'</span>:              <span class="num">5</span>,   <span class="cm">// creates order + inventory check + event</span>
+  <span class="str">'PATCH:/v1/orders/:id'</span>:         <span class="num">3</span>,
+  <span class="str">'POST:/v1/payments/charge'</span>:    <span class="num">10</span>,  <span class="cm">// calls payment processor</span>
+
+  <span class="cm">// Expensive operations — high cost</span>
+  <span class="str">'POST:/v1/reports/generate'</span>:   <span class="num">25</span>,  <span class="cm">// full table scan + render + S3</span>
+  <span class="str">'POST:/v1/exports/csv'</span>:        <span class="num">20</span>,  <span class="cm">// large dataset export</span>
+  <span class="str">'POST:/v1/bulk/import'</span>:        <span class="num">15</span>,  <span class="cm">// per-row cost handled separately</span>
+
+  <span class="cm">// Search — varies; use a base cost + result-count multiplier</span>
+  <span class="str">'GET:/v1/search'</span>:               <span class="num">3</span>,
+
+  <span class="cm">// Default: unknown endpoints cost 1</span>
+  <span class="str">'DEFAULT'</span>:                       <span class="num">1</span>,
+};
+
+<span class="cm">// Per-plan budgets (request units per minute)</span>
+<span class="kw">export const</span> <span class="var">PLAN_BUDGETS</span>: Record&lt;<span class="ty">string</span>, <span class="ty">number</span>&gt; = {
+  free:       <span class="num">100</span>,   <span class="cm">// ~100 cheap reads, or 4 report generations</span>
+  starter:    <span class="num">1000</span>,
+  pro:        <span class="num">5000</span>,
+  enterprise: <span class="num">50000</span>,
+};
+
+<span class="kw">function</span> <span class="fn">getCost</span>(method: <span class="ty">string</span>, path: <span class="ty">string</span>): <span class="ty">number</span> {
+  <span class="cm">// Normalise path params: /v1/orders/123 → /v1/orders/:id</span>
+  <span class="kw">const</span> <span class="var">normPath</span> = path.<span class="fn">replace</span>(/\/[0-9a-f-]{8,}/g, <span class="str">'/:id'</span>);
+  <span class="kw">const</span> <span class="var">key</span> = <span class="str">`\${method}:\${normPath}`</span>;
+  <span class="kw">return</span> ENDPOINT_COSTS[key] ?? ENDPOINT_COSTS[<span class="str">'DEFAULT'</span>];
+}</pre>
+    </div>
+
+    <h3>The Redis Lua script: atomic cost deduction</h3>
+    <p>The key constraint: the check-then-deduct must be atomic. If two requests arrive simultaneously, both check the budget, both see "budget available," both proceed, and you've allowed 2× the cost. A Redis Lua script runs atomically — it's the only correct way to implement this.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-block-title">Cost-based rate limiter — atomic Lua, sliding window, per-plan budgets</span><span class="code-block-lang">TYPESCRIPT</span></div>
+      <pre><span class="cm">// Sliding window cost deductor — replaces simple count increment</span>
+<span class="kw">const</span> <span class="var">COST_LIMIT_SCRIPT</span> = <span class="str">`
+local key      = KEYS[1]           -- e.g. "rl:cost:usr_123"
+local cost     = tonumber(ARGV[1]) -- cost of this request (e.g. 25)
+local budget   = tonumber(ARGV[2]) -- plan budget per window (e.g. 5000)
+local window   = tonumber(ARGV[3]) -- window in seconds (e.g. 60)
+local now      = tonumber(ARGV[4]) -- current Unix ms timestamp
+local windowMs = window * 1000
+
+-- Remove entries older than the window
+redis.call('ZREMRANGEBYSCORE', key, 0, now - windowMs)
+
+-- Sum the cost scores of all entries in window
+local entries = redis.call('ZRANGEBYSCORE', key, now - windowMs, '+inf', 'WITHSCORES')
+local used = 0
+for i = 2, #entries, 2 do
+  used = used + tonumber(entries[i])
+end
+
+-- Check if this request would exceed budget
+if used + cost > budget then
+  return {0, used, budget}  -- denied: {allowed=0, used, budget}
+end
+
+-- Add this request's cost to the sorted set
+-- member = unique ID (now + random), score = cost
+redis.call('ZADD', key, cost, now .. math.random())
+redis.call('EXPIRE', key, window + 1)
+return {1, used + cost, budget}  -- allowed: {allowed=1, new_used, budget}
+`</span>;
+
+<span class="kw">export async function</span> <span class="fn">costRateLimitMiddleware</span>(
+  req: Request, res: Response, next: NextFunction
+) {
+  <span class="kw">const</span> <span class="var">userId</span>  = req.headers[<span class="str">'x-user-id'</span>] <span class="kw">as</span> <span class="ty">string</span>;
+  <span class="kw">const</span> <span class="var">plan</span>    = req.headers[<span class="str">'x-user-plan'</span>] <span class="kw">as</span> <span class="ty">string</span> || <span class="str">'free'</span>;
+  <span class="kw">const</span> <span class="var">cost</span>    = <span class="fn">getCost</span>(req.method, req.path);
+  <span class="kw">const</span> <span class="var">budget</span>  = PLAN_BUDGETS[plan] ?? PLAN_BUDGETS.free;
+
+  <span class="cm">// Free endpoints skip rate limiting entirely</span>
+  <span class="kw">if</span> (cost === <span class="num">0</span>) <span class="kw">return</span> <span class="fn">next</span>();
+
+  <span class="kw">const</span> [allowed, used, limit] = <span class="kw">await</span> redis.<span class="fn">eval</span>(
+    COST_LIMIT_SCRIPT,
+    <span class="num">1</span>,
+    <span class="str">`rl:cost:\${userId}`</span>,
+    cost, budget, <span class="num">60</span>, Date.<span class="fn">now</span>()
+  ) <span class="kw">as</span> [<span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>];
+
+  <span class="cm">// Always set headers — clients use these to self-throttle</span>
+  res.<span class="fn">set</span>({
+    <span class="str">'X-RateLimit-Limit'</span>:          String(limit),
+    <span class="str">'X-RateLimit-Remaining-Units'</span>: String(Math.<span class="fn">max</span>(<span class="num">0</span>, limit - used)),
+    <span class="str">'X-RateLimit-Cost'</span>:           String(cost),  <span class="cm">// tells client what this call cost</span>
+    <span class="str">'X-RateLimit-Reset'</span>:          String(Math.<span class="fn">floor</span>(Date.<span class="fn">now</span>()/<span class="num">1000</span>) + <span class="num">60</span>),
+  });
+
+  <span class="kw">if</span> (!allowed) {
+    <span class="kw">const</span> <span class="var">retryAfter</span> = <span class="num">60</span>; <span class="cm">// worst case: full window</span>
+    res.<span class="fn">set</span>(<span class="str">'Retry-After'</span>, String(retryAfter));
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">429</span>).<span class="fn">json</span>({
+      error: {
+        code:    <span class="str">'RATE_LIMITED'</span>,
+        message: <span class="str">`Request costs \${cost} units. Budget exhausted (\${used}/\${limit} used). Retry after \${retryAfter}s.`</span>,
+        details: { cost, used, limit, plan },
+        request_id: req.id,
+      }
+    });
+  }
+  <span class="fn">next</span>();
+}</pre>
+    </div>
+
+    <h3>Handling fanout: when one request triggers many downstream calls</h3>
+    <p>Some endpoints fan out to multiple services. A <code>POST /v1/dashboard/refresh</code> might call the Orders service, the Analytics service, and the Notification service. The cost at the gateway reflects the single inbound request, but the actual infrastructure cost is 3× that.</p>
+
+    <p>Two approaches:</p>
+    <ul>
+      <li><strong>Gateway-only cost:</strong> Assign a higher fixed cost to fanout endpoints (e.g. 15 instead of 1). Simple, but requires keeping the cost table updated as the implementation changes.</li>
+      <li><strong>Downstream cost reporting:</strong> Each downstream service reports its cost in a response header (<code>X-Request-Units-Consumed: 5</code>). The gateway aggregates and deducts from the budget after the response. More accurate but adds latency and requires downstream cooperation.</li>
+    </ul>
+    <p>In practice: start with gateway-only fixed costs. Move to downstream reporting for the 2-3 most expensive endpoints only when you have evidence the fixed costs are significantly inaccurate.</p>
+
+    <div class="callout warn">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-inner">
+        <strong>The per-row cost problem</strong>
+        <p>Bulk import endpoints (<code>POST /v1/bulk/import</code>) have variable cost depending on payload size. A 10-row import and a 10,000-row import have the same fixed cost in the table. The solution: check the payload size at the gateway and calculate cost dynamically. <code>cost = base_cost + Math.ceil(row_count / 100)</code>. Requires reading the request body at the gateway — adds latency. Apply only to bulk endpoints where the cost variance is significant.</p>
+      </div>
+    </div>
+
+    <div class="verify-block">
+      <div class="verify-block-title">Verify cost-based limiting in production</div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Every response includes <code>X-RateLimit-Cost</code> — clients can see what each call costs them.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Monitor cost distribution per endpoint — spikes in average cost indicate new expensive patterns.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Redis sorted set sum is O(N) — if any consumer has thousands of entries in the window, ZRANGEBYSCORE gets slow. Cap at realistic request volumes.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Test the exact Lua atomicity: send two <code>POST /reports/generate</code> (cost 25 each) simultaneously to a user with 30 units remaining. Only one should succeed.</span></div>
+      <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Cost table is in version control, reviewed on every change. A wrong cost assignment is a business-impacting bug.</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
