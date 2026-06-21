@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 8 Deep Dive: Covering Index SQL, VACUUM Internals, Autovacuum Tuning</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 12px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;font-size:13px;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{font-family:'JetBrains Mono',monospace;color:var(--purple);font-size:12px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day08" class="back-link">&#8592; Day 8: Database Indexing</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 8 · Database Indexing · Deep Dive</div>
+  <h1>Covering index SQL in depth,<br>VACUUM internals,<br>&amp; <em>autovacuum tuning</em></h1>
+  <p>The main lesson covered what covering indexes, bloat, and VACUUM are. This page covers the implementation: the full SQL for building and verifying covering indexes with real EXPLAIN output, how VACUUM works internally (what it actually does to heap pages and the visibility map), and the complete autovacuum tuning table for high-write production tables.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Covering index implementation</span><span class="deep-topic-sub">— INCLUDE columns, verification, visibility map, fill factor</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">VACUUM internals</span><span class="deep-topic-sub">— dead tuple cleanup, visibility map, FSM, freeze</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Autovacuum tuning — the full table</span><span class="deep-topic-sub">— every parameter, when to change it, the cascading failure trap</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: COVERING INDEX -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Covering index implementation:<br><em>from 0 heap fetches to verified</em></h2>
+  <p class="lead">A covering index is worth nothing until you've verified it with EXPLAIN ANALYZE and confirmed "Heap Fetches: 0". Here's the complete workflow — from designing the index to confirming it's actually working in production.</p>
+
+  <h3>Step 1: Identify the query and what it needs</h3>
+  <p>Start with a specific query. Not "queries on the orders table" — one specific query with its exact SELECT columns, WHERE conditions, and ORDER BY. The covering index is designed for this query, not generically.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Designing a covering index — step by step with verification</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- TARGET QUERY: mobile orders list, called ~500 times/second</span>
+SELECT id, status, total_amount_paise, created_at, payment_method
+FROM orders
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 20;
+
+<span class="cm">-- Step 1: Run EXPLAIN before any index changes</span>
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT id, status, total_amount_paise, created_at, payment_method
+FROM orders WHERE user_id = 'usr_123'
+ORDER BY created_at DESC LIMIT 20;
+
+<span class="cm">-- Likely output (no index):</span>
+<span class="cm">-- Seq Scan on orders (cost=0..485000 rows=20 width=60)</span>
+<span class="cm">--   Filter: (user_id = 'usr_123')</span>
+<span class="cm">--   Rows Removed by Filter: 9999980</span>
+<span class="cm">-- Planning Time: 0.2ms / Execution Time: 4200ms ← full table scan</span>
+
+<span class="cm">-- Step 2: Create the index. CONCURRENTLY = no table lock.</span>
+<span class="cm">-- Key columns: user_id (equality), created_at (order + filter)</span>
+<span class="cm">-- INCLUDE columns: everything else the query needs</span>
+CREATE INDEX CONCURRENTLY idx_orders_user_covering
+ON orders (user_id, created_at DESC)
+INCLUDE (id, status, total_amount_paise, payment_method);
+<span class="cm">-- This takes: seconds to minutes depending on table size</span>
+<span class="cm">-- Monitor progress:</span>
+<span class="cm">-- SELECT phase, blocks_done, blocks_total FROM pg_stat_progress_create_index;</span>
+
+<span class="cm">-- Step 3: Verify the plan changed to Index Only Scan</span>
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT id, status, total_amount_paise, created_at, payment_method
+FROM orders WHERE user_id = 'usr_123'
+ORDER BY created_at DESC LIMIT 20;
+
+<span class="cm">-- Expected output:</span>
+<span class="cm">-- Index Only Scan Backward using idx_orders_user_covering on orders</span>
+<span class="cm">--   (cost=0.4..1.2 rows=20 width=60)</span>
+<span class="cm">--   (actual time=0.08..0.12 rows=20 loops=1)</span>
+<span class="cm">--   Index Cond: (user_id = 'usr_123')</span>
+<span class="cm">--   Heap Fetches: 0       ← THE NUMBER WE WANT</span>
+<span class="cm">--   Buffers: shared hit=4</span>
+<span class="cm">-- Execution Time: 0.18ms  ← from 4200ms to 0.18ms</span>
+
+<span class="cm">-- Step 4: If Heap Fetches is NOT 0, run VACUUM first</span>
+<span class="cm">-- Heap Fetches > 0 means the visibility map isn't populated</span>
+<span class="cm">-- VACUUM populates the visibility map so index-only scans can confirm</span>
+<span class="cm">-- row visibility without touching the heap:</span>
+VACUUM orders;  <span class="cm">-- or wait for autovacuum to run</span>
+<span class="cm">-- Then re-run EXPLAIN — Heap Fetches should drop to 0</span>
+
+<span class="cm">-- Step 5: Size check — covering index trades size for speed</span>
+SELECT
+  indexrelname,
+  pg_size_pretty(pg_relation_size(indexrelid)) AS index_size
+FROM pg_stat_user_indexes
+WHERE relname = 'orders'
+ORDER BY pg_relation_size(indexrelid) DESC;
+<span class="cm">-- Covering indexes are larger than key-only indexes</span>
+<span class="cm">-- The INCLUDE columns add data to each leaf page</span>
+<span class="cm">-- Acceptable trade: larger index, faster queries, no heap I/O</span></pre>
+  </div>
+
+  <h3>fill_factor: leaving room for updates</h3>
+  <p>By default, PostgreSQL fills index pages to 100% during bulk loads. When rows are updated and new index entries are needed, there's no room — PostgreSQL must allocate a new page. This causes index fragmentation and bloat over time for high-update tables.</p>
+  <p>Setting <code>fillfactor=70</code> during index creation leaves 30% of each page empty, reserving it for future insertions. The result: fewer page splits, less fragmentation, better long-term performance on high-write tables. The downside: the initial index is 30% larger. Worth it for indexes on high-update columns.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">fill_factor and other index storage parameters</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Default fillfactor=90 (leaves 10% for updates)</span>
+<span class="cm">-- For high-update tables, reduce to 70-80%</span>
+CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status, created_at DESC)
+WITH (fillfactor = 70);
+
+<span class="cm">-- Check current fillfactor of an existing index</span>
+SELECT relname, reloptions
+FROM pg_class
+WHERE relname = 'idx_orders_status';
+
+<span class="cm">-- Change fillfactor of existing index (requires REINDEX)</span>
+ALTER INDEX idx_orders_status SET (fillfactor = 70);
+REINDEX INDEX CONCURRENTLY idx_orders_status;
+
+<span class="cm">-- For append-only tables (logs, events, immutable data):</span>
+<span class="cm">-- fillfactor=100 is fine — no updates means no fragmentation</span>
+CREATE INDEX ON events (created_at DESC)
+WITH (fillfactor = 100);</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify your covering index is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">EXPLAIN shows "Index Only Scan" not "Index Scan" — the heap is not being touched.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">"Heap Fetches: 0" in the EXPLAIN output — if non-zero, run <code>VACUUM tablename</code> and recheck.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">All SELECT columns are either in the index key or the INCLUDE clause — missing one forces heap access.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No invalid index exists after CONCURRENTLY build: <code>SELECT indexrelname FROM pg_stat_user_indexes JOIN pg_index USING (indexrelid) WHERE NOT indisvalid</code></span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: VACUUM INTERNALS -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>VACUUM internals:<br><em>what actually happens when it runs</em></h2>
+  <p class="lead">VACUUM is one of the most important background processes in PostgreSQL, but most engineers think of it as "the thing that cleans up dead rows." Understanding what it actually does — which data structures it touches, in which order, and what each step enables — explains why it matters beyond just freeing disk space.</p>
+
+  <h3>What VACUUM does, in order</h3>
+  <ol>
+    <li><strong>Scan heap pages for dead tuples.</strong> VACUUM reads through heap pages and identifies tuples whose xmax (the transaction ID that deleted them) is old enough to be visible to all current transactions. These are safe to reclaim.</li>
+    <li><strong>Remove dead index entries.</strong> For each dead heap tuple, VACUUM finds and removes the corresponding entries in every index on the table. This is why VACUUM must touch all indexes — dead index entries pointing to dead heap tuples cause incorrect results if left in place.</li>
+    <li><strong>Mark dead heap space as reusable.</strong> Dead tuples aren't immediately overwritten — their space is marked as free in the Free Space Map (FSM). Future INSERTs can reuse this space without extending the table file.</li>
+    <li><strong>Update the Visibility Map.</strong> For heap pages where all tuples are visible to all transactions, VACUUM sets a bit in the Visibility Map. This is what enables Index Only Scans — when the visibility map bit is set for a page, a query using an index-only scan doesn't need to check the heap to confirm row visibility.</li>
+    <li><strong>Update statistics (only ANALYZE does this).</strong> VACUUM alone does not update the planner statistics. Run <code>VACUUM ANALYZE</code> or <code>ANALYZE</code> separately to update both.</li>
+    <li><strong>Freeze old transaction IDs (VACUUM FREEZE).</strong> PostgreSQL uses 32-bit transaction IDs, which wrap around after ~2 billion transactions. VACUUM FREEZE marks old tuples as "frozen" — permanently visible to all future transactions — preventing transaction ID wraparound. If this doesn't happen, PostgreSQL will refuse writes to protect data integrity (the "transaction ID wraparound" catastrophe).</li>
+  </ol>
+
+  <h3>VACUUM vs VACUUM FULL</h3>
+  <p><code>VACUUM</code> (regular): marks dead space as reusable but doesn't return it to the OS. The table file stays the same size on disk. Fast, non-blocking (allows concurrent reads and writes).</p>
+  <p><code>VACUUM FULL</code>: rewrites the entire table to a new file, reclaiming all dead space and returning it to the OS. The table file shrinks. Slow, requires an exclusive lock on the table — blocks all reads and writes for the duration. Only use VACUUM FULL when you've deleted a large fraction of a table and need to reclaim disk space. For normal maintenance, regular VACUUM is correct.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">VACUUM commands and monitoring in production</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Standard VACUUM (non-blocking)</span>
+VACUUM orders;
+
+<span class="cm">-- VACUUM + update statistics in one pass</span>
+VACUUM ANALYZE orders;
+
+<span class="cm">-- VACUUM FULL: blocks all reads and writes. Use rarely.</span>
+<span class="cm">-- VACUUM FULL orders;  ← don't run on live production without a maintenance window</span>
+
+<span class="cm">-- Monitor an in-progress VACUUM</span>
+SELECT
+  schemaname,
+  relname,
+  phase,
+  heap_blks_scanned,
+  heap_blks_total,
+  ROUND(heap_blks_scanned::numeric / NULLIF(heap_blks_total,0) * 100, 1) AS pct_done,
+  dead_tuple_count,
+  index_vacuum_count
+FROM pg_stat_progress_vacuum;
+
+<span class="cm">-- Check visibility map coverage (higher = better index-only scan support)</span>
+SELECT
+  relname,
+  n_live_tup,
+  n_dead_tup,
+  ROUND(n_dead_tup::numeric / NULLIF(n_live_tup,0) * 100, 1) AS dead_pct,
+  last_vacuum,
+  last_autovacuum,
+  last_analyze,
+  last_autoanalyze
+FROM pg_stat_user_tables
+WHERE relname = 'orders';
+
+<span class="cm">-- Check transaction ID age (alert if approaching 1 billion)</span>
+SELECT
+  datname,
+  age(datfrozenxid) AS xid_age,
+  current_setting('autovacuum_freeze_max_age')::int AS freeze_max
+FROM pg_database
+ORDER BY age(datfrozenxid) DESC;
+<span class="cm">-- Alert if xid_age > 1.5 billion — approaching wraparound danger zone</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3: AUTOVACUUM TUNING -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Autovacuum tuning:<br><em>the complete parameter table</em></h2>
+  <p class="lead">Autovacuum runs VACUUM and ANALYZE automatically in the background. Its default settings were designed for moderate workloads. High-write production tables routinely need per-table tuning — the defaults let bloat accumulate faster than autovacuum can clean it.</p>
+
+  <h3>How autovacuum decides when to run</h3>
+  <p>Autovacuum triggers a VACUUM on a table when dead tuples exceed: <code>autovacuum_vacuum_threshold + (autovacuum_vacuum_scale_factor × n_live_tup)</code></p>
+  <p>With defaults: <code>50 + (0.20 × n_live_tup)</code>. For a 10M row table, autovacuum waits until 2,000,050 dead tuples accumulate before running. That's 20% of your live rows sitting as dead bloat before any cleanup. For a table with 100 UPDATE/s, that's 5.5 hours of accumulation.</p>
+  <p>ANALYZE triggers when: <code>autovacuum_analyze_threshold + (autovacuum_analyze_scale_factor × n_live_tup)</code>. Default: <code>50 + (0.10 × n_live_tup)</code>. For 10M rows: wait until 1M row changes. That's the statistics gap that caused our Day 8 incident.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Default</th><th>For high-write tables</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>autovacuum_vacuum_scale_factor</td><td>0.20</td><td>0.01</td><td>Trigger vacuum after 1% dead rows (not 20%). Critical for large tables.</td></tr>
+        <tr><td>autovacuum_vacuum_threshold</td><td>50</td><td>100</td><td>Minimum dead rows before vacuum. Increase slightly to avoid vacuuming tiny tables constantly.</td></tr>
+        <tr><td>autovacuum_analyze_scale_factor</td><td>0.10</td><td>0.005</td><td>Update statistics after 0.5% rows change. Keeps planner estimates accurate.</td></tr>
+        <tr><td>autovacuum_analyze_threshold</td><td>50</td><td>100</td><td>Minimum changed rows before analyze.</td></tr>
+        <tr><td>autovacuum_vacuum_cost_delay</td><td>2ms</td><td>2ms</td><td>Throttle between vacuum work units. Lower = faster vacuum, more I/O impact.</td></tr>
+        <tr><td>autovacuum_vacuum_cost_limit</td><td>200</td><td>400-800</td><td>Work per cost delay cycle. Higher = vacuum completes faster. Increase if vacuum can't keep up.</td></tr>
+        <tr><td>autovacuum_max_workers</td><td>3</td><td>5-8</td><td>Parallel vacuum workers. Increase if multiple tables need vacuuming simultaneously.</td></tr>
+        <tr><td>autovacuum_freeze_max_age</td><td>200M</td><td>150M</td><td>Force vacuum before this many transactions. Lower triggers aggressive freeze earlier.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Per-table autovacuum tuning — production configuration</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- High-write table (orders, events, logs): aggressive autovacuum</span>
+ALTER TABLE orders SET (
+  autovacuum_vacuum_scale_factor    = 0.01,   <span class="cm">-- vacuum when 1% dead (10K rows on 1M table)</span>
+  autovacuum_vacuum_threshold       = 100,
+  autovacuum_analyze_scale_factor   = 0.005,  <span class="cm">-- analyze when 0.5% changed</span>
+  autovacuum_analyze_threshold      = 100,
+  autovacuum_vacuum_cost_delay      = 2,      <span class="cm">-- default (don't throttle aggressively)</span>
+  autovacuum_vacuum_cost_limit      = 400     <span class="cm">-- 2× default = faster vacuuming</span>
+);
+
+<span class="cm">-- Read-heavy, rarely updated table (product catalog, users): relaxed</span>
+ALTER TABLE products SET (
+  autovacuum_vacuum_scale_factor  = 0.10,   <span class="cm">-- default is fine</span>
+  autovacuum_analyze_scale_factor = 0.05
+);
+
+<span class="cm">-- Append-only table (audit logs, immutable events): almost never needs vacuum</span>
+ALTER TABLE audit_logs SET (
+  autovacuum_vacuum_scale_factor = 0.5,    <span class="cm">-- only vacuum when 50% dead (near-never)</span>
+  autovacuum_analyze_scale_factor = 0.05  <span class="cm">-- but analyze regularly for new data distribution</span>
+);
+
+<span class="cm">-- View current per-table settings</span>
+SELECT relname, reloptions
+FROM pg_class
+WHERE reloptions IS NOT NULL
+  AND relkind = 'r'
+ORDER BY relname;
+
+<span class="cm">-- Monitor whether autovacuum is keeping up</span>
+SELECT
+  relname,
+  n_dead_tup,
+  n_live_tup,
+  ROUND(n_dead_tup::numeric / NULLIF(n_live_tup,0) * 100, 2) AS dead_pct,
+  last_autovacuum,
+  last_autoanalyze,
+  autovacuum_count
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 1000
+ORDER BY dead_pct DESC;
+<span class="cm">-- If dead_pct keeps climbing despite autovacuum running:</span>
+<span class="cm">-- 1. Long-running transactions blocking vacuum (check pg_stat_activity)</span>
+<span class="cm">-- 2. autovacuum_cost_limit too low (vacuum too throttled)</span>
+<span class="cm">-- 3. autovacuum_max_workers exhausted (too many tables needing vacuum simultaneously)</span></pre>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>The long transaction bloat trap</strong>
+      <p>A transaction that stays open for a long time (common in batch jobs, manual psql sessions left open, or ORM connection pools with <code>BEGIN</code> but no <code>COMMIT</code>) prevents VACUUM from cleaning up any rows modified after that transaction started. Even with perfect autovacuum settings, bloat will accumulate unboundedly if there are long-running transactions. Monitor <code>SELECT pid, now() - xact_start AS duration, query FROM pg_stat_activity WHERE xact_start IS NOT NULL ORDER BY duration DESC</code> — kill anything open for more than your acceptable bloat window.</p>
+    </div>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify autovacuum is working correctly</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Dead tuple percentage stays below 5% on high-write tables: <code>SELECT relname, ROUND(n_dead_tup::numeric/NULLIF(n_live_tup,0)*100,1) FROM pg_stat_user_tables ORDER BY 2 DESC LIMIT 10</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Autovacuum ran recently on all high-write tables: <code>last_autovacuum</code> should be within last 30 minutes for tables with 100+ updates/second.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No long-running transactions blocking vacuum: <code>SELECT pid, now()-xact_start AS age FROM pg_stat_activity WHERE xact_start &lt; now()-interval '10 minutes'</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Transaction ID age is safe: <code>SELECT datname, age(datfrozenxid) FROM pg_database ORDER BY 2 DESC</code> — alert if age exceeds 1.5 billion.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Statistics freshness: <code>last_autoanalyze</code> within last 2 hours on tables that receive bulk imports or have rapidly changing data distributions.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
