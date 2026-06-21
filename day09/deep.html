@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 9 Deep Dive: SELECT FOR UPDATE, Advisory Locks, Savepoints</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 12px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;font-size:13px;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{font-family:'JetBrains Mono',monospace;color:var(--purple);font-size:12px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day09" class="back-link">&#8592; Day 9: Transactions &amp; ACID</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 9 · Transactions &amp; ACID · Deep Dive</div>
+  <h1>SELECT FOR UPDATE variants,<br>advisory locks,<br>&amp; <em>savepoints</em></h1>
+  <p>The main lesson covered how isolation levels work and when each is needed. This page covers implementation: every variant of SELECT FOR UPDATE and what each one means, how advisory locks enable application-level coordination that row locks can't do, and savepoints for partial rollback within a transaction.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">SELECT FOR UPDATE / SHARE / SKIP LOCKED</span><span class="deep-topic-sub">— full syntax, when to use each, the queue pattern</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Advisory locks</span><span class="deep-topic-sub">— session vs transaction, pg_try_advisory_lock, distributed mutex</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Savepoints &amp; partial rollback</span><span class="deep-topic-sub">— SAVEPOINT, ROLLBACK TO, nested transaction patterns</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>SELECT FOR UPDATE variants:<br><em>the full syntax reference</em></h2>
+  <p class="lead">SELECT FOR UPDATE is not a single feature — it has four variations that each lock rows differently. Using the wrong one can cause unnecessary blocking or miss the protection you need.</p>
+
+  <h3>FOR UPDATE</h3>
+  <p>Acquires an exclusive row-level lock on every row returned by the SELECT. Other transactions that try to UPDATE, DELETE, or SELECT FOR UPDATE the same rows will block until your transaction commits or rolls back.</p>
+  <p><strong>Use when:</strong> You intend to update the rows you read, and you need to prevent any other transaction from modifying them between your read and your write. The classic read-then-update pattern.</p>
+
+  <h3>FOR SHARE</h3>
+  <p>Acquires a shared row-level lock. Multiple transactions can hold FOR SHARE locks on the same row simultaneously. But a transaction trying to UPDATE or SELECT FOR UPDATE on those rows will block.</p>
+  <p><strong>Use when:</strong> You're reading data that another transaction must not modify while you're using it, but you don't intend to modify it yourself. Example: reading a parent row to validate a foreign key before inserting a child row.</p>
+
+  <h3>FOR NO KEY UPDATE</h3>
+  <p>Weaker than FOR UPDATE — it doesn't block transactions that only need a FOR SHARE lock. Specifically allows other transactions to insert rows that reference this row as a foreign key, while still blocking UPDATE on the row's key columns.</p>
+  <p><strong>Use when:</strong> You're updating non-key columns and don't want to block FK-referencing inserts. Useful in tables with high insert rates of child rows.</p>
+
+  <h3>FOR KEY SHARE</h3>
+  <p>Weakest lock — only blocks FOR UPDATE. Allows FOR SHARE and FOR NO KEY UPDATE concurrently. Automatically used by foreign key checks.</p>
+
+  <h3>SKIP LOCKED — the job queue primitive</h3>
+  <p><code>SELECT ... FOR UPDATE SKIP LOCKED</code> attempts to lock each returned row. Any row already locked by another transaction is silently skipped rather than causing a wait. The query returns only the rows it successfully locked.</p>
+  <p>This is exactly what a job queue needs: multiple workers can each call the same SELECT and each get a different row without blocking each other. Without SKIP LOCKED, the second worker would block waiting for the first worker to release its lock.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete SELECT FOR UPDATE reference — with real examples</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- FOR UPDATE: exclusive row lock. Block all others.</span>
+SELECT balance, version
+FROM wallets
+WHERE user_id = $1
+FOR UPDATE;
+<span class="cm">-- Use for: balance updates, inventory decrement, seat booking</span>
+<span class="cm">-- Other transactions: blocked on any attempt to lock/update these rows</span>
+
+<span class="cm">-- FOR SHARE: shared read lock. Allow other reads, block writes.</span>
+SELECT id, name FROM users WHERE id = $1
+FOR SHARE;
+<span class="cm">-- Use for: FK validation, reading a parent before inserting child</span>
+<span class="cm">-- Other transactions: can also SELECT FOR SHARE; blocked on UPDATE/FOR UPDATE</span>
+
+<span class="cm">-- NOWAIT: fail immediately instead of waiting if lock can't be acquired</span>
+SELECT balance FROM wallets WHERE user_id = $1
+FOR UPDATE NOWAIT;
+<span class="cm">-- If row is already locked: ERROR: could not obtain lock on row in relation "wallets"</span>
+<span class="cm">-- Use when: you want to handle lock contention in app code rather than queuing</span>
+
+<span class="cm">-- SKIP LOCKED: skip already-locked rows, return only lockable ones</span>
+<span class="cm">-- The job queue pattern:</span>
+SELECT id, payload, attempts
+FROM job_queue
+WHERE status = 'pending'
+  AND next_retry_at <= now()
+ORDER BY priority DESC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED;
+<span class="cm">-- Returns: the highest-priority pending job that no other worker has locked</span>
+<span class="cm">-- Multiple workers run this simultaneously — each gets a different job</span>
+<span class="cm">-- Zero blocking between workers. High throughput job processing.</span>
+
+<span class="cm">-- Complete job queue worker loop</span>
+<span class="kw">async function</span> <span class="fn">processNextJob</span>() {
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'BEGIN'</span>);
+  <span class="kw">const</span> { rows } = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">`
+    SELECT id, payload FROM job_queue
+    WHERE status = 'pending' AND next_retry_at <= now()
+    ORDER BY priority DESC, created_at
+    LIMIT 1 FOR UPDATE SKIP LOCKED
+  `</span>);
+
+  <span class="kw">if</span> (rows.length === 0) {
+    <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'ROLLBACK'</span>);
+    <span class="kw">return null</span>; <span class="cm">// no available jobs</span>
+  }
+
+  <span class="kw">const</span> job = rows[0];
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'UPDATE job_queue SET status=$1, locked_by=$2 WHERE id=$3'</span>,
+    [<span class="str">'processing'</span>, workerId, job.id]);
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'COMMIT'</span>); <span class="cm">// releases FOR UPDATE lock — other workers can now see job as 'processing'</span>
+
+  <span class="kw">try</span> {
+    <span class="kw">await</span> <span class="fn">executeJob</span>(job.payload);
+    <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'UPDATE job_queue SET status=$1 WHERE id=$2'</span>, [<span class="str">'done'</span>, job.id]);
+  } <span class="kw">catch</span> (err) {
+    <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'UPDATE job_queue SET status=$1, attempts=attempts+1, next_retry_at=$2 WHERE id=$3'</span>,
+      [<span class="str">'pending'</span>, <span class="kw">new</span> Date(Date.<span class="fn">now</span>() + <span class="num">30000</span>), job.id]);
+  }
+}</pre>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mode</th><th>Blocks</th><th>Allows</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr><td>FOR UPDATE</td><td>FOR UPDATE, FOR SHARE, UPDATE, DELETE</td><td>Regular SELECT</td><td>Read-then-write, exclusive resource claim</td></tr>
+        <tr><td>FOR NO KEY UPDATE</td><td>FOR UPDATE, FOR NO KEY UPDATE, UPDATE(key cols)</td><td>FOR SHARE, FOR KEY SHARE, FK inserts</td><td>Update non-key columns without blocking FK inserts</td></tr>
+        <tr><td>FOR SHARE</td><td>FOR UPDATE, FOR NO KEY UPDATE, UPDATE, DELETE</td><td>Other FOR SHARE, FOR KEY SHARE, SELECT</td><td>Read parent row, block concurrent updates</td></tr>
+        <tr><td>FOR KEY SHARE</td><td>FOR UPDATE only</td><td>Everything else</td><td>FK checks (used automatically by PostgreSQL)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Advisory locks:<br><em>application-level distributed mutex</em></h2>
+  <p class="lead">Advisory locks are arbitrary application-defined locks that PostgreSQL manages but doesn't tie to any specific table row or schema object. They're purely for application coordination — a way for your application code to say "I'm doing X, nobody else should do X at the same time." They don't protect data directly; they coordinate behaviour.</p>
+
+  <h3>When row locks aren't enough</h3>
+  <p>Row locks protect specific rows. But some coordination requirements don't map to specific rows:</p>
+  <ul>
+    <li>"Only one cron job should run the nightly reconciliation at a time"</li>
+    <li>"Only one process should be generating the daily report"</li>
+    <li>"Only one worker should be processing webhooks for merchant_id=123"</li>
+    <li>"Prevent two deployments from running simultaneously"</li>
+  </ul>
+  <p>For these cases, you need a named mutex — advisory locks provide exactly this, using your existing PostgreSQL connection without any additional infrastructure.</p>
+
+  <h3>Session vs transaction advisory locks</h3>
+  <p><strong>Session-level:</strong> Held until explicitly released or the session disconnects. Independent of transaction state — not released by ROLLBACK or COMMIT. Use for long-running processes where the lock should outlast individual transactions.</p>
+  <p><strong>Transaction-level:</strong> Automatically released when the transaction commits or rolls back. Use for per-request coordination where the lock should live exactly as long as the transaction.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Advisory locks — session level, transaction level, and try variants</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Session-level advisory lock (held until released or disconnect)</span>
+<span class="cm">-- Lock key: any int8 (or two int4) that you define</span>
+SELECT pg_advisory_lock(12345);         <span class="cm">-- blocks if already held</span>
+SELECT pg_advisory_lock(12345, 67890);  <span class="cm">-- two-int4 variant (more keyspace)</span>
+
+<span class="cm">-- Try to acquire: returns true if got it, false if already held</span>
+SELECT pg_try_advisory_lock(12345);
+<span class="cm">-- Non-blocking. Use when you want to skip if someone else has it.</span>
+
+<span class="cm">-- Release session lock</span>
+SELECT pg_advisory_unlock(12345);
+SELECT pg_advisory_unlock_all(); <span class="cm">-- release all session locks held by this connection</span>
+
+<span class="cm">-- Transaction-level (released automatically on COMMIT/ROLLBACK)</span>
+BEGIN;
+  SELECT pg_advisory_xact_lock(12345);
+  <span class="cm">-- ... do work ...</span>
+COMMIT; <span class="cm">-- lock automatically released here</span>
+
+<span class="cm">-- Pattern: distributed cron job mutex (Node.js)</span>
+<span class="kw">async function</span> <span class="fn">runNightlyReconciliation</span>() {
+  <span class="kw">const</span> <span class="var">LOCK_KEY</span> = <span class="num">9876543210</span>; <span class="cm">// arbitrary app-defined int64</span>
+  <span class="kw">const</span> { rows } = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT pg_try_advisory_lock($1)'</span>, [LOCK_KEY]);
+  <span class="kw">const</span> <span class="var">gotLock</span> = rows[0].pg_try_advisory_lock;
+
+  <span class="kw">if</span> (!gotLock) {
+    logger.<span class="fn">info</span>(<span class="str">'Reconciliation already running on another instance — skipping'</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">try</span> {
+    <span class="kw">await</span> <span class="fn">runReconciliation</span>(); <span class="cm">// only one instance runs this</span>
+  } <span class="kw">finally</span> {
+    <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT pg_advisory_unlock($1)'</span>, [LOCK_KEY]);
+  }
+}
+
+<span class="cm">-- Pattern: per-merchant lock (prevent concurrent webhook processing)</span>
+<span class="kw">async function</span> <span class="fn">processWebhook</span>(merchantId: <span class="ty">number</span>, event: <span class="ty">WebhookEvent</span>) {
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'BEGIN'</span>);
+  <span class="cm">// Transaction-level: released on commit/rollback, even if we forget to unlock</span>
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT pg_advisory_xact_lock($1)'</span>, [merchantId]);
+  <span class="cm">// All webhook processing for this merchant is now serialized</span>
+  <span class="kw">await</span> <span class="fn">applyWebhookEvent</span>(merchantId, event);
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'COMMIT'</span>);
+}
+
+<span class="cm">-- View currently held advisory locks</span>
+SELECT pid, granted, classid, objid, objsubid, mode
+FROM pg_locks
+WHERE locktype = 'advisory'
+ORDER BY pid;</pre>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Session advisory locks survive transaction rollback</strong>
+      <p>If you acquire a session-level advisory lock and your transaction rolls back, the lock is NOT released. You must call <code>pg_advisory_unlock()</code> explicitly in a finally block. This is different from row locks, which are always released on transaction end. Forgetting to release session locks causes them to stay until the database connection closes — which with connection pooling might be never, blocking all other instances indefinitely.</p>
+    </div>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify advisory lock usage</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Always use <code>try/finally</code> with session-level advisory locks — the unlock must happen even if the operation throws.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Prefer <code>pg_advisory_xact_lock</code> over session locks when the lock should live exactly as long as the transaction — automatic release prevents leaks.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Monitor stuck advisory locks: <code>SELECT pid, objid, now()-query_start AS age FROM pg_locks JOIN pg_stat_activity USING (pid) WHERE locktype='advisory'</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Use <code>pg_try_advisory_lock</code> for "skip if busy" semantics (cron jobs), <code>pg_advisory_lock</code> for "wait until available" (per-resource serialization).</span></div>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Savepoints &amp; partial rollback:<br><em>rollback within a transaction</em></h2>
+  <p class="lead">A savepoint creates a named rollback point within an open transaction. If a subsequent operation fails, you can roll back to the savepoint — undoing only the work since that point — without aborting the entire transaction. This enables "try something, if it fails keep going" patterns within a single database transaction.</p>
+
+  <h3>The problem savepoints solve</h3>
+  <p>Without savepoints: if any operation in a transaction fails, the entire transaction is aborted. You can't selectively undo part of it. For workflows that need to "try to apply each item in a batch, skip failures, commit the successes," you'd need multiple separate transactions — each with its own overhead and commit cost.</p>
+  <p>With savepoints: you can create a checkpoint before a risky operation, attempt it, and if it fails roll back to the checkpoint while keeping the rest of the transaction intact.</p>
+
+  <h3>Savepoints in practice: batch processing with partial failure</h3>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Savepoints — batch import with per-item failure handling</span><span class="code-block-lang">SQL + TYPESCRIPT</span></div>
+    <pre><span class="cm">-- SQL syntax</span>
+SAVEPOINT sp1;                  <span class="cm">-- create savepoint named "sp1"</span>
+ROLLBACK TO SAVEPOINT sp1;      <span class="cm">-- undo everything since sp1, keep sp1 in place</span>
+RELEASE SAVEPOINT sp1;          <span class="cm">-- remove savepoint (optional, frees resources)</span>
+
+<span class="cm">-- Pattern: batch import, skip invalid rows, commit valid ones</span>
+<span class="kw">async function</span> <span class="fn">importOrders</span>(rows: <span class="ty">OrderRow</span>[]): <span class="kw">Promise</span>&lt;{ ok: <span class="ty">number</span>; failed: <span class="ty">number</span> }&gt; {
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'BEGIN'</span>);
+  <span class="kw">let</span> ok = <span class="num">0</span>, failed = <span class="num">0</span>;
+
+  <span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> rows) {
+    <span class="cm">// Create savepoint before each row</span>
+    <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SAVEPOINT row_insert'</span>);
+
+    <span class="kw">try</span> {
+      <span class="kw">await</span> db.<span class="fn">query</span>(
+        <span class="str">'INSERT INTO orders (id, user_id, amount) VALUES ($1, $2, $3)'</span>,
+        [row.id, row.userId, row.amount]
+      );
+      <span class="cm">// Release savepoint — we don't need to roll back to here anymore</span>
+      <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'RELEASE SAVEPOINT row_insert'</span>);
+      ok++;
+    } <span class="kw">catch</span> (err) {
+      <span class="cm">// Row failed (constraint violation, duplicate key, etc.)</span>
+      <span class="cm">// Roll back to savepoint — only this row's INSERT is undone</span>
+      <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'ROLLBACK TO SAVEPOINT row_insert'</span>);
+      <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'RELEASE SAVEPOINT row_insert'</span>);
+      logger.<span class="fn">warn</span>({ row, err: err.message }, <span class="str">'Row skipped during import'</span>);
+      failed++;
+    }
+  }
+
+  <span class="cm">// Commit all successfully inserted rows in one transaction</span>
+  <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'COMMIT'</span>);
+  <span class="kw">return</span> { ok, failed };
+}
+
+<span class="cm">-- Why not use separate transactions per row?</span>
+<span class="cm">-- Each COMMIT has overhead: WAL flush, lock release, snapshot cleanup</span>
+<span class="cm">-- Savepoints + single COMMIT: much faster for large batches</span>
+<span class="cm">-- 10,000 rows: ~100× faster with single COMMIT vs per-row transactions</span></pre>
+  </div>
+
+  <h3>ORMs and savepoints: what pg, prisma, and sequelize do</h3>
+  <p>Most ORMs implement nested transactions using savepoints transparently. When you call <code>transaction()</code> inside another transaction, the ORM creates a savepoint instead of a real nested transaction (which PostgreSQL doesn't support). The inner "rollback" becomes <code>ROLLBACK TO SAVEPOINT</code>, and the inner "commit" becomes <code>RELEASE SAVEPOINT</code>.</p>
+  <p>This means: ORM-level nested transactions behave like savepoints, not separate atomic units. If the outer transaction rolls back, the inner "committed" transaction also rolls back — because it was just a savepoint release, not a true commit.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Savepoints in Prisma — nested transactions map to savepoints</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// Prisma's $transaction() creates a savepoint when called inside another $transaction</span>
+<span class="kw">await</span> prisma.<span class="fn">$transaction</span>(<span class="kw">async</span> (tx) => {
+  <span class="kw">await</span> tx.order.<span class="fn">create</span>({ data: orderData });
+
+  <span class="cm">// Nested transaction = SAVEPOINT under the hood</span>
+  <span class="kw">try</span> {
+    <span class="kw">await</span> prisma.<span class="fn">$transaction</span>(<span class="kw">async</span> (innerTx) => {
+      <span class="kw">await</span> innerTx.inventory.<span class="fn">update</span>({ ... });
+      <span class="kw">await</span> innerTx.shipment.<span class="fn">create</span>({ ... });
+    });
+  } <span class="kw">catch</span> (err) {
+    <span class="cm">// Inner transaction failed → ROLLBACK TO SAVEPOINT</span>
+    <span class="cm">// Outer transaction continues: order.create() is still in place</span>
+    logger.<span class="fn">warn</span>(<span class="str">'Shipment creation failed, order still recorded'</span>);
+  }
+
+  <span class="cm">// Order create is still intact even if inner tx failed</span>
+  <span class="kw">await</span> tx.notification.<span class="fn">create</span>({ data: notifData });
+}); <span class="cm">// COMMIT — order + notification committed, inventory/shipment rolled back</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify savepoint usage</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">After ROLLBACK TO SAVEPOINT, the savepoint still exists — you can retry and either release or roll back to it again. No need to re-create it.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">RELEASE SAVEPOINT is optional but good practice — it frees the savepoint's state and any sub-transaction memory. In large batches, always release after a successful insert.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Savepoints add per-savepoint overhead. For 10,000-row batches, create one savepoint per row. Don't nest savepoints 10 levels deep — PostgreSQL handles it but it adds complexity.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">PostgreSQL's error recovery: after any error in a transaction (even outside a savepoint), the transaction is in an aborted state. The only valid commands are ROLLBACK and ROLLBACK TO SAVEPOINT. Any other query returns "ERROR: current transaction is aborted."</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

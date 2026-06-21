@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 9: Transactions & ACID — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--bg4:#1d2230;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* Transaction lanes */
+.tx-lane{display:grid;gap:0;}
+.tx-header{display:grid;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.tx-row{display:grid;gap:8px;margin-bottom:6px;align-items:start;}
+.tx-cell{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);transition:all .3s;min-height:32px;}
+.tx-cell.running{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.08);}
+.tx-cell.committed{border-color:var(--green);color:var(--green);background:rgba(62,207,142,.06);}
+.tx-cell.aborted{border-color:var(--red);color:var(--red);background:rgba(240,96,96,.06);}
+.tx-cell.waiting{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.06);animation:pulse .8s ease-in-out infinite;}
+.tx-cell.dirty{border-color:var(--red);background:rgba(240,96,96,.1);}
+.tx-cell.phantom{border-color:var(--purple);background:rgba(168,127,255,.1);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;gap:0;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.1);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-detail strong{color:var(--text);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 09 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-acid">ACID Properties</a>
+  <a href="#s-isolation">Isolation Levels</a>
+  <a href="#s-locks">Locking</a>
+  <a href="#s-deadlock">Deadlocks</a>
+  <a href="#s-mvcc">MVCC</a>
+  <a href="#s-2pc">Two-Phase Commit</a>
+  <a href="#s-sagas">Sagas</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day09/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day09/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 2 · Day 9 · Databases &amp; Storage</div>
+  <h1>Two transactions.<br>One balance.<br><em>Wrong answer.</em></h1>
+  <p class="hero-sub">ACID is a promise your database makes to your application. The moment two operations touch the same data concurrently, that promise is tested. Understanding exactly what each isolation level permits and what it prevents is the difference between a correct system and one that silently corrupts data under load.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>PostgreSQL + distributed systems</div>
+  </div>
+</div>
+
+<!-- S1: ACID -->
+<div class="section" id="s-acid">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>ACID: what the letters actually mean in practice</h2>
+
+  <p>ACID is not a binary feature a database has or doesn't have. It's four independent guarantees, each of which can be violated in specific ways, each of which costs something to maintain. Understanding what each guarantee means — and what breaks when it fails — is what lets you design correctly.</p>
+
+  <h3>Atomicity: all or nothing</h3>
+  <p>A transaction's operations are treated as a single unit. Either all of them commit, or none of them do. There's no state where some operations within a transaction have taken effect and others haven't — at least not from the perspective of any other transaction.</p>
+  <p>What breaks without it: a payment transaction that debits an account and credits another. If the debit commits but the credit fails, money disappears. Atomicity prevents this — if the credit fails, the debit is rolled back.</p>
+  <p><strong>How PostgreSQL implements it:</strong> Write-Ahead Logging (WAL). Before any data page is modified, the change is written to the WAL. On crash recovery, PostgreSQL replays committed WAL entries and rolls back uncommitted ones. The WAL is the atomicity mechanism.</p>
+
+  <h3>Consistency: valid states only</h3>
+  <p>A transaction brings the database from one valid state to another valid state. "Valid" is defined by your constraints: foreign keys, check constraints, unique constraints, not-null constraints. If a transaction would violate any of these, it's rejected entirely.</p>
+  <p>Consistency is the only ACID property that isn't purely a database responsibility — your application also bears responsibility for it. The database enforces the constraints you define; it can't enforce business rules you haven't expressed as constraints.</p>
+  <p>What breaks without it: a transfer that results in a negative balance, if you haven't defined a check constraint preventing it. The database maintains its internal consistency (foreign keys, etc.) but can't enforce rules it doesn't know about.</p>
+
+  <h3>Isolation: concurrent transactions don't interfere</h3>
+  <p>This is the most complex ACID property, with a spectrum of guarantees and a direct tradeoff against performance. Full isolation means concurrent transactions execute as if they were serial — one after another — even if they actually run in parallel. But full isolation is expensive. SQL defines four isolation levels that offer progressively weaker guarantees in exchange for better concurrency.</p>
+
+  <h3>Durability: committed data survives crashes</h3>
+  <p>Once a transaction commits, its effects survive — even if the database process crashes immediately after. This is guaranteed by the WAL: the commit is not acknowledged until the WAL record is flushed to disk (or, with synchronous_commit=off, at least to the OS buffer). On restart, PostgreSQL replays the WAL and the committed transaction is present.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>synchronous_commit = off breaks durability</strong>
+      <p>Setting <code>synchronous_commit = off</code> allows PostgreSQL to acknowledge commits before WAL is flushed to disk. Writes are faster, but there's a window (typically ~200ms) where a crash can lose committed transactions. This is sometimes acceptable for high-throughput non-critical writes but must never be used for financial or audit data. It's a durability tradeoff, not a free performance win.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: ACID scenario builder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">ACID — which property breaks under each failure?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:14px">Click a failure scenario to see which ACID guarantee it violates and why:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showAcid('crash')">Server crash mid-transaction</button>
+      <button class="viz-btn" onclick="showAcid('concurrent')">Two threads update same row</button>
+      <button class="viz-btn" onclick="showAcid('fk')">Delete referenced parent row</button>
+      <button class="viz-btn" onclick="showAcid('syncoff')">synchronous_commit=off crash</button>
+      <button class="viz-btn" onclick="showAcid('negative')">Balance goes negative</button>
+    </div>
+    <div id="acid-output" class="mono-out" style="min-height:120px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- S2: ISOLATION LEVELS -->
+<div class="section" id="s-isolation">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Isolation levels: the four read phenomena</h2>
+
+  <p>SQL defines four isolation levels. Each level prevents specific "read phenomena" — ways that concurrent transactions can produce incorrect reads. The higher the isolation level, the fewer phenomena are possible, and the more the database must do to prevent them (more locking, more conflict detection, more retries).</p>
+
+  <h3>The three read phenomena</h3>
+  <p><strong>Dirty read:</strong> Transaction A reads a value written by Transaction B, which hasn't committed yet. If B rolls back, A has read data that never existed. Only READ UNCOMMITTED allows this — and PostgreSQL doesn't actually implement READ UNCOMMITTED (it silently upgrades it to READ COMMITTED).</p>
+  <p><strong>Non-repeatable read:</strong> Transaction A reads a row, Transaction B updates and commits it, Transaction A reads the same row again and gets a different value. The same row gives different results within the same transaction. READ COMMITTED allows this.</p>
+  <p><strong>Phantom read:</strong> Transaction A runs a query returning a set of rows. Transaction B inserts a new row matching that query's criteria and commits. Transaction A runs the same query again and gets additional rows that weren't there before. Phantoms appear "out of nowhere." REPEATABLE READ prevents non-repeatable reads but in some databases still allows phantoms. PostgreSQL's REPEATABLE READ prevents both through MVCC snapshots.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Isolation level</th><th>Dirty read</th><th>Non-repeatable read</th><th>Phantom read</th><th>Lost update</th><th>PostgreSQL implementation</th></tr></thead>
+      <tbody>
+        <tr><td>READ UNCOMMITTED</td><td style="color:var(--red)">Possible</td><td style="color:var(--red)">Possible</td><td style="color:var(--red)">Possible</td><td style="color:var(--red)">Possible</td><td>Treated as READ COMMITTED</td></tr>
+        <tr><td>READ COMMITTED</td><td style="color:var(--green)">Prevented</td><td style="color:var(--red)">Possible</td><td style="color:var(--red)">Possible</td><td style="color:var(--red)">Possible</td><td>Default. New snapshot per statement.</td></tr>
+        <tr><td>REPEATABLE READ</td><td style="color:var(--green)">Prevented</td><td style="color:var(--green)">Prevented</td><td style="color:var(--green)">Prevented*</td><td style="color:var(--red)">Possible</td><td>Snapshot at transaction start. Conflicts serialized.</td></tr>
+        <tr><td>SERIALIZABLE</td><td style="color:var(--green)">Prevented</td><td style="color:var(--green)">Prevented</td><td style="color:var(--green)">Prevented</td><td style="color:var(--green)">Prevented</td><td>SSI (Serializable Snapshot Isolation). May abort and retry.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13px;color:var(--text3)">* PostgreSQL's REPEATABLE READ prevents phantom reads via MVCC snapshots, unlike the SQL standard which only requires this at SERIALIZABLE.</p>
+
+  <h3>The lost update problem — the one that actually pages you</h3>
+  <p>Two transactions both read a value, both compute a new value based on the old one, and both write the new value. The second write overwrites the first without knowing about it. One update is silently lost. This is the Day 9 lab incident — two concurrent refund operations both reading the same balance, both writing their result, one overwriting the other.</p>
+  <p>This happens at READ COMMITTED — the default isolation level. READ COMMITTED only takes a new snapshot at each statement, not across the whole transaction. By the time the second write executes, the first has committed — but the second transaction already read the old value and is computing from it.</p>
+  <p>Fixes: <code>SELECT FOR UPDATE</code> (explicit row lock), <code>UPDATE ... WHERE balance = $old_balance</code> (optimistic lock), or SERIALIZABLE isolation (automatic conflict detection).</p>
+</div>
+
+<!-- VIZ 2: Isolation levels -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Isolation levels — watch read phenomena in real time</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px;display:block">Isolation level:</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="viz-btn" id="iso-rc" onclick="setIsolation('rc',this)">READ COMMITTED</button>
+        <button class="viz-btn" id="iso-rr" onclick="setIsolation('rr',this)">REPEATABLE READ</button>
+        <button class="viz-btn" id="iso-ser" onclick="setIsolation('ser',this)">SERIALIZABLE</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px;display:block">Scenario:</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="viz-btn" onclick="runIsoScenario('nonrep')">Non-repeatable read</button>
+        <button class="viz-btn" onclick="runIsoScenario('phantom')">Phantom read</button>
+        <button class="viz-btn" onclick="runIsoScenario('lost')">Lost update</button>
+      </div>
+    </div>
+    <div id="iso-lanes" style="margin-top:8px"></div>
+    <div id="iso-verdict" class="mono-out" style="margin-top:12px;font-size:12px;min-height:60px">Select an isolation level and scenario.</div>
+  </div>
+</div>
+
+<!-- S3: LOCKING -->
+<div class="section" id="s-locks">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Locking: how isolation is actually enforced</h2>
+
+  <p>PostgreSQL uses two mechanisms to enforce isolation: MVCC (Multi-Version Concurrency Control) for reads, and locks for writes. Understanding which operations acquire which locks — and which locks conflict with each other — explains why some concurrent operations are fast and others block each other.</p>
+
+  <h3>The PostgreSQL lock hierarchy</h3>
+  <p>PostgreSQL has 8 table-level lock modes, ranging from weakest (ACCESS SHARE, acquired by SELECT) to strongest (ACCESS EXCLUSIVE, acquired by DROP TABLE, TRUNCATE, VACUUM FULL). The key question for any two operations running concurrently: do their lock modes conflict?</p>
+
+  <ul>
+    <li><strong>ACCESS SHARE</strong> — acquired by SELECT. Conflicts only with ACCESS EXCLUSIVE. Multiple SELECTs never block each other.</li>
+    <li><strong>ROW SHARE</strong> — acquired by SELECT FOR UPDATE/SHARE. Allows concurrent reads and most writes.</li>
+    <li><strong>ROW EXCLUSIVE</strong> — acquired by INSERT, UPDATE, DELETE. Conflicts with SHARE, SHARE ROW EXCLUSIVE, EXCLUSIVE, ACCESS EXCLUSIVE.</li>
+    <li><strong>SHARE UPDATE EXCLUSIVE</strong> — acquired by VACUUM, ANALYZE, CREATE INDEX CONCURRENTLY. Allows reads and writes, blocks other schema changes.</li>
+    <li><strong>SHARE</strong> — acquired by CREATE INDEX (non-concurrent). Blocks all writes but allows reads.</li>
+    <li><strong>ACCESS EXCLUSIVE</strong> — acquired by ALTER TABLE, DROP TABLE, TRUNCATE. Blocks everything — reads and writes. The most dangerous lock to hold in production.</li>
+  </ul>
+
+  <h3>Row-level locks</h3>
+  <p>In addition to table locks, PostgreSQL acquires row-level locks when rows are modified. UPDATE and DELETE lock the specific rows they touch. This is why two transactions updating different rows don't block each other, even on the same table.</p>
+  <p><code>SELECT FOR UPDATE</code> explicitly acquires row-level locks for rows returned by the SELECT, preventing other transactions from modifying those rows until your transaction completes. This is the correct way to implement "read-then-update" operations where you need to prevent lost updates.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Lock monitoring in production</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- See all current locks</span>
+SELECT
+  pid,
+  locktype,
+  relation::regclass AS table,
+  mode,
+  granted,
+  pg_blocking_pids(pid) AS blocked_by
+FROM pg_locks
+WHERE relation IS NOT NULL
+ORDER BY granted, locktype;
+
+<span class="cm">-- Find blocking queries (the ones causing waits)</span>
+SELECT
+  blocking.pid                  AS blocking_pid,
+  blocking.query                AS blocking_query,
+  blocked.pid                   AS blocked_pid,
+  blocked.query                 AS blocked_query,
+  now() - blocked.query_start   AS wait_duration
+FROM pg_stat_activity blocked
+JOIN pg_stat_activity blocking
+  ON blocking.pid = ANY(pg_blocking_pids(blocked.pid))
+WHERE blocked.wait_event_type = 'Lock'
+ORDER BY wait_duration DESC;
+
+<span class="cm">-- Kill a blocking query (use pid from above)</span>
+SELECT pg_cancel_backend(blocking_pid);   <span class="cm">-- graceful: cancel current query</span>
+SELECT pg_terminate_backend(blocking_pid); <span class="cm">-- hard: kill the connection</span>
+
+<span class="cm">-- See lock wait timeout (queries that waited too long)</span>
+SHOW lock_timeout;
+<span class="cm">-- Set per-session: SET lock_timeout = '5s';</span>
+<span class="cm">-- Any lock wait exceeding this raises ERROR: canceling statement due to lock timeout</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 3: Lock visualiser -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Lock conflicts — which operations block each other?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:14px">Click an operation to see what it locks and what it blocks:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showLock('select')">SELECT</button>
+      <button class="viz-btn" onclick="showLock('select_for_update')">SELECT FOR UPDATE</button>
+      <button class="viz-btn" onclick="showLock('update')">UPDATE / DELETE</button>
+      <button class="viz-btn" onclick="showLock('insert')">INSERT</button>
+      <button class="viz-btn" onclick="showLock('create_index')">CREATE INDEX</button>
+      <button class="viz-btn" onclick="showLock('alter_table')">ALTER TABLE</button>
+      <button class="viz-btn" onclick="showLock('vacuum')">VACUUM</button>
+    </div>
+    <div id="lock-output" class="mono-out" style="min-height:120px">Select an operation to see its lock mode and conflicts.</div>
+  </div>
+</div>
+
+<!-- S4: DEADLOCKS -->
+<div class="section" id="s-deadlock">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Deadlocks: when two transactions wait for each other</h2>
+
+  <p>A deadlock occurs when Transaction A holds a lock that Transaction B needs, and Transaction B holds a lock that Transaction A needs. Neither can proceed. Neither will release their lock. They wait forever — until PostgreSQL's deadlock detector breaks the cycle by aborting one of the transactions.</p>
+
+  <h3>The classic deadlock pattern</h3>
+  <p>Transaction A: <code>UPDATE accounts SET balance = balance - 100 WHERE id = 1</code> then <code>UPDATE accounts SET balance = balance + 100 WHERE id = 2</code></p>
+  <p>Transaction B (running concurrently): <code>UPDATE accounts SET balance = balance - 50 WHERE id = 2</code> then <code>UPDATE accounts SET balance = balance + 50 WHERE id = 1</code></p>
+  <p>A locks row 1, B locks row 2. A tries to lock row 2 — waits. B tries to lock row 1 — waits. Deadlock. PostgreSQL detects the cycle and aborts one transaction (the one with the most recently acquired locks), which releases its lock and allows the other to proceed. The aborted transaction gets an error: <code>ERROR: deadlock detected</code>.</p>
+
+  <h3>The fix: consistent lock ordering</h3>
+  <p>Deadlocks between transactions that touch the same rows are almost always preventable by ensuring all transactions acquire locks in the same order. If both A and B always lock row 1 before row 2 (i.e., always sort the rows by ID and process in ascending order), A will acquire both locks before B starts — no deadlock possible.</p>
+  <p>In application code: when a transaction needs to update multiple rows, sort them by primary key and update in that order. This single rule eliminates the vast majority of deadlocks.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>Deadlocks are always application bugs</strong>
+      <p>PostgreSQL can detect and resolve deadlocks — but a deadlock means your application has a design problem. The transaction that gets aborted must retry, causing latency and complexity. The correct fix is consistent lock ordering or restructuring transactions to not hold locks across multiple operations. Relying on deadlock detection to "handle" deadlocks in normal operation is not a strategy.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 4: Deadlock simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Deadlock simulator — watch the cycle form and break</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="runDeadlock()">&#9654; Simulate deadlock</button>
+      <button class="viz-btn" onclick="runDeadlockFixed()" style="border-color:var(--green);color:var(--green)">&#9654; Fixed (consistent order)</button>
+      <button class="viz-btn" onclick="resetDeadlock()" style="border-color:var(--text3);color:var(--text3)">&#8635; Reset</button>
+    </div>
+    <div id="deadlock-lanes" style="display:grid;grid-template-columns:1fr 80px 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Transaction A</div>
+        <div id="dl-a-steps" style="display:flex;flex-direction:column;gap:5px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Rows</div>
+        <div id="row1-status" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);width:70px">Row 1<br><span style="font-size:10px">free</span></div>
+        <div id="row2-status" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);width:70px">Row 2<br><span style="font-size:10px">free</span></div>
+      </div>
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Transaction B</div>
+        <div id="dl-b-steps" style="display:flex;flex-direction:column;gap:5px"></div>
+      </div>
+    </div>
+    <div id="deadlock-verdict" class="mono-out" style="font-size:12px;min-height:60px">Press "Simulate deadlock" to watch the cycle form.</div>
+  </div>
+</div>
+
+<!-- S5: MVCC -->
+<div class="section" id="s-mvcc">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>MVCC: how PostgreSQL avoids read-write conflicts</h2>
+
+  <p>Multi-Version Concurrency Control is the mechanism that allows PostgreSQL to serve reads without blocking writes, and vice versa. Instead of locking rows when they're read, PostgreSQL keeps multiple versions of each row and shows each transaction the version that was current at the start of that transaction's snapshot.</p>
+
+  <h3>How row versions work</h3>
+  <p>Every row in PostgreSQL has two hidden system columns: <code>xmin</code> (the transaction ID that created this version) and <code>xmax</code> (the transaction ID that deleted or superseded this version, or 0 if the row is current). When a row is updated, PostgreSQL doesn't modify it in place — it inserts a new version with the new data and a new <code>xmin</code>, and sets the old version's <code>xmax</code> to the current transaction ID.</p>
+
+  <p>When a transaction reads a row, it only sees versions where <code>xmin &lt;= snapshot_xid</code> (version existed when snapshot was taken) and <code>xmax = 0 OR xmax > snapshot_xid</code> (version not yet deleted when snapshot was taken). This is the MVCC visibility check — done entirely without acquiring any locks on the rows being read.</p>
+
+  <h3>Snapshot timing by isolation level</h3>
+  <p>Under READ COMMITTED, a new snapshot is taken at the start of each SQL statement. This means a long-running transaction can see data committed by other transactions between its statements — which is why non-repeatable reads are possible at this level.</p>
+  <p>Under REPEATABLE READ and SERIALIZABLE, the snapshot is taken once at the start of the transaction and held for the entire transaction. Every read within the transaction sees the same consistent view of the database as of that point in time.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Observing MVCC snapshots directly in PostgreSQL</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- See the hidden system columns on any table</span>
+SELECT xmin, xmax, id, balance FROM accounts WHERE id = 1;
+<span class="cm">-- xmin: transaction that inserted this row version</span>
+<span class="cm">-- xmax: transaction that deleted/updated it (0 = current version)</span>
+
+<span class="cm">-- See the current transaction's snapshot</span>
+SELECT txid_current();           <span class="cm">-- current transaction ID</span>
+SELECT txid_current_snapshot();  <span class="cm">-- current snapshot: xmin:xmax:xip_list</span>
+<span class="cm">-- Format: "100:105:101,103"</span>
+<span class="cm">-- Means: txid < 100 are visible, txid >= 105 are not,</span>
+<span class="cm">-- and 101,103 (in-progress) are not visible</span>
+
+<span class="cm">-- Demonstrate MVCC: read your own writes</span>
+BEGIN;
+  INSERT INTO accounts (id, balance) VALUES (99, 1000);
+  SELECT xmin, xmax, id, balance FROM accounts WHERE id = 99;
+  <span class="cm">-- xmin = current txid (your own insert), xmax = 0</span>
+  <span class="cm">-- Visible to you (same transaction), invisible to others</span>
+ROLLBACK;
+
+<span class="cm">-- Dead tuple count (the MVCC cost)</span>
+SELECT n_live_tup, n_dead_tup FROM pg_stat_user_tables WHERE relname = 'accounts';
+<span class="cm">-- High n_dead_tup means old MVCC row versions accumulating</span>
+<span class="cm">-- VACUUM is needed to clean these up</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 5: MVCC snapshot -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">MVCC — what each transaction sees based on its snapshot</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:14px">Advance time to see how transactions start, commit, and affect each other's visible data:</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="viz-btn" onclick="mvccStep()" id="mvcc-step-btn">&#9654; Next event</button>
+      <button class="viz-btn" onclick="resetMvcc()" style="border-color:var(--text3);color:var(--text3)">&#8635; Reset</button>
+    </div>
+    <div id="mvcc-timeline" style="margin-bottom:12px"></div>
+    <div id="mvcc-output" class="mono-out" style="font-size:12px;min-height:80px">Press "Next event" to step through the MVCC timeline.</div>
+  </div>
+</div>
+
+<!-- S6: TWO-PHASE COMMIT -->
+<div class="section" id="s-2pc">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Two-phase commit: atomicity across multiple databases</h2>
+
+  <p>Two-phase commit (2PC) extends atomicity across multiple independent databases or services. If a transaction needs to update Database A and Database B, and we need either both to commit or neither to commit, 2PC provides the protocol.</p>
+
+  <h3>Phase 1: Prepare</h3>
+  <p>The coordinator sends a "prepare" message to all participants. Each participant executes the transaction up to the point of commit, writes the intent to its own WAL, and replies "ready" or "abort." Crucially, a participant that responds "ready" is committing to commit if asked — it cannot change its mind afterward. If any participant responds "abort," the coordinator aborts the entire transaction.</p>
+
+  <h3>Phase 2: Commit or Abort</h3>
+  <p>If all participants responded "ready," the coordinator writes the commit decision to its own WAL and then sends "commit" to all participants. Each participant commits and releases its locks. If any participant aborted, the coordinator sends "abort" to all.</p>
+
+  <h3>The availability problem with 2PC</h3>
+  <p>If the coordinator crashes after Phase 1 but before Phase 2, participants are stuck — they've prepared (locked resources) but don't know whether to commit or abort. They hold their locks waiting for the coordinator to recover. This is 2PC's fundamental weakness: it blocks under coordinator failure. This is one of the primary reasons microservices architectures prefer sagas over distributed transactions.</p>
+  <p>PostgreSQL supports 2PC via <code>PREPARE TRANSACTION</code> / <code>COMMIT PREPARED</code>. Prepared transactions that are never resolved (due to coordinator failure) appear in <code>pg_prepared_xacts</code> and hold locks indefinitely until manually resolved.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">PostgreSQL two-phase commit — explicit syntax</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Phase 1: prepare on each participant database</span>
+BEGIN;
+  UPDATE inventory SET stock = stock - 1 WHERE product_id = $1;
+PREPARE TRANSACTION <span class="str">'order-txn-abc123'</span>;
+<span class="cm">-- Transaction is now prepared: resources locked, not yet committed</span>
+<span class="cm">-- This state persists across crashes</span>
+
+<span class="cm">-- Phase 2a: if all participants prepared successfully</span>
+COMMIT PREPARED <span class="str">'order-txn-abc123'</span>;
+
+<span class="cm">-- Phase 2b: if any participant failed</span>
+ROLLBACK PREPARED <span class="str">'order-txn-abc123'</span>;
+
+<span class="cm">-- Check for stuck prepared transactions (holding locks!)</span>
+SELECT gid, prepared, owner, database, transaction
+FROM pg_prepared_xacts;
+<span class="cm">-- Any row here is a prepared transaction not yet resolved</span>
+<span class="cm">-- Manually resolve stuck ones:</span>
+<span class="cm">-- ROLLBACK PREPARED 'order-txn-abc123';  -- if uncertain, rollback is safer</span>
+
+<span class="cm">-- Alert: prepared transactions older than 5 minutes are a problem</span>
+SELECT gid, now() - prepared AS age FROM pg_prepared_xacts
+WHERE prepared < now() - interval '5 minutes';</pre>
+  </div>
+</div>
+
+<!-- VIZ 6: Two-phase commit -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Two-phase commit — inject failures at each phase</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="run2PC('happy')">&#9654; Happy path</button>
+      <button class="viz-btn" onclick="run2PC('participant_fail')" style="border-color:var(--orange);color:var(--orange)">Participant fails Phase 1</button>
+      <button class="viz-btn" onclick="run2PC('coordinator_crash')" style="border-color:var(--red);color:var(--red)">Coordinator crashes Phase 2</button>
+      <button class="viz-btn" onclick="run2PC('network')" style="border-color:var(--red);color:var(--red)">Network partition</button>
+    </div>
+    <div id="twopc-output" class="mono-out" style="font-size:12px;min-height:140px">Select a scenario to see how 2PC handles it.</div>
+  </div>
+</div>
+
+<!-- S7: SAGAS -->
+<div class="section" id="s-sagas">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Sagas: distributed transactions without distributed locking</h2>
+
+  <p>A saga is a sequence of local transactions where each step publishes an event or message that triggers the next step. If any step fails, the saga executes compensating transactions to undo the completed steps. Sagas trade the all-or-nothing guarantee of ACID for eventual consistency — the system will end up in a consistent state, but may pass through temporarily inconsistent states.</p>
+
+  <h3>Choreography vs orchestration</h3>
+  <p><strong>Choreography:</strong> Each service reacts to events from the previous step. The Order Service places an order, publishes an "OrderPlaced" event. The Inventory Service listens and reserves stock, publishes "StockReserved." The Payment Service listens and charges the customer. No central coordinator — the saga emerges from the interactions. Simpler to implement, harder to observe and debug.</p>
+  <p><strong>Orchestration:</strong> A central Saga Orchestrator sends commands to each service and waits for responses. The orchestrator drives the entire saga: "Reserve stock, then charge payment, then confirm order." Easier to observe and add compensation logic, but the orchestrator becomes a central point of failure and complexity.</p>
+
+  <h3>Compensating transactions</h3>
+  <p>The saga's "rollback" is a compensating transaction — a new forward transaction that undoes the effect of a completed step. Unlike a database rollback, compensating transactions execute new business logic. If a payment was charged and the inventory reservation then fails, the compensating transaction is a refund — a real financial operation that must be idempotent, logged, and auditable.</p>
+  <p>Compensating transactions can fail. Retry policies, dead-letter queues, and human escalation paths are required for each compensation step. This is the operational complexity sagas add compared to local ACID transactions.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Saga orchestrator — order placement with compensation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">type</span> <span class="ty">SagaStep</span> = {
+  execute:     () => <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt;;
+  compensate:  () => <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt;;
+  name:        <span class="ty">string</span>;
+};
+
+<span class="kw">async function</span> <span class="fn">placeOrderSaga</span>(order: <span class="ty">Order</span>): <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt; {
+  <span class="kw">const</span> <span class="var">steps</span>: <span class="ty">SagaStep</span>[] = [
+    {
+      name: <span class="str">'ReserveInventory'</span>,
+      execute:    () => inventory.<span class="fn">reserve</span>(order.items),
+      compensate: () => inventory.<span class="fn">release</span>(order.items), <span class="cm">// undo reservation</span>
+    },
+    {
+      name: <span class="str">'ChargePayment'</span>,
+      execute:    () => payment.<span class="fn">charge</span>(order.amount, order.userId),
+      compensate: () => payment.<span class="fn">refund</span>(order.amount, order.userId), <span class="cm">// real refund</span>
+    },
+    {
+      name: <span class="str">'CreateOrder'</span>,
+      execute:    () => orders.<span class="fn">create</span>(order),
+      compensate: () => orders.<span class="fn">cancel</span>(order.id),
+    },
+    {
+      name: <span class="str">'SendConfirmation'</span>,
+      execute:    () => notifications.<span class="fn">sendOrderConfirmed</span>(order),
+      compensate: () => notifications.<span class="fn">sendOrderCancelled</span>(order), <span class="cm">// can't un-send email!</span>
+    },
+  ];
+
+  <span class="kw">const</span> <span class="var">completed</span>: <span class="ty">SagaStep</span>[] = [];
+
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="var">step</span> <span class="kw">of</span> steps) {
+    <span class="kw">try</span> {
+      <span class="kw">await</span> step.<span class="fn">execute</span>();
+      completed.<span class="fn">push</span>(step);
+      logger.<span class="fn">info</span>({ saga: <span class="str">'PlaceOrder'</span>, step: step.name }, <span class="str">'step completed'</span>);
+    } <span class="kw">catch</span> (err) {
+      logger.<span class="fn">error</span>({ err, step: step.name }, <span class="str">'step failed — running compensations'</span>);
+
+      <span class="cm">// Compensate in reverse order</span>
+      <span class="kw">for</span> (<span class="kw">const</span> <span class="var">done</span> <span class="kw">of</span> [...completed].<span class="fn">reverse</span>()) {
+        <span class="kw">try</span> {
+          <span class="kw">await</span> done.<span class="fn">compensate</span>();
+          logger.<span class="fn">info</span>({ step: done.name }, <span class="str">'compensation succeeded'</span>);
+        } <span class="kw">catch</span> (compErr) {
+          <span class="cm">// Compensation failed — needs human intervention</span>
+          logger.<span class="fn">error</span>({ compErr, step: done.name }, <span class="str">'COMPENSATION FAILED — manual intervention required'</span>);
+          <span class="kw">await</span> alerting.<span class="fn">page</span>(<span class="str">`Saga compensation failed for \${done.name}`</span>);
+        }
+      }
+      <span class="kw">throw</span> err;
+    }
+  }
+}
+<span class="cm">// Every execute() and compensate() must be idempotent</span>
+<span class="cm">// Use idempotency keys so retries don't cause double charges/reservations</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 7: Saga choreography vs orchestration -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Saga patterns — choreography vs orchestration, with failure</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="runSaga('choreography','happy')">Choreography — success</button>
+      <button class="viz-btn" onclick="runSaga('choreography','fail')" style="border-color:var(--orange);color:var(--orange)">Choreography — payment fails</button>
+      <button class="viz-btn" onclick="runSaga('orchestration','happy')">Orchestration — success</button>
+      <button class="viz-btn" onclick="runSaga('orchestration','fail')" style="border-color:var(--orange);color:var(--orange)">Orchestration — inventory fails</button>
+    </div>
+    <div id="saga-output" class="mono-out" style="font-size:12px;min-height:160px">Select a scenario to see the saga flow.</div>
+  </div>
+</div>
+
+<!-- VIZ 8: Isolation cost tradeoff -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Isolation level cost — throughput vs consistency tradeoff</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showIsoTrade('rc')">READ COMMITTED</button>
+      <button class="viz-btn" onclick="showIsoTrade('rr')">REPEATABLE READ</button>
+      <button class="viz-btn" onclick="showIsoTrade('ser')">SERIALIZABLE</button>
+    </div>
+    <div id="iso-trade-output" class="mono-out" style="font-size:12px;min-height:120px">Select an isolation level to see its throughput and consistency profile.</div>
+  </div>
+</div>
+
+<!-- PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>READ COMMITTED is almost always correct for APIs</h3>
+  <p>PostgreSQL's default isolation level is READ COMMITTED, and it's the right choice for the vast majority of API endpoints. It allows maximum concurrency while preventing dirty reads. For endpoints that don't do read-then-update logic, it's both safe and fast. The cases where you need a higher isolation level are specific and identifiable.</p>
+
+  <h3>SELECT FOR UPDATE for read-then-update</h3>
+  <p>Any time your transaction reads a value and then updates based on that value, you need to prevent another transaction from changing it between your read and write. The correct fix is <code>SELECT ... FOR UPDATE</code> — it acquires a row-level lock at read time, preventing other transactions from updating or locking those rows until your transaction commits. This eliminates lost updates without requiring SERIALIZABLE isolation.</p>
+
+  <h3>SERIALIZABLE for complex invariants</h3>
+  <p>When your business logic has complex invariants that can't be expressed as a single SELECT FOR UPDATE — for example, "no two doctors can be on-call at the same time" — SERIALIZABLE is the right level. PostgreSQL's Serializable Snapshot Isolation (SSI) detects write-skew anomalies that can violate such invariants, and aborts one of the conflicting transactions. The application must retry aborted transactions.</p>
+
+  <h3>Long transactions are dangerous</h3>
+  <p>A transaction that stays open for minutes (or hours) causes problems at every layer: it holds row locks (blocking other writes), prevents VACUUM from cleaning dead tuples (causing bloat), and holds an old snapshot (increasing MVCC overhead). Set <code>statement_timeout</code> and <code>idle_in_transaction_session_timeout</code> to catch and kill runaway transactions before they cause cascading problems.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>TRUNCATE is transactional in PostgreSQL</h3>
+  <p>Unlike in MySQL, <code>TRUNCATE</code> in PostgreSQL is fully transactional. You can <code>BEGIN; TRUNCATE orders; ROLLBACK;</code> and the table will be restored. This is because PostgreSQL implements TRUNCATE by dropping and recreating the underlying storage files, and records this in the WAL. MySQL's TRUNCATE is a DDL operation that implicitly commits — a critical difference if you're coming from MySQL.</p>
+
+  <h3>SERIALIZABLE doesn't mean "slow"</h3>
+  <p>SSI in PostgreSQL doesn't use locking — it uses conflict detection. Reads don't block writes. Writes don't block reads. The cost of SERIALIZABLE is: tracking read/write sets for conflict detection (memory overhead), and potentially aborting and retrying conflicting transactions (application complexity). For workloads with low conflict rates, SERIALIZABLE throughput approaches READ COMMITTED. The cost only materialises when actual conflicts occur.</p>
+
+  <h3>FOR UPDATE SKIP LOCKED is a queue primitive</h3>
+  <p><code>SELECT ... FOR UPDATE SKIP LOCKED</code> selects rows and locks them, skipping any row that is already locked by another transaction. This is exactly what a job queue needs: multiple workers can each grab the next available job without stepping on each other. Used by every serious PostgreSQL-based job queue (pgboss, pg-boss, que, etc.).</p>
+
+  <h3>Savepoints let you partially rollback</h3>
+  <p>Within a transaction, <code>SAVEPOINT</code> creates a rollback point. If a subsequent operation fails, you can <code>ROLLBACK TO SAVEPOINT sp1</code> to undo only the work since the savepoint, while keeping the transaction open and the earlier work intact. This is how you implement "try to do X, if it fails keep going" within a single transaction — without closing and reopening the transaction.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Data anomaly in production — diagnose in this order</h2>
+  <p class="ds-sub">Something went wrong with concurrent writes. Work through this before touching anything.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it a lost update? Check if two transactions both read then wrote the same row</div>
+        <div class="ds-detail">Pull the application logs for the affected rows. Did two concurrent requests both read the old value and write a new one? Lost updates show up as "final value doesn't reflect all the writes that happened." Fix: add <code>SELECT ... FOR UPDATE</code> to the read, or use optimistic locking (<code>WHERE version = $old_version</code>).
+          <br><span class="ds-tag ds-tag-stop">lost update = READ COMMITTED + read-then-update without locks</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it a deadlock? Check PostgreSQL logs for ERROR: deadlock detected</div>
+        <div class="ds-detail">PostgreSQL logs deadlocks with full detail — which transactions were involved, which locks they held, which they were waiting for. The log entry is unmistakable. Fix the underlying cause: ensure all code paths acquire locks on the same tables/rows in the same order. Sort by primary key before multi-row operations.
+          <br><span class="ds-tag ds-tag-warn">deadlock = lock order inconsistency across code paths</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Is something blocked? Check pg_stat_activity for waiting queries</div>
+        <div class="ds-detail">Run: <code>SELECT pid, wait_event_type, wait_event, query, now()-query_start AS duration FROM pg_stat_activity WHERE wait_event_type = 'Lock' ORDER BY duration DESC</code>. Waiting queries usually mean a long-running transaction is holding a lock. Find it with <code>pg_blocking_pids()</code> and decide whether to wait or kill it with <code>pg_cancel_backend()</code>.
+          <br><span class="ds-tag ds-tag-info">lock wait = find the blocker with pg_blocking_pids()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it a saga compensation failure? Check the saga log / dead letter queue</div>
+        <div class="ds-detail">In distributed systems, a failed saga mid-way can leave data in a partially updated state. Check your saga execution log (or event store) for sagas that started but didn't reach a terminal state (completed or fully compensated). Each incomplete saga represents a business inconsistency that needs manual or automated compensation.
+          <br><span class="ds-tag ds-tag-stop">incomplete saga = compensation log + manual intervention may be required</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it write-skew? Upgrade to SERIALIZABLE</div>
+        <div class="ds-detail">Write-skew is when two transactions each read overlapping data, each decide it's OK to write, and both write — but the combined result violates a business invariant that neither could detect individually. The "on-call doctor" problem. If your anomaly can't be fixed with SELECT FOR UPDATE (because the invariant spans multiple rows), use SERIALIZABLE isolation and implement retry logic for serialization failures (<code>ERROR: could not serialize access due to concurrent update</code>).
+          <br><span class="ds-tag ds-tag-warn">write-skew = SERIALIZABLE + retry on serialization failure</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it durability? Check synchronous_commit setting and crash timing</div>
+        <div class="ds-detail">If transactions are apparently committed but data disappears after a crash, check <code>SHOW synchronous_commit</code>. If it's <code>off</code> or <code>local</code>, there's a window where acknowledged commits can be lost on crash. For financial data: <code>synchronous_commit = on</code> is non-negotiable. For non-critical high-throughput writes: <code>off</code> may be acceptable if you understand the loss window.
+          <br><span class="ds-tag ds-tag-stop">missing committed data = check synchronous_commit setting immediately</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">₹2.3L in wrong balances — two concurrent refunds, one lost update</div>
+    <div style="font-size:13px;color:var(--text2)">Lost update · SELECT FOR UPDATE · optimistic locking</div>
+  </div>
+  <a href="/day09/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">SELECT FOR UPDATE, advisory locks, savepoints, lock hierarchy</div>
+    <div style="font-size:13px;color:var(--text2)">Row locking patterns · SKIP LOCKED queues · partial rollback</div>
+  </div>
+  <a href="/day09/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Transaction design checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">SFU</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Read-then-write</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Any read-then-update pattern needs SELECT FOR UPDATE or optimistic locking. Never read and write in separate transactions.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">ORD</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Lock ordering</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Multi-row operations always sort by primary key. Consistent lock order eliminates deadlocks.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">IDL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Idle timeout</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Set idle_in_transaction_session_timeout. Open transactions block VACUUM and hold locks indefinitely.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">IDM</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Saga compensation</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every saga step needs an idempotent compensating transaction. Compensation failures need alerting.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">SER</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Serializable retry</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">SERIALIZABLE transactions must retry on serialization failure (error code 40001). Implement with exponential backoff.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">DUR</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Durability config</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">synchronous_commit=on for financial/audit data. Document any tables where it's off and accept the loss window.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+// TOC scroll tracking
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, { passive: true });
+
+// ── VIZ 1: ACID scenarios ──
+var ACID_SCENARIOS = {
+  crash: {
+    broken: 'Atomicity',
+    why: 'The transaction was mid-flight when the server crashed. Some operations had written to pages in memory, others hadn\'t yet. Without WAL, some effects would persist and others wouldn\'t — the database would be left in a half-updated state.\n\nHow PostgreSQL prevents it: Every change is written to WAL before it\'s applied to data pages. On crash recovery, PostgreSQL replays committed WAL entries and rolls back uncommitted ones. The crash never produces a partial transaction.',
+    safe: 'Consistency, Isolation, Durability (if WAL was flushed before crash)',
+  },
+  concurrent: {
+    broken: 'Isolation (Lost Update)',
+    why: 'Two threads both read balance=1000. Thread A computes 1000-100=900 and writes. Thread B computes 1000-200=800 and writes. Final balance: 800. Thread A\'s update is lost. ₹100 has disappeared.\n\nAt READ COMMITTED: this happens. The second write overwrites the first without knowing about it.\n\nFix: SELECT ... FOR UPDATE on the read. Only one thread can hold the row lock — the other waits until the first commits, then reads the updated value.',
+    safe: 'Atomicity, Consistency, Durability',
+  },
+  fk: {
+    broken: 'Consistency',
+    why: 'You deleted a parent row (user_id=5) while child rows (orders with user_id=5) still reference it. The foreign key constraint prevents this — the delete is rejected.\n\nIf you disabled the FK constraint: the child rows now have a user_id pointing to a non-existent user. The database is in an inconsistent state. Queries joining orders to users will produce wrong results.',
+    safe: 'Atomicity, Isolation, Durability',
+  },
+  syncoff: {
+    broken: 'Durability',
+    why: 'With synchronous_commit=off, PostgreSQL acknowledges the commit before the WAL record is flushed to disk. If the server crashes in the next ~200ms, the transaction that was "committed" may not appear after recovery.\n\nFrom the application\'s perspective: it received a success response, but the data is gone. This is acceptable for non-critical high-throughput writes. It is never acceptable for financial data.',
+    safe: 'Atomicity, Consistency, Isolation',
+  },
+  negative: {
+    broken: 'Consistency (application-level)',
+    why: 'The database allows balance to go negative because no CHECK constraint is defined. The transaction is atomic (completed fully), isolated (no concurrent interference), and durable (survives crashes). But the result violates a business rule the database doesn\'t know about.\n\nFix: ALTER TABLE accounts ADD CONSTRAINT balance_non_negative CHECK (balance >= 0);\n\nNow any transaction that would produce a negative balance is rejected entirely — atomicity ensures the partial debit doesn\'t leave the account in a bad state.',
+    safe: 'Atomicity, Isolation, Durability — but not business Consistency',
+  },
+};
+
+function showAcid(key) {
+  var s = ACID_SCENARIOS[key];
+  document.getElementById('acid-output').innerHTML =
+    '<span style="color:var(--red)">Breaks: ' + s.broken + '</span>\n\n' + s.why +
+    '\n\n<span style="color:var(--green)">Still maintained: ' + s.safe + '</span>';
+}
+
+// ── VIZ 2: Isolation levels ──
+var isoLevel = 'rc';
+function setIsolation(level, btn) {
+  isoLevel = level;
+  document.querySelectorAll('#iso-rc,#iso-rr,#iso-ser').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+var ISO_SCENARIOS = {
+  'rc-nonrep': {
+    steps: [
+      { tx:'A', text:'BEGIN', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'BEGIN', cls:'running' },
+      { tx:'B', text:'UPDATE balance=900 WHERE id=1', cls:'running' },
+      { tx:'B', text:'COMMIT ✓', cls:'committed' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 900 ← DIFFERENT!', cls:'dirty' },
+      { tx:'A', text:'COMMIT', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--red)">⚠ NON-REPEATABLE READ at READ COMMITTED</span>\n\nTransaction A read balance=1000, then 900 — same row, same transaction, different values.\nTransaction B committed between A\'s two reads. READ COMMITTED takes a new snapshot per statement, so A sees B\'s committed change.\n\nFix: Use REPEATABLE READ — A\'s snapshot is fixed at transaction start, B\'s commit is invisible to A.',
+  },
+  'rr-nonrep': {
+    steps: [
+      { tx:'A', text:'BEGIN (REPEATABLE READ) — snapshot taken', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'BEGIN', cls:'running' },
+      { tx:'B', text:'UPDATE balance=900 WHERE id=1', cls:'running' },
+      { tx:'B', text:'COMMIT ✓', cls:'committed' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000 (snapshot!)', cls:'committed' },
+      { tx:'A', text:'COMMIT', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at REPEATABLE READ</span>\n\nTransaction A reads balance=1000 both times — consistent snapshot throughout the transaction.\nB\'s committed update (900) is invisible to A because A\'s snapshot was taken at BEGIN.\n\nThis is the key difference from READ COMMITTED: snapshot is per-transaction, not per-statement.',
+  },
+  'ser-nonrep': {
+    steps: [
+      { tx:'A', text:'BEGIN (SERIALIZABLE)', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'UPDATE balance=900 WHERE id=1; COMMIT', cls:'committed' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000 (snapshot)', cls:'committed' },
+      { tx:'A', text:'COMMIT ✓ (no conflict)', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at SERIALIZABLE</span>\n\nSame behaviour as REPEATABLE READ for non-repeatable reads.\nSerializable adds write-skew protection on top.',
+  },
+  'rc-phantom': {
+    steps: [
+      { tx:'A', text:'BEGIN', cls:'running' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2]', cls:'running' },
+      { tx:'B', text:'INSERT row with amount=500; COMMIT', cls:'committed' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2, NEW ROW]', cls:'phantom' },
+      { tx:'A', text:'COMMIT', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--red)">⚠ PHANTOM READ at READ COMMITTED</span>\n\nA new row appeared between A\'s two identical queries.\nB inserted and committed a new row while A was open. READ COMMITTED sees it on the second query.\n\nFix: REPEATABLE READ or SERIALIZABLE — PostgreSQL prevents phantom reads at both levels via MVCC snapshots.',
+  },
+  'rr-phantom': {
+    steps: [
+      { tx:'A', text:'BEGIN (REPEATABLE READ)', cls:'running' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2]', cls:'running' },
+      { tx:'B', text:'INSERT row with amount=500; COMMIT', cls:'committed' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2] (snapshot!)', cls:'committed' },
+      { tx:'A', text:'COMMIT', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at REPEATABLE READ (PostgreSQL)</span>\n\nB\'s new row is invisible to A — A\'s snapshot was taken at BEGIN.\nNote: the SQL standard only prevents phantoms at SERIALIZABLE, but PostgreSQL prevents them at REPEATABLE READ too via MVCC. This is a PostgreSQL-specific improvement.',
+  },
+  'ser-phantom': {
+    steps: [
+      { tx:'A', text:'BEGIN (SERIALIZABLE)', cls:'running' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2]', cls:'running' },
+      { tx:'B', text:'INSERT row with amount=500; COMMIT', cls:'committed' },
+      { tx:'A', text:'SELECT * WHERE amount > 100 → [row1, row2] (snapshot)', cls:'committed' },
+      { tx:'A', text:'COMMIT ✓', cls:'committed' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at SERIALIZABLE</span>\n\nPhantom prevented. Additionally, SERIALIZABLE detects write-skew anomalies that REPEATABLE READ misses.',
+  },
+  'rc-lost': {
+    steps: [
+      { tx:'A', text:'BEGIN', cls:'running' },
+      { tx:'B', text:'BEGIN', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'A', text:'UPDATE balance = 900 WHERE id=1', cls:'running' },
+      { tx:'A', text:'COMMIT ✓ balance=900', cls:'committed' },
+      { tx:'B', text:'UPDATE balance = 800 WHERE id=1 (from old read!)', cls:'dirty' },
+      { tx:'B', text:'COMMIT ✓ balance=800 ← A\'s update LOST!', cls:'aborted' },
+    ],
+    verdict: '<span style="color:var(--red)">⚠ LOST UPDATE at READ COMMITTED</span>\n\nBoth A and B read balance=1000. A committed 900. B overwrote it with 800 (computed from old value 1000-200).\nA\'s write is silently lost. The correct final balance should be 700 (1000-100-200).\n\nThis is the exact pattern from the Day 9 incident. ₹100 disappeared.\n\nFix: SELECT ... FOR UPDATE — B would wait at its SELECT until A commits, then read 900.',
+  },
+  'rr-lost': {
+    steps: [
+      { tx:'A', text:'BEGIN (REPEATABLE READ)', cls:'running' },
+      { tx:'B', text:'BEGIN (REPEATABLE READ)', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'A', text:'UPDATE balance = 900 WHERE id=1', cls:'running' },
+      { tx:'A', text:'COMMIT ✓', cls:'committed' },
+      { tx:'B', text:'UPDATE balance = 800 WHERE id=1', cls:'running' },
+      { tx:'B', text:'ERROR: could not serialize (detects conflict)', cls:'aborted' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at REPEATABLE READ</span>\n\nPostgreSQL detects that B\'s UPDATE would conflict with A\'s committed write.\nB\'s transaction is aborted with ERROR: could not serialize access due to concurrent update.\nB must retry — it will re-read balance=900 and write 700.\n\nFinal balance: 700 (correct!).',
+  },
+  'ser-lost': {
+    steps: [
+      { tx:'A', text:'BEGIN (SERIALIZABLE)', cls:'running' },
+      { tx:'B', text:'BEGIN (SERIALIZABLE)', cls:'running' },
+      { tx:'A', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'B', text:'SELECT balance WHERE id=1 → 1000', cls:'running' },
+      { tx:'A', text:'UPDATE balance = 900; COMMIT ✓', cls:'committed' },
+      { tx:'B', text:'UPDATE balance = 800 → CONFLICT DETECTED', cls:'aborted' },
+      { tx:'B', text:'ERROR 40001: serialization failure (retry)', cls:'aborted' },
+    ],
+    verdict: '<span style="color:var(--green)">✓ PREVENTED at SERIALIZABLE</span>\n\nSame conflict detection as REPEATABLE READ for this case.\nB is aborted and must retry. Application must handle error code 40001.',
+  },
+};
+
+function runIsoScenario(scenario) {
+  var key = isoLevel + '-' + scenario;
+  var s = ISO_SCENARIOS[key];
+  if (!s) { document.getElementById('iso-verdict').textContent = 'Select an isolation level first.'; return; }
+
+  var cols = s.steps.some(function(st) { return st.tx === 'A'; }) ? 2 : 1;
+  var lanesEl = document.getElementById('iso-lanes');
+  lanesEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;padding-bottom:6px">Transaction A</div>' +
+    '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:1px;padding-bottom:6px">Transaction B</div>' +
+    s.steps.map(function(st) {
+      var left = st.tx === 'A' ? '<div class="tx-cell ' + st.cls + '">' + st.text + '</div>' : '<div style="height:8px"></div>';
+      var right = st.tx === 'B' ? '<div class="tx-cell ' + st.cls + '">' + st.text + '</div>' : '<div style="height:8px"></div>';
+      return left + right;
+    }).join('') + '</div>';
+
+  document.getElementById('iso-verdict').innerHTML = s.verdict;
+}
+
+// ── VIZ 3: Locks ──
+var LOCK_INFO = {
+  select:           { mode:'ACCESS SHARE',          conflicts:'ACCESS EXCLUSIVE only', blocks:'ALTER TABLE, DROP TABLE, TRUNCATE, VACUUM FULL', safe:'All SELECTs, INSERT, UPDATE, DELETE, CREATE INDEX CONCURRENTLY' },
+  select_for_update:{ mode:'ROW SHARE (+ row locks)',conflicts:'EXCLUSIVE, ACCESS EXCLUSIVE', blocks:'Other SELECT FOR UPDATE/SHARE on same rows, EXCLUSIVE lock holders', safe:'Regular SELECT, INSERT, UPDATE on different rows' },
+  update:           { mode:'ROW EXCLUSIVE',          conflicts:'SHARE, SHARE ROW EXCLUSIVE, EXCLUSIVE, ACCESS EXCLUSIVE', blocks:'CREATE INDEX (non-concurrent), LOCK TABLE, ALTER TABLE', safe:'SELECT, INSERT, concurrent UPDATE on different rows' },
+  insert:           { mode:'ROW EXCLUSIVE',          conflicts:'SHARE, SHARE ROW EXCLUSIVE, EXCLUSIVE, ACCESS EXCLUSIVE', blocks:'Same as UPDATE', safe:'SELECT, concurrent INSERT, concurrent UPDATE' },
+  create_index:     { mode:'SHARE (blocks writes!)', conflicts:'ROW EXCLUSIVE, SHARE ROW EXCLUSIVE, EXCLUSIVE, ACCESS EXCLUSIVE', blocks:'All INSERT, UPDATE, DELETE for duration of build', safe:'SELECT only. Use CREATE INDEX CONCURRENTLY to avoid this lock.' },
+  alter_table:      { mode:'ACCESS EXCLUSIVE',       conflicts:'EVERYTHING', blocks:'All reads and writes. Maximum danger.', safe:'Nothing — full table lock.' },
+  vacuum:           { mode:'SHARE UPDATE EXCLUSIVE', conflicts:'SHARE UPDATE EXCLUSIVE, SHARE ROW EXCLUSIVE, EXCLUSIVE, ACCESS EXCLUSIVE', blocks:'VACUUM, ANALYZE on same table simultaneously; schema changes', safe:'SELECT, INSERT, UPDATE, DELETE all proceed normally' },
+};
+
+function showLock(op) {
+  var l = LOCK_INFO[op];
+  document.getElementById('lock-output').innerHTML =
+    'Operation:    ' + op.toUpperCase().replace('_',' ') + '\n' +
+    'Lock mode:    <span style="color:var(--accent)">' + l.mode + '</span>\n\n' +
+    'Blocks:       <span style="color:var(--red)">' + l.blocks + '</span>\n\n' +
+    'Safe to run concurrently:\n<span style="color:var(--green)">' + l.safe + '</span>' +
+    (op === 'create_index' ? '\n\n<span style="color:var(--orange)">⚠ Always use CREATE INDEX CONCURRENTLY in production. Non-concurrent blocks all writes for minutes.</span>' : '') +
+    (op === 'alter_table' ? '\n\n<span style="color:var(--red)">🔴 ALTER TABLE acquires ACCESS EXCLUSIVE — blocks ALL reads and writes. Schedule during maintenance windows or use pg_repack for large tables.</span>' : '');
+}
+
+// ── VIZ 4: Deadlock ──
+var dlTimer = null;
+
+function resetDeadlock() {
+  if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
+  document.getElementById('dl-a-steps').innerHTML = '';
+  document.getElementById('dl-b-steps').innerHTML = '';
+  setRowStatus(1, 'free', 'var(--text3)', 'var(--border)');
+  setRowStatus(2, 'free', 'var(--text3)', 'var(--border)');
+  document.getElementById('deadlock-verdict').textContent = 'Press "Simulate deadlock" to watch the cycle form.';
+}
+
+function setRowStatus(row, status, color, border) {
+  var el = document.getElementById('row' + row + '-status');
+  el.style.borderColor = border;
+  el.style.color = color;
+  el.innerHTML = 'Row ' + row + '<br><span style="font-size:10px">' + status + '</span>';
+}
+
+function addStep(txId, text, cls) {
+  var el = document.getElementById('dl-' + txId + '-steps');
+  var div = document.createElement('div');
+  div.className = 'tx-cell ' + cls;
+  div.textContent = text;
+  div.style.animation = 'none';
+  el.appendChild(div);
+}
+
+function runDeadlock() {
+  resetDeadlock();
+  var events = [
+    function() { addStep('a', 'BEGIN', 'running'); addStep('b', 'BEGIN', 'running'); },
+    function() { addStep('a', 'UPDATE row 1 → LOCKED ✓', 'running'); setRowStatus(1, 'locked by A', 'var(--accent)', 'var(--accent)'); },
+    function() { addStep('b', 'UPDATE row 2 → LOCKED ✓', 'running'); setRowStatus(2, 'locked by B', 'var(--purple)', 'var(--purple)'); },
+    function() { addStep('a', 'UPDATE row 2 → WAITING...', 'waiting'); },
+    function() { addStep('b', 'UPDATE row 1 → WAITING...', 'waiting'); },
+    function() {
+      addStep('a', 'ERROR: deadlock detected → ABORTED', 'aborted');
+      addStep('b', 'COMMIT ✓ (deadlock resolved)', 'committed');
+      setRowStatus(1, 'released', 'var(--green)', 'var(--green)');
+      setRowStatus(2, 'released', 'var(--green)', 'var(--green)');
+      document.getElementById('deadlock-verdict').innerHTML =
+        '<span style="color:var(--red)">💀 DEADLOCK DETECTED</span>\n\n' +
+        'A locked row 1, B locked row 2.\n' +
+        'A waited for row 2 (held by B).\n' +
+        'B waited for row 1 (held by A).\n' +
+        'PostgreSQL\'s deadlock detector found the cycle and aborted A.\n' +
+        'B committed successfully. A received: ERROR: deadlock detected\n\n' +
+        '<span style="color:var(--orange)">Fix: Always lock rows in primary key order (row 1 before row 2).\nIf both A and B lock row 1 first, A holds row 1, B waits — no cycle.</span>';
+    },
+  ];
+  var i = 0;
+  dlTimer = setInterval(function() {
+    if (i < events.length) { events[i](); i++; }
+    else { clearInterval(dlTimer); }
+  }, 900);
+}
+
+function runDeadlockFixed() {
+  resetDeadlock();
+  var events = [
+    function() { addStep('a', 'BEGIN', 'running'); addStep('b', 'BEGIN', 'running'); },
+    function() { addStep('a', 'UPDATE row 1 → LOCKED ✓', 'running'); setRowStatus(1, 'locked by A', 'var(--accent)', 'var(--accent)'); },
+    function() { addStep('b', 'UPDATE row 1 → WAITING (A has it)', 'waiting'); },
+    function() { addStep('a', 'UPDATE row 2 → LOCKED ✓', 'running'); setRowStatus(2, 'locked by A', 'var(--accent)', 'var(--accent)'); },
+    function() { addStep('a', 'COMMIT ✓', 'committed'); setRowStatus(1, 'free', 'var(--green)', 'var(--green)'); setRowStatus(2, 'free', 'var(--green)', 'var(--green)'); },
+    function() { addStep('b', 'UPDATE row 1 → LOCKED ✓ (A released)', 'running'); setRowStatus(1, 'locked by B', 'var(--purple)', 'var(--purple)'); },
+    function() { addStep('b', 'UPDATE row 2 → LOCKED ✓', 'running'); setRowStatus(2, 'locked by B', 'var(--purple)', 'var(--purple)'); },
+    function() {
+      addStep('b', 'COMMIT ✓', 'committed');
+      setRowStatus(1, 'free', 'var(--text3)', 'var(--border)');
+      setRowStatus(2, 'free', 'var(--text3)', 'var(--border)');
+      document.getElementById('deadlock-verdict').innerHTML =
+        '<span style="color:var(--green)">✓ NO DEADLOCK — consistent lock ordering</span>\n\n' +
+        'Both A and B lock rows in order: row 1 first, then row 2.\n' +
+        'A acquires both locks and commits. B waited for row 1, then proceeded normally.\n' +
+        'No cycle possible — the same ordering prevents mutual waiting.\n\n' +
+        'Rule: sort rows by primary key before locking. Always.';
+    },
+  ];
+  var i = 0;
+  dlTimer = setInterval(function() {
+    if (i < events.length) { events[i](); i++; }
+    else { clearInterval(dlTimer); }
+  }, 800);
+}
+
+// ── VIZ 5: MVCC ──
+var mvccStepIdx = 0;
+var MVCC_EVENTS = [
+  { label:'T=1', text:'Transaction A begins (txid=101). Snapshot: see commits before txid=101.', color:'var(--accent)' },
+  { label:'T=2', text:'A reads accounts WHERE id=1. Sees row with xmin=50, xmax=0 → balance=1000.', color:'var(--accent)' },
+  { label:'T=3', text:'Transaction B begins (txid=102). B\'s snapshot: also sees balance=1000.', color:'var(--purple)' },
+  { label:'T=4', text:'B updates: writes NEW row version xmin=102, balance=900. Old row: xmax=102 (now dead to txid>=102 observers after commit).', color:'var(--purple)' },
+  { label:'T=5', text:'B commits. txid=102 is now visible to any transaction starting after this point.', color:'var(--green)' },
+  { label:'T=6 (READ COMMITTED)', text:'A re-reads with a new statement snapshot. Now sees txid=102 committed → balance=900. Non-repeatable read!', color:'var(--red)' },
+  { label:'T=6 (REPEATABLE READ)', text:'A re-reads using its original snapshot (fixed at T=1). txid=102 > A\'s snapshot → invisible. Still sees balance=1000. Consistent!', color:'var(--green)' },
+  { label:'T=7', text:'A commits. Old row version (xmin=50, xmax=102) now eligible for VACUUM cleanup. MVCC overhead: two versions existed during this window.', color:'var(--text3)' },
+];
+
+function mvccStep() {
+  if (mvccStepIdx >= MVCC_EVENTS.length) { mvccStepIdx = 0; document.getElementById('mvcc-timeline').innerHTML = ''; }
+  var e = MVCC_EVENTS[mvccStepIdx];
+  var tl = document.getElementById('mvcc-timeline');
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;animation:fadeIn .3s ease';
+  div.innerHTML = '<span style="font-family:JetBrains Mono,monospace;font-size:10px;color:' + e.color + ';min-width:50px;padding-top:2px">' + e.label + '</span>' +
+    '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);flex:1;line-height:1.6">' + e.text + '</div>';
+  tl.appendChild(div);
+  document.getElementById('mvcc-output').textContent = e.text;
+  mvccStepIdx++;
+  if (mvccStepIdx >= MVCC_EVENTS.length) document.getElementById('mvcc-step-btn').textContent = '↺ Restart';
+  else document.getElementById('mvcc-step-btn').textContent = '▶ Next event (' + (mvccStepIdx + 1) + '/' + MVCC_EVENTS.length + ')';
+}
+function resetMvcc() {
+  mvccStepIdx = 0;
+  document.getElementById('mvcc-timeline').innerHTML = '';
+  document.getElementById('mvcc-output').textContent = 'Press "Next event" to step through the MVCC timeline.';
+  document.getElementById('mvcc-step-btn').textContent = '▶ Next event';
+}
+
+// ── VIZ 6: 2PC ──
+var TPC_SCENARIOS = {
+  happy: [
+    'Phase 1 — Prepare:',
+    '  Coordinator → Participant A: PREPARE TRANSACTION \'order-txn-123\'',
+    '  Participant A: writes intent to WAL, locks resources',
+    '  Participant A → Coordinator: READY',
+    '  Coordinator → Participant B: PREPARE TRANSACTION \'order-txn-123\'',
+    '  Participant B: writes intent to WAL, locks resources',
+    '  Participant B → Coordinator: READY',
+    '',
+    'Phase 2 — Commit:',
+    '  Coordinator: all participants ready — writing COMMIT to coordinator WAL',
+    '  Coordinator → Participant A: COMMIT PREPARED',
+    '  Participant A: commits, releases locks',
+    '  Coordinator → Participant B: COMMIT PREPARED',
+    '  Participant B: commits, releases locks',
+    '',
+    '✓ COMMITTED on all participants. Transaction complete.',
+  ].join('\n'),
+
+  participant_fail: [
+    'Phase 1 — Prepare:',
+    '  Coordinator → Participant A: PREPARE TRANSACTION \'order-txn-123\'',
+    '  Participant A → Coordinator: READY',
+    '  Coordinator → Participant B: PREPARE TRANSACTION \'order-txn-123\'',
+    '  Participant B: constraint violation detected during prepare',
+    '  Participant B → Coordinator: ABORT',
+    '',
+    'Phase 2 — Abort (any single ABORT = abort all):',
+    '  Coordinator → Participant A: ROLLBACK PREPARED \'order-txn-123\'',
+    '  Participant A: rolls back, releases locks',
+    '  Participant B: already rolled back',
+    '',
+    '✓ ROLLED BACK atomically. No participant committed.',
+    '',
+    'Note: This is the safe case. 2PC handles participant failures cleanly.',
+  ].join('\n'),
+
+  coordinator_crash: [
+    'Phase 1 — Prepare:',
+    '  All participants respond READY.',
+    '',
+    'Phase 2 — COORDINATOR CRASHES before sending commit:',
+    '  💥 Coordinator process dies.',
+    '',
+    '  Participant A: prepared, holding locks... waiting for coordinator.',
+    '  Participant B: prepared, holding locks... waiting for coordinator.',
+    '',
+    '  ⏳ Both participants are STUCK. They cannot commit or abort alone.',
+    '  They hold row locks on their respective tables.',
+    '  Other transactions trying to access those rows: BLOCKED.',
+    '',
+    '⚠ This is 2PC\'s fundamental weakness: blocking under coordinator failure.',
+    '',
+    'Recovery:',
+    '  Coordinator restarts, reads its WAL, sees the prepare decision.',
+    '  Sends COMMIT to all participants. Participants commit.',
+    '  If coordinator WAL was lost: manual resolution required.',
+    '  Check: SELECT * FROM pg_prepared_xacts; on each participant.',
+    '  Resolve manually: ROLLBACK PREPARED \'order-txn-123\'; (safer) or COMMIT PREPARED.',
+  ].join('\n'),
+
+  network: [
+    'Phase 1 — Prepare:',
+    '  Coordinator → Participant A: READY received.',
+    '  Coordinator → Participant B: 🔌 NETWORK PARTITION — no response.',
+    '',
+    '  Coordinator cannot distinguish:',
+    '    (a) B prepared but response was lost',
+    '    (b) B crashed before preparing',
+    '    (c) B rejected and response was lost',
+    '',
+    '  Coordinator: cannot proceed — must wait or abort.',
+    '',
+    '  If coordinator times out → sends ROLLBACK PREPARED to A (safe).',
+    '  If partition heals → coordinator can retry phase 1 with B.',
+    '',
+    '⚠ Network partitions make 2PC non-terminating.',
+    '  Participants hold locks for the duration of the partition.',
+    '',
+    'This is why many distributed systems prefer sagas:\n  - No coordinator holds locks across services\n  - Partial failures handled by compensating transactions\n  - System makes progress even under partition',
+  ].join('\n'),
+};
+
+function run2PC(scenario) {
+  var colors = { happy:'var(--green)', participant_fail:'var(--orange)', coordinator_crash:'var(--red)', network:'var(--red)' };
+  document.getElementById('twopc-output').innerHTML =
+    '<span style="color:' + (colors[scenario] || 'var(--text2)') + '">' + TPC_SCENARIOS[scenario] + '</span>';
+}
+
+// ── VIZ 7: Sagas ──
+var SAGA_SCENARIOS = {
+  'choreography-happy': [
+    '── CHOREOGRAPHY SAGA: Order Placement (happy path) ──\n',
+    '[Order Service]     → publishes: OrderCreated {orderId, items, userId}',
+    '[Inventory Service] ← listens: OrderCreated',
+    '[Inventory Service] → reserves stock',
+    '[Inventory Service] → publishes: StockReserved {orderId}',
+    '[Payment Service]   ← listens: StockReserved',
+    '[Payment Service]   → charges ₹1499',
+    '[Payment Service]   → publishes: PaymentCharged {orderId, amount}',
+    '[Order Service]     ← listens: PaymentCharged',
+    '[Order Service]     → updates order status: CONFIRMED',
+    '[Notification Svc]  ← listens: PaymentCharged',
+    '[Notification Svc]  → sends confirmation email',
+    '\n✓ Saga complete. No central coordinator. Services react to events.',
+  ].join('\n'),
+
+  'choreography-fail': [
+    '── CHOREOGRAPHY SAGA: Order Placement (payment fails) ──\n',
+    '[Order Service]     → publishes: OrderCreated {orderId}',
+    '[Inventory Service] → reserves stock',
+    '[Inventory Service] → publishes: StockReserved {orderId}',
+    '[Payment Service]   ← listens: StockReserved',
+    '[Payment Service]   → attempts charge... DECLINED (insufficient funds)',
+    '[Payment Service]   → publishes: PaymentFailed {orderId, reason}',
+    '[Inventory Service] ← listens: PaymentFailed',
+    '[Inventory Service] → COMPENSATE: release reserved stock ← compensating tx',
+    '[Order Service]     ← listens: PaymentFailed',
+    '[Order Service]     → COMPENSATE: update order status: CANCELLED',
+    '\n⚠ Saga compensated. Stock released. Order cancelled.',
+    '\nChallenge: if Inventory\'s compensation ALSO fails → dead letter queue + alert.',
+    'Each compensation step must be idempotent (safe to retry).',
+  ].join('\n'),
+
+  'orchestration-happy': [
+    '── ORCHESTRATION SAGA: Order Placement (happy path) ──\n',
+    '[Saga Orchestrator] → cmd: ReserveStock {orderId, items}',
+    '[Inventory Service] → reserves stock',
+    '[Inventory Service] → reply: StockReserved ✓',
+    '[Saga Orchestrator] → cmd: ChargePayment {orderId, amount}',
+    '[Payment Service]   → charges ₹1499',
+    '[Payment Service]   → reply: PaymentCharged ✓',
+    '[Saga Orchestrator] → cmd: ConfirmOrder {orderId}',
+    '[Order Service]     → updates status: CONFIRMED',
+    '[Order Service]     → reply: OrderConfirmed ✓',
+    '[Saga Orchestrator] → cmd: SendConfirmation {orderId}',
+    '[Notification Svc]  → sends email',
+    '\n✓ Saga complete. Orchestrator has full visibility into state.',
+    'Advantage: easier to observe, add steps, handle partial failures.',
+    'Disadvantage: orchestrator is central point of complexity.',
+  ].join('\n'),
+
+  'orchestration-fail': [
+    '── ORCHESTRATION SAGA: Order Placement (inventory fails) ──\n',
+    '[Saga Orchestrator] → cmd: ReserveStock {orderId, items}',
+    '[Inventory Service] → OUT OF STOCK',
+    '[Inventory Service] → reply: StockReservationFailed {reason: "out_of_stock"}',
+    '',
+    '[Saga Orchestrator] FAILURE detected at step 1.',
+    '[Saga Orchestrator] No steps completed → nothing to compensate.',
+    '[Saga Orchestrator] → cmd: CancelOrder {orderId}',
+    '[Order Service]     → updates status: CANCELLED',
+    '',
+    '✓ No money charged. No stock affected. Order cancelled cleanly.',
+    '',
+    'Compare to failure after payment:',
+    '[Saga Orchestrator] → cmd: ReserveStock ✓',
+    '[Saga Orchestrator] → cmd: ChargePayment ✓ (₹1499 charged)',
+    '[Saga Orchestrator] → cmd: CreateShipment → FAILED',
+    '[Saga Orchestrator] COMPENSATE in reverse:',
+    '  → cmd: RefundPayment ← real refund operation, must be idempotent',
+    '  → cmd: ReleaseStock',
+    '  → cmd: CancelOrder',
+  ].join('\n'),
+};
+
+function runSaga(type, outcome) {
+  var key = type + '-' + outcome;
+  var col = outcome === 'happy' ? 'var(--green)' : 'var(--orange)';
+  document.getElementById('saga-output').innerHTML =
+    '<span style="color:' + col + '">' + SAGA_SCENARIOS[key] + '</span>';
+}
+
+// ── VIZ 8: Isolation cost tradeoff ──
+var ISO_TRADE = {
+  rc: {
+    throughput: 95, consistency: 60,
+    text: [
+      'READ COMMITTED — PostgreSQL default',
+      '',
+      'Throughput:   ████████████████████ 95% (maximum)',
+      'Consistency:  ████████████ 60% (moderate)',
+      '',
+      'Mechanism:    New snapshot per statement. No read locks.',
+      'Phenomena:    Prevents dirty reads only.',
+      '              Non-repeatable reads: possible.',
+      '              Lost updates: possible (read-then-update).',
+      '              Phantom reads: possible.',
+      '',
+      'Use when:     Most API endpoints. Read-only queries.',
+      '              High-write tables where lost updates aren\'t a concern.',
+      '',
+      'Add SELECT FOR UPDATE for any read-then-update pattern.',
+    ].join('\n'),
+  },
+  rr: {
+    throughput: 75, consistency: 85,
+    text: [
+      'REPEATABLE READ',
+      '',
+      'Throughput:   ███████████████ 75% (good)',
+      'Consistency:  █████████████████ 85% (strong)',
+      '',
+      'Mechanism:    Snapshot at BEGIN, held for entire transaction.',
+      '              Conflicts cause serialization errors (must retry).',
+      'Phenomena:    Prevents dirty reads, non-repeatable reads, phantoms.',
+      '              Lost updates: PREVENTED (write conflict detected).',
+      '              Write skew: still possible.',
+      '',
+      'Use when:     Financial aggregations, reporting queries that must',
+      '              see a consistent view across multiple reads.',
+      '              Any place lost updates are unacceptable.',
+      '',
+      'Must handle: ERROR 40001 (serialization failure) with retry.',
+    ].join('\n'),
+  },
+  ser: {
+    throughput: 55, consistency: 100,
+    text: [
+      'SERIALIZABLE (SSI — Serializable Snapshot Isolation)',
+      '',
+      'Throughput:   ███████████ 55% (lower under conflict)',
+      'Consistency:  ████████████████████ 100% (full ACID)',
+      '',
+      'Mechanism:    Tracks read/write dependencies across transactions.',
+      '              Detects write-skew anomalies automatically.',
+      '              Aborts conflicting transactions (must retry).',
+      'Phenomena:    Prevents ALL: dirty reads, non-repeatable, phantoms,',
+      '              lost updates, write skew.',
+      '',
+      'Use when:     Complex business invariants spanning multiple rows.',
+      '              "No two doctors on-call simultaneously."',
+      '              "Seat can only be booked once."',
+      '              "Transfer can\'t overdraw account considering concurrent transfers."',
+      '',
+      'Must handle: ERROR 40001 with retry + exponential backoff.',
+      'Throughput:   Near READ COMMITTED at low conflict rates.',
+      '              Degrades under high conflict — measure in your workload.',
+    ].join('\n'),
+  },
+};
+
+function showIsoTrade(level) {
+  var t = ISO_TRADE[level];
+  document.getElementById('iso-trade-output').textContent = t.text;
+}
+
+// ── INIT ──
+document.getElementById('iso-rc').classList.add('active');
+isoLevel = 'rc';
+showAcid('concurrent');
+showIsoTrade('rc');
+showLock('update');
+</script>
+</body>
+</html>
