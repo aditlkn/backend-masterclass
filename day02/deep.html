@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 2 Deep Dive: Socket Buffers, sysctl Tuning, TIME_WAIT at Scale</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:36px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.sysctl-table{width:100%;border-collapse:collapse;font-size:13px;margin:20px 0;}
+.sysctl-table th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 12px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+.sysctl-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;font-size:12.5px;}
+.sysctl-table tr:hover td{background:var(--bg2);}
+.sysctl-table td:first-child{font-family:'JetBrains Mono',monospace;color:var(--purple);font-size:12px;}
+.sysctl-table td:nth-child(2){color:var(--red);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.sysctl-table td:nth-child(3){color:var(--green);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day02" class="back-link">&#8592; Day 2: TCP/IP</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 2 · TCP/IP · Deep Dive</div>
+  <h1>Socket buffers, the full sysctl map,<br>&amp; <em>TIME_WAIT at scale</em></h1>
+  <p>The main lesson explained TCP mechanics. This page covers the three implementation areas that actually require action on production servers: socket buffer sizing and how it affects throughput, the complete set of sysctl knobs you need with exact values and why, and TIME_WAIT — what it is, when it becomes a problem, and the math for knowing when you're about to run out of ports.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Socket buffer sizing &amp; throughput</span><span class="deep-topic-sub">— receive/send buffer math, BDP, auto-tuning limits</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">The complete production sysctl map</span><span class="deep-topic-sub">— every knob, default value, recommended value, and why</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">TIME_WAIT at scale — port exhaustion math</span><span class="deep-topic-sub">— when it becomes a problem, tw_reuse, and the right fix</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Socket buffer sizing<br>&amp; <em>throughput limits</em></h2>
+  <p class="lead">TCP's throughput is bounded by the receive buffer size divided by the round-trip time. This is the Bandwidth-Delay Product — and if your buffers are too small, you're leaving throughput on the table regardless of how fast your network or CPU is.</p>
+
+  <h3>The Bandwidth-Delay Product (BDP)</h3>
+  <p>TCP uses a sliding window: the sender can have at most <code>window_size</code> bytes in-flight before it must wait for an acknowledgment. The maximum throughput is therefore:</p>
+  <p><code>max_throughput = window_size / RTT</code></p>
+  <p>If your receive buffer is 87KB (Linux default) and your RTT to a client is 50ms: <code>87KB / 0.05s = 1.74 MB/s</code>. On a 1Gbps network you're capped at 1.74 MB/s per connection — not because of bandwidth, but because of buffer size. This is the BDP problem, and it dominates large file transfers and bulk data streaming even on high-bandwidth networks.</p>
+  <p>For intra-datacenter connections with 0.1ms RTT, the default 87KB buffer gives 870 MB/s — more than enough. The BDP problem only manifests for connections with high RTT (cross-region, client-facing).</p>
+
+  <h3>Linux TCP auto-tuning</h3>
+  <p>Modern Linux (2.6.17+) auto-tunes socket buffers within configurable limits. The kernel starts with a small buffer and grows it based on observed RTT and available memory. The critical parameters are the <em>maximum</em> values — the ceiling the auto-tuner can grow to. The defaults (4MB receive max, 4MB send max) are too low for high-throughput cross-region scenarios.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Socket buffer tuning — calculate BDP and set correct limits</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Step 1: measure your actual RTT to key destinations</span>
+ping -c 20 api.partner.com | tail -1
+<span class="cm"># rtt min/avg/max/mdev = 18.2/19.4/21.1/0.8 ms</span>
+
+<span class="cm"># Step 2: calculate BDP for your target throughput</span>
+<span class="cm"># Target: 100 MB/s on a 20ms RTT connection</span>
+<span class="cm"># BDP = bandwidth × RTT = 100 MB/s × 0.020s = 2 MB per connection</span>
+<span class="cm"># Set max buffer to 4× BDP for headroom: 8MB</span>
+
+<span class="cm"># Step 3: set buffer limits</span>
+<span class="cm"># /etc/sysctl.d/99-tcp-buffers.conf</span>
+
+<span class="cm"># Receive buffer: min / default / max</span>
+net.ipv4.tcp_rmem = 4096 87380 8388608   <span class="cm"># max: 8MB</span>
+
+<span class="cm"># Send buffer: min / default / max</span>
+net.ipv4.tcp_wmem = 4096 65536 8388608   <span class="cm"># max: 8MB</span>
+
+<span class="cm"># Global socket memory limit (all sockets combined)</span>
+net.core.rmem_max = 8388608
+net.core.wmem_max = 8388608
+
+<span class="cm"># Enable auto-tuning (should already be on)</span>
+net.ipv4.tcp_moderate_rcvbuf = 1
+
+<span class="cm"># Apply without reboot</span>
+sysctl -p /etc/sysctl.d/99-tcp-buffers.conf
+
+<span class="cm"># Verify: watch buffer growth on an active connection</span>
+ss -itm dst &lt;remote_ip&gt;
+<span class="cm"># Look for: rcv_space — this grows as auto-tuning kicks in</span>
+<span class="cm"># If rcv_space hits your max and throughput plateaus: increase max</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>The complete production<br><em>sysctl map</em></h2>
+  <p class="lead">Every Linux server running a web service needs these settings. The defaults were chosen for desktop workloads in the early 2000s. Most are wrong for cloud-hosted services with high connection rates, NAT gateways, and large socket pools. Here's every relevant knob, what it does, and what to set it to.</p>
+
+  <table class="sysctl-table">
+    <thead><tr><th>Setting</th><th>Default</th><th>Recommended</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>net.core.somaxconn</td><td>128</td><td>65535</td><td>Accept queue cap. Default causes silent drops under any real load spike.</td></tr>
+      <tr><td>net.ipv4.tcp_max_syn_backlog</td><td>512</td><td>65535</td><td>SYN queue before accept(). Must be ≥ somaxconn.</td></tr>
+      <tr><td>net.core.netdev_max_backlog</td><td>1000</td><td>65535</td><td>Packet queue per NIC before kernel drops. Relevant at very high packet rates.</td></tr>
+      <tr><td>net.ipv4.tcp_keepalive_time</td><td>7200</td><td>60</td><td>Seconds before first keepalive probe. 7200s = NAT kills it first.</td></tr>
+      <tr><td>net.ipv4.tcp_keepalive_intvl</td><td>75</td><td>10</td><td>Seconds between probes. 75s × 9 probes = 11 minutes to detect dead connection.</td></tr>
+      <tr><td>net.ipv4.tcp_keepalive_probes</td><td>9</td><td>3</td><td>Failed probes before ECONNRESET. 3 × 10s = 90s detection time.</td></tr>
+      <tr><td>net.ipv4.tcp_fin_timeout</td><td>60</td><td>15</td><td>TIME_WAIT duration after FIN. Reducing to 15s frees ports 4× faster.</td></tr>
+      <tr><td>net.ipv4.tcp_tw_reuse</td><td>0</td><td>1</td><td>Reuse TIME_WAIT sockets for new outbound connections. Safe on client side.</td></tr>
+      <tr><td>net.ipv4.ip_local_port_range</td><td>32768-60999</td><td>1024-65535</td><td>Ephemeral port range. Default: 28K ports. Extended: 64K ports.</td></tr>
+      <tr><td>net.ipv4.tcp_syncookies</td><td>1</td><td>1</td><td>SYN flood protection. Always on. Never disable.</td></tr>
+      <tr><td>net.ipv4.tcp_slow_start_after_idle</td><td>1</td><td>0</td><td>Resets congestion window after idle. Hurts connection reuse. Disable.</td></tr>
+      <tr><td>net.ipv4.tcp_rmem (max)</td><td>6MB</td><td>8MB+</td><td>Receive buffer ceiling. See BDP calculation above.</td></tr>
+      <tr><td>net.ipv4.tcp_wmem (max)</td><td>4MB</td><td>8MB+</td><td>Send buffer ceiling.</td></tr>
+      <tr><td>net.core.rmem_max</td><td>212992</td><td>8388608</td><td>Global receive buffer max. Must match tcp_rmem max.</td></tr>
+      <tr><td>net.ipv4.tcp_no_delay_ack</td><td>0</td><td>1 (for APIs)</td><td>Disable delayed ACK. Reduces latency for request-response patterns.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete /etc/sysctl.d/99-production.conf — copy and apply</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># /etc/sysctl.d/99-production.conf</span>
+<span class="cm"># Apply: sysctl -p /etc/sysctl.d/99-production.conf</span>
+
+<span class="cm">## ── Accept queue ─────────────────────────────────────────</span>
+net.core.somaxconn            = 65535
+net.ipv4.tcp_max_syn_backlog  = 65535
+net.core.netdev_max_backlog   = 65535
+
+<span class="cm">## ── Keepalive (critical for cloud/NAT environments) ──────</span>
+net.ipv4.tcp_keepalive_time   = 60
+net.ipv4.tcp_keepalive_intvl  = 10
+net.ipv4.tcp_keepalive_probes = 3
+
+<span class="cm">## ── TIME_WAIT ────────────────────────────────────────────</span>
+net.ipv4.tcp_fin_timeout      = 15
+net.ipv4.tcp_tw_reuse         = 1
+net.ipv4.ip_local_port_range  = 1024 65535
+
+<span class="cm">## ── Buffer sizing (adjust max based on BDP calculation) ──</span>
+net.ipv4.tcp_rmem             = 4096 87380 8388608
+net.ipv4.tcp_wmem             = 4096 65536 8388608
+net.core.rmem_max             = 8388608
+net.core.wmem_max             = 8388608
+net.ipv4.tcp_moderate_rcvbuf  = 1
+
+<span class="cm">## ── Latency optimisations ────────────────────────────────</span>
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_syncookies            = 1
+
+<span class="cm">## ── For high-connection-rate servers (reverse proxies) ───</span>
+<span class="cm">## Uncomment if running nginx/HAProxy:</span>
+<span class="cm"># net.ipv4.tcp_max_tw_buckets = 1440000  # max concurrent TIME_WAIT sockets</span>
+<span class="cm"># net.ipv4.tcp_abort_on_overflow = 0     # don't abort on accept queue overflow</span></pre>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Docker and Kubernetes don't inherit host sysctl</strong>
+      <p>Container workloads don't automatically use host sysctl values for network settings. In Kubernetes, set pod-level sysctl via <code>securityContext.sysctls</code> for safe sysctls (<code>net.ipv4.tcp_keepalive_time</code> etc.), or configure them at the node level via DaemonSet for unsafe ones (<code>net.core.somaxconn</code>). Always verify inside a running pod with <code>kubectl exec -it &lt;pod&gt; -- sysctl net.core.somaxconn</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>TIME_WAIT at scale:<br><em>port exhaustion math</em></h2>
+  <p class="lead">TIME_WAIT is the state a TCP socket enters after closing an outbound connection. It lasts for 2× MSL (Maximum Segment Lifetime) — 60-120 seconds on most systems. For services that make many short-lived outbound connections (HTTP without keep-alive, database connections that close frequently), TIME_WAIT accumulates and eventually exhausts the ephemeral port range.</p>
+
+  <h3>When TIME_WAIT becomes a problem</h3>
+  <p>The ephemeral port range is the pool of local ports available for outbound connections. Default on Linux: ports 32768-60999 = 28,231 ports. Each TIME_WAIT socket holds one port for up to 60 seconds. If you're closing connections faster than ports are freed, you run out.</p>
+  <p>The math: if you close 500 connections per second and each TIME_WAIT lasts 60 seconds, you accumulate 500 × 60 = 30,000 TIME_WAIT sockets. The default port range holds ~28,000. At 500 closures/second you will exhaust ports — every new outbound connection attempt returns <code>EADDRNOTAVAIL: Cannot assign requested address</code>.</p>
+
+  <h3>The solutions in order of preference</h3>
+  <ol>
+    <li><strong>Fix the root cause: use connection pooling.</strong> Keep-alive connections don't cycle through TIME_WAIT because they're not closed between requests. A pool of 20 persistent connections handles 10,000 requests without any TIME_WAIT accumulation. This is always the right first fix.</li>
+    <li><strong>Expand the port range:</strong> <code>net.ipv4.ip_local_port_range = 1024 65535</code> gives ~64,000 ports instead of ~28,000. Doubles your capacity with no downsides.</li>
+    <li><strong>Enable tcp_tw_reuse:</strong> Allows the kernel to reuse a TIME_WAIT socket for a new outbound connection to the same destination if it's safe to do so (the existing socket's data has been flushed). Safe for outbound connections. Never enable <code>tcp_tw_recycle</code> (removed in Linux 4.12, was dangerous).</li>
+    <li><strong>Reduce fin_timeout:</strong> <code>net.ipv4.tcp_fin_timeout = 15</code> reduces TIME_WAIT duration from 60s to 15s, freeing ports 4× faster.</li>
+  </ol>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Never use tcp_tw_recycle</strong>
+      <p><code>net.ipv4.tcp_tw_recycle</code> was removed in Linux 4.12 because it caused connection failures for clients behind NAT (which is most of your users). It used per-destination timestamp tracking that broke when multiple clients shared an IP. If you see it in legacy configs, remove it. It's not available in modern kernels, and if it were, it would break NAT'd traffic.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Diagnosing and monitoring TIME_WAIT accumulation</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Current TIME_WAIT socket count</span>
+ss -s | grep TIME-WAIT
+<span class="cm"># or: cat /proc/net/sockstat | grep TCP</span>
+
+<span class="cm"># Watch it in real time</span>
+watch -n1 'ss -s | grep TIME-WAIT'
+
+<span class="cm"># List all TIME_WAIT sockets with remote addresses</span>
+ss -tan state time-wait | head -20
+
+<span class="cm"># Check current ephemeral port range</span>
+cat /proc/sys/net/ipv4/ip_local_port_range
+<span class="cm"># → 32768   60999  (default: 28K ports)</span>
+
+<span class="cm"># Calculate TIME_WAIT risk for your connection rate</span>
+<span class="cm"># connections_per_second × fin_timeout = TIME_WAIT accumulation</span>
+<span class="cm"># e.g.: 200/s × 60s = 12,000 TIME_WAIT sockets (fine with 28K port range)</span>
+<span class="cm"># e.g.: 600/s × 60s = 36,000 TIME_WAIT sockets (exceeds 28K — port exhaustion!)</span>
+
+<span class="cm"># Alert threshold: TIME_WAIT count > 80% of port range</span>
+<span class="cm"># 80% of 28231 = 22584 — set alert here, not at exhaustion</span>
+
+<span class="cm"># If you hit EADDRNOTAVAIL — confirm it's port exhaustion</span>
+dmesg | grep "connect: Cannot assign requested address"
+<span class="cm"># If this appears: you're exhausted. Apply fixes immediately.</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify in production</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Monitor TIME_WAIT count continuously: <code>ss -s | grep TIME-WAIT</code>. Alert at 80% of port range.</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Port range is expanded: <code>sysctl net.ipv4.ip_local_port_range</code> should show <code>1024 65535</code> not the default.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Connection pool is actually working: TIME_WAIT count should be low (hundreds, not thousands) if keep-alive is enabled.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No EADDRNOTAVAIL in application logs or dmesg. If present, fix immediately — connections are silently failing.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>tcp_tw_recycle</code> is NOT set: <code>sysctl net.ipv4.tcp_tw_recycle</code> should return "no such file" on modern kernels.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

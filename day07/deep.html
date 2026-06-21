@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 7 Deep Dive: Protobuf Byte Encoding, Deadline Implementation, buf.build CI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.byte-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:16px 0;font-family:'JetBrains Mono',monospace;}
+.byte-table th{background:var(--bg3);padding:8px 12px;text-align:left;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border2);}
+.byte-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;}
+.byte-table td:first-child{color:var(--green);}
+.byte-table td:nth-child(2){color:var(--purple);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day07" class="back-link">&#8592; Day 7: gRPC</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 7 · gRPC · Deep Dive</div>
+  <h1>Protobuf byte encoding,<br>deadline implementation,<br>&amp; <em>buf.build CI pipeline</em></h1>
+  <p>The main lesson explained what Protobuf encodes and why deadlines matter. This page covers the byte-level detail of how Protobuf actually encodes each field type, the full deadline implementation pattern with cancellation propagation, and a complete buf.build CI pipeline you can copy into any repository.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Protobuf encoding at the byte level</span><span class="deep-topic-sub">— varint encoding, tag bytes, field number math</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Deadline propagation — full implementation</span><span class="deep-topic-sub">— setting deadlines, propagating through chains, cancellation</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">buf.build CI pipeline</span><span class="deep-topic-sub">— lint, breaking change detection, generation, registry push</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Protobuf encoding<br><em>at the byte level</em></h2>
+  <p class="lead">Understanding the exact byte encoding matters for two reasons: it explains why field numbers are sacred (they're in the wire format, names aren't), and it helps you make informed decisions about field types and number assignments in performance-critical messages.</p>
+
+  <h3>Varint: how small numbers use fewer bytes</h3>
+  <p>The most common Protobuf wire type is varint — variable-length integer encoding. The lower 7 bits of each byte carry data. The highest bit is a "continuation bit" — 1 means another byte follows, 0 means this is the last byte. This means:</p>
+  <ul>
+    <li>Values 0-127: 1 byte</li>
+    <li>Values 128-16383: 2 bytes</li>
+    <li>Values 16384-2097151: 3 bytes</li>
+    <li>Values up to 2^28: 4 bytes</li>
+    <li>Values up to 2^35: 5 bytes</li>
+  </ul>
+  <p>For a payment amount in paise (INR cents), ₹500 = 50000 paise. 50000 in binary is 1100001101010000 — 16 bits. As a varint: 3 bytes. As a JSON number: 5 characters = 5 bytes. Not huge, but at 100,000 messages/second with 20 numeric fields, the difference compounds.</p>
+
+  <h3>The tag byte: field number + wire type in 1-2 bytes</h3>
+  <p>Every field in a Protobuf message starts with a tag: <code>tag = (field_number &lt;&lt; 3) | wire_type</code>. Wire types: 0 = varint, 1 = 64-bit, 2 = length-delimited, 5 = 32-bit. For field numbers 1-15, the tag fits in one byte. For field numbers 16-2047, the tag needs two bytes. This is why high-frequency fields should have low field numbers.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Byte-level encoding — decode a real Protobuf message manually</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Proto definition</span>
+<span class="cm"># message ChargeRequest {</span>
+<span class="cm">#   string idempotency_key = 1;  // field 1, wire type 2</span>
+<span class="cm">#   int64  amount_paise    = 2;  // field 2, wire type 0</span>
+<span class="cm">#   string currency        = 3;  // field 3, wire type 2</span>
+<span class="cm"># }</span>
+
+<span class="cm"># Encoded message: { idempotency_key: "k1", amount_paise: 500, currency: "INR" }</span>
+<span class="cm"># Hex: 0a 02 6b 31 10 f4 03 1a 03 49 4e 52</span>
+
+<span class="cm"># Decode manually:</span>
+<span class="cm"># 0a = 00001010 = field 1 (0001) + wire type 2 (010) → length-delimited</span>
+<span class="cm"># 02 = length: 2 bytes follow</span>
+<span class="cm"># 6b 31 = "k1" (ASCII 107, 49)</span>
+<span class="cm">#</span>
+<span class="cm"># 10 = 00010000 = field 2 (0010) + wire type 0 (000) → varint</span>
+<span class="cm"># f4 03 = varint for 500:</span>
+<span class="cm">#   f4 = 11110100 → continuation bit=1, data=1110100 = 116</span>
+<span class="cm">#   03 = 00000011 → continuation bit=0, data=0000011 = 3</span>
+<span class="cm">#   value = (3 << 7) | 116 = 384 + 116 = 500 ✓</span>
+<span class="cm">#</span>
+<span class="cm"># 1a = 00011010 = field 3 (0011) + wire type 2 (010) → length-delimited</span>
+<span class="cm"># 03 = length: 3 bytes</span>
+<span class="cm"># 49 4e 52 = "INR"</span>
+<span class="cm">#</span>
+<span class="cm"># Total: 12 bytes vs JSON {"idempotency_key":"k1","amount_paise":500,"currency":"INR"} = 62 bytes</span>
+<span class="cm"># 5x smaller for this message</span>
+
+<span class="cm"># Use protoscope to decode any binary proto message</span>
+<span class="cm">echo "0a026b3110f4031a03494e52" | xxd -r -p | protoscope</span>
+<span class="cm"># Output:</span>
+<span class="cm"># 1: {"k1"}</span>
+<span class="cm"># 2: 500</span>
+<span class="cm"># 3: {"INR"}</span>
+
+<span class="cm"># Node.js: encode and inspect</span>
+<span class="cm">node -e "
+const { ChargeRequest } = require('./gen/payments_pb');
+const msg = new ChargeRequest();
+msg.setIdempotencyKey('k1');
+msg.setAmountPaise(500);
+msg.setCurrency('INR');
+const bytes = msg.serializeBinary();
+console.log('bytes:', bytes.length);
+console.log('hex:', Buffer.from(bytes).toString('hex'));
+"</span></pre>
+  </div>
+
+  <table class="byte-table">
+    <thead><tr><th>Field type</th><th>Wire type</th><th>Bytes for small values</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>int32, int64, uint32, uint64, bool, enum</td><td>0 (varint)</td><td>1-2 bytes (values &lt;128)</td><td>Negative int32/int64 always 10 bytes — use sint32/sint64 for negative numbers</td></tr>
+      <tr><td>sint32, sint64</td><td>0 (varint, zigzag)</td><td>1-2 bytes for small negatives</td><td>Zigzag encoding: maps -1→1, 1→2, -2→3, 2→4. Use for fields that can be negative.</td></tr>
+      <tr><td>fixed32, sfixed32, float</td><td>5 (32-bit)</td><td>Always 4 bytes</td><td>Faster than varint for values > 228. Use for hashes, fixed-size IDs.</td></tr>
+      <tr><td>fixed64, sfixed64, double</td><td>1 (64-bit)</td><td>Always 8 bytes</td><td>Use double for prices if you must use float (but prefer int64 paise).</td></tr>
+      <tr><td>string, bytes, nested message</td><td>2 (length-delimited)</td><td>1 byte (length) + content</td><td>UTF-8 for string. bytes is raw binary. Nested messages are recursively encoded.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Never use int32/int64 for negative numbers</strong>
+      <p>Proto3's <code>int32</code> and <code>int64</code> encode negative numbers as 10-byte varints (because they sign-extend to 64 bits). A single <code>-1</code> encoded as <code>int64</code> is 10 bytes. Use <code>sint32</code> or <code>sint64</code> for any field that can be negative — they use zigzag encoding and produce compact varints for negative values too.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Deadline propagation:<br><em>the full implementation</em></h2>
+  <p class="lead">Setting a deadline is one line. Propagating it correctly through a multi-service call chain, handling cancellation, and aborting work when the deadline fires requires a consistent pattern applied at every service boundary.</p>
+
+  <h3>The deadline is an absolute timestamp, not a duration</h3>
+  <p>This is the most important implementation detail. The client sets a deadline as an absolute wall-clock time (e.g., <code>Date.now() + 5000</code>). This timestamp travels in the <code>grpc-timeout</code> header as a duration from "now" — but each service in the chain converts it back to an absolute timestamp. When Service A forwards to Service B, it calculates the remaining time: <code>original_deadline - now</code>. Service B receives the remaining duration, not the original 5 seconds.</p>
+  <p>This propagation is <strong>automatic</strong> in gRPC — you don't manually pass the deadline. When you create a child call with <code>{ deadline: parentCall.getDeadline() }</code>, the framework handles the math. But you must explicitly pass the parent's deadline — the framework doesn't infer it.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete deadline propagation — client, gateway, and downstream service</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> * <span class="kw">as</span> grpc <span class="kw">from</span> <span class="str">'@grpc/grpc-js'</span>;
+
+<span class="cm">// ── CLIENT: always set a deadline ──────────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">placeOrder</span>(request: <span class="ty">OrderRequest</span>): <span class="kw">Promise</span>&lt;<span class="ty">OrderResponse</span>&gt; {
+  <span class="kw">const</span> <span class="var">deadline</span> = <span class="kw">new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + <span class="num">5000</span>); <span class="cm">// absolute: 5s from now</span>
+  <span class="kw">return new</span> <span class="fn">Promise</span>((resolve, reject) => {
+    orderClient.<span class="fn">PlaceOrder</span>(request, { deadline }, (err, response) => {
+      <span class="kw">if</span> (err) {
+        <span class="kw">if</span> (err.code === grpc.status.DEADLINE_EXCEEDED) {
+          <span class="cm">// Log remaining time for debugging</span>
+          logger.<span class="fn">warn</span>({ deadline: deadline.<span class="fn">toISOString</span>(), overrunMs: Date.<span class="fn">now</span>() - deadline.<span class="fn">getTime</span>() }, <span class="str">'order deadline exceeded'</span>);
+        }
+        <span class="kw">return</span> <span class="fn">reject</span>(err);
+      }
+      <span class="fn">resolve</span>(response!);
+    });
+  });
+}
+
+<span class="cm">// ── SERVICE A (Order Service): propagate deadline to downstream ──────</span>
+<span class="kw">class</span> <span class="ty">OrderService</span> {
+  <span class="kw">async</span> <span class="fn">PlaceOrder</span>(call: grpc.ServerUnaryCall&lt;<span class="ty">OrderRequest</span>, <span class="ty">OrderResponse</span>&gt;, cb: grpc.<span class="ty">sendUnaryData</span>&lt;<span class="ty">OrderResponse</span>&gt;) {
+    <span class="cm">// Get the deadline from the incoming call</span>
+    <span class="kw">const</span> <span class="var">deadline</span> = call.<span class="fn">getDeadline</span>(); <span class="cm">// absolute Date object</span>
+    <span class="kw">const</span> <span class="var">remainingMs</span> = deadline <span class="kw">instanceof</span> <span class="ty">Date</span> ? deadline.<span class="fn">getTime</span>() - Date.<span class="fn">now</span>() : <span class="num">Infinity</span>;
+
+    <span class="cm">// Fail fast if not enough time left</span>
+    <span class="kw">if</span> (remainingMs < <span class="num">200</span>) {
+      logger.<span class="fn">warn</span>({ remainingMs }, <span class="str">'insufficient deadline — failing fast'</span>);
+      <span class="kw">return</span> <span class="fn">cb</span>({ code: grpc.status.DEADLINE_EXCEEDED, message: <span class="str">'Insufficient time remaining'</span> });
+    }
+
+    <span class="cm">// Listen for cancellation (client gave up or deadline fired upstream)</span>
+    <span class="kw">let</span> <span class="var">cancelled</span> = <span class="kw">false</span>;
+    call.<span class="fn">on</span>(<span class="str">'cancelled'</span>, () => {
+      cancelled = <span class="kw">true</span>;
+      logger.<span class="fn">info</span>(<span class="str">'Call cancelled by client — aborting downstream work'</span>);
+    });
+
+    <span class="kw">try</span> {
+      <span class="cm">// Call Payment Service with THE SAME deadline</span>
+      <span class="cm">// NOT a new deadline — pass the parent deadline through</span>
+      <span class="kw">const</span> <span class="var">charge</span> = <span class="kw">await new</span> <span class="fn">Promise</span>((resolve, reject) => {
+        paymentClient.<span class="fn">Charge</span>(
+          { amount: call.request.amount_paise, user_id: call.request.user_id },
+          { deadline }, <span class="cm">// ← same deadline, not Date.now() + 5000</span>
+          (err, res) => err ? <span class="fn">reject</span>(err) : <span class="fn">resolve</span>(res!)
+        );
+      });
+
+      <span class="kw">if</span> (cancelled) <span class="kw">return</span>; <span class="cm">// don't send response if client is gone</span>
+
+      <span class="cm">// Database write — also check if cancelled before committing</span>
+      <span class="kw">const</span> <span class="var">order</span> = <span class="kw">await</span> db.<span class="fn">createOrder</span>({ ..., charge_id: charge.id });
+      <span class="kw">if</span> (cancelled) <span class="kw">return</span>; <span class="cm">// client gave up while we wrote — that's ok, idempotency handles it</span>
+
+      <span class="fn">cb</span>(<span class="kw">null</span>, { order_id: order.id, status: <span class="str">'CREATED'</span> });
+    } <span class="kw">catch</span> (err: <span class="kw">any</span>) {
+      <span class="kw">const</span> <span class="var">code</span> = err.code === grpc.status.DEADLINE_EXCEEDED
+        ? grpc.status.DEADLINE_EXCEEDED <span class="cm">// propagate upstream deadline</span>
+        : grpc.status.INTERNAL;
+      <span class="fn">cb</span>({ code, message: err.message });
+    }
+  }
+}
+
+<span class="cm">// ── PATTERN: deadline budget allocation ───────────────────────────</span>
+<span class="cm">// If you need to call multiple services, allocate the deadline across them</span>
+<span class="cm">// Not hard-coded splits — proportional to what each service typically needs</span>
+<span class="kw">function</span> <span class="fn">allocateDeadline</span>(parentDeadline: <span class="ty">Date</span>, fractionForThisCall: <span class="ty">number</span>): <span class="ty">Date</span> {
+  <span class="kw">const</span> <span class="var">remaining</span> = parentDeadline.<span class="fn">getTime</span>() - Date.<span class="fn">now</span>();
+  <span class="kw">const</span> <span class="var">allocated</span> = remaining * fractionForThisCall;
+  <span class="kw">return new</span> <span class="fn">Date</span>(Date.<span class="fn">now</span>() + allocated);
+}
+<span class="cm">// Usage: pay with 60% of remaining budget, inventory with 30%</span>
+<span class="cm">// const payDeadline = allocateDeadline(parentDeadline, 0.6);</span>
+<span class="cm">// const invDeadline = allocateDeadline(parentDeadline, 0.3);</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>buf.build CI pipeline:<br><em>lint, breaking changes, generate, push</em></h2>
+  <p class="lead">buf's value is proportional to how early in the development cycle it catches problems. A breaking change detected in CI before merge is free. The same change detected after deployment costs hours of incident investigation and a migration project. Here's the complete pipeline.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">buf.yaml + buf.gen.yaml — project configuration</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># buf.yaml — in your proto directory root</span>
+version: v1
+name: buf.build/yourorg/payments   <span class="cm"># buf registry module name</span>
+lint:
+  use:
+    - DEFAULT                      <span class="cm"># all standard lint rules</span>
+  except:
+    - PACKAGE_VERSION_SUFFIX       <span class="cm"># if you use versioned packages already</span>
+  ignore_only:
+    RPC_REQUEST_RESPONSE_UNIQUE:   <span class="cm"># allow shared request/response types</span>
+      - payments/v1/charge.proto
+breaking:
+  use:
+    - FILE                         <span class="cm"># file-level compatibility (recommended)</span>
+    <span class="cm"># Alternatives:</span>
+    <span class="cm"># - PACKAGE  (less strict, allows adding fields across the package)</span>
+    <span class="cm"># - WIRE     (strictest, only wire-format compatible changes)</span>
+deps:
+  - buf.build/googleapis/googleapis  <span class="cm"># if using google.api annotations</span>
+
+---
+<span class="cm"># buf.gen.yaml — code generation config</span>
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/yourorg/payments/gen/go
+plugins:
+  <span class="cm"># Go: generate both proto and gRPC code</span>
+  - plugin: buf.build/protocolbuffers/go
+    out: gen/go
+    opt: paths=source_relative
+
+  - plugin: buf.build/grpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+  <span class="cm"># TypeScript: using connect-es for modern TS gRPC</span>
+  - plugin: buf.build/bufbuild/es
+    out: gen/ts
+    opt: target=ts
+
+  - plugin: buf.build/bufbuild/connect-es
+    out: gen/ts
+    opt: target=ts
+
+  <span class="cm"># Python (if needed)</span>
+  - plugin: buf.build/protocolbuffers/python
+    out: gen/python</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">GitHub Actions CI pipeline — lint, breaking change, generate, push</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># .github/workflows/proto.yml</span>
+name: Proto CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['proto/**']
+  pull_request:
+    paths: ['proto/**']
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: '1.28.1'          <span class="cm"># pin version for reproducibility</span>
+          buf_api_token: ${{ secrets.BUF_API_TOKEN }}
+
+      <span class="cm"># Lint: naming, style, package structure</span>
+      - name: Lint proto files
+        run: buf lint proto/
+        <span class="cm"># Fails on: wrong case (PascalCase for messages, snake_case for fields)</span>
+        <span class="cm"># Fails on: missing package declaration</span>
+        <span class="cm"># Fails on: service methods without request/response suffix</span>
+
+      <span class="cm"># Breaking change detection: compare against main branch</span>
+      - name: Check for breaking changes
+        run: |
+          buf breaking proto/ --against '.git#branch=main,subdir=proto'
+        if: github.event_name == 'pull_request'
+        <span class="cm"># Fails on: deleted fields, changed field numbers, changed types</span>
+        <span class="cm"># Fails on: removed RPCs, changed streaming patterns</span>
+        <span class="cm"># Safe: added fields, added RPCs, renamed fields (same number)</span>
+
+  generate:
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  <span class="cm"># only generate on merge to main</span>
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          buf_api_token: ${{ secrets.BUF_API_TOKEN }}
+
+      <span class="cm"># Generate code in all configured languages</span>
+      - name: Generate code
+        run: buf generate proto/
+
+      <span class="cm"># Commit generated code back to repo</span>
+      - name: Commit generated code
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: regenerate proto code [skip ci]'
+          file_pattern: 'gen/**'
+
+  push-registry:
+    needs: generate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          buf_api_token: ${{ secrets.BUF_API_TOKEN }}
+
+      <span class="cm"># Push schema to buf.build registry for sharing</span>
+      - name: Push to buf registry
+        run: buf push proto/ --tag ${{ github.sha }}
+        <span class="cm"># Other teams can depend on: buf.build/yourorg/payments</span>
+        <span class="cm"># Version pinning: buf.build/yourorg/payments:&lt;commit-sha&gt;</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify your buf.build setup</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>buf lint</code> runs clean — zero warnings — on your proto files before adding to CI.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Breaking change detection works: rename a field number, run <code>buf breaking --against .git#branch=main</code> — it should catch it.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">CI blocks PR merge on breaking changes — test by opening a PR with a field number change.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Generated code is committed to the repo — clients can depend on the generated code without running buf themselves.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">buf.yaml has a <code>name</code> field — required for pushing to the registry and for other modules to depend on yours.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">BUF_API_TOKEN is in GitHub secrets — verify by checking the workflow runs successfully in Actions.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

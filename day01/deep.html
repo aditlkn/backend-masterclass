@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 1 Deep Dive: Connection Pools, TLS Resumption, HTTP/2 Internals</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:36px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+.deep-section h4{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:28px 0 10px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;margin-top:1px;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.failure-grid{display:grid;gap:10px;margin:20px 0;}
+.failure-item{background:var(--bg3);border:1px solid rgba(240,96,96,.2);border-radius:8px;padding:14px 18px;}
+.failure-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.failure-desc{font-size:13px;color:var(--text2);line-height:1.65;}
+.failure-fix{font-size:12px;color:var(--green);margin-top:6px;font-family:'JetBrains Mono',monospace;}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day01" class="back-link">&#8592; Day 1: HTTP</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 1 · HTTP · Deep Dive</div>
+  <h1>Connection pools, TLS resumption,<br>and <em>HTTP/2 HOL blocking</em></h1>
+  <p>The main lesson covered what HTTP does. This page covers three things that dominate real-world HTTP performance: how connection pools work internally and how to size them correctly, how TLS session resumption eliminates handshake cost on repeat connections, and the specific form of head-of-line blocking that HTTP/2 reintroduced at the TCP layer.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Connection pool internals &amp; sizing</span><span class="deep-topic-sub">— LIFO vs FIFO, maxSockets math, idle eviction timing</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">TLS session resumption</span><span class="deep-topic-sub">— session IDs, session tickets, 0-RTT and its replay risk</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">HTTP/2 HOL blocking at the TCP layer</span><span class="deep-topic-sub">— why multiplexing doesn't fully eliminate blocking, and when HTTP/3 matters</span></div>
+  </div>
+</div>
+
+<!-- ── SECTION 1: CONNECTION POOL ── -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Connection pool internals<br>&amp; <em>sizing correctly</em></h2>
+  <p class="lead">A connection pool is a cache of established TCP+TLS connections. The concept is simple — the implementation details are where most teams get it wrong: wrong pool size, wrong eviction policy, wrong scheduling strategy, and no visibility into whether the pool is actually being used.</p>
+
+  <h3>What a pool actually does</h3>
+  <p>When your code calls <code>fetch('https://api.example.com/orders')</code>, the HTTP client checks if the pool has an available connection to <code>api.example.com:443</code>. If yes, it reuses it — skipping DNS, TCP handshake, and TLS handshake. If no, it opens a new connection. When the response is received, the connection goes back to the pool instead of being closed.</p>
+  <p>The pool has two critical counters: <strong>active connections</strong> (in use right now) and <strong>idle connections</strong> (established, waiting). The pool size limits are typically: <code>maxSockets</code> (maximum total connections per host) and <code>maxFreeSockets</code> (maximum idle connections to keep warm).</p>
+
+  <h3>LIFO vs FIFO scheduling — why LIFO is almost always right</h3>
+  <p>When a request arrives and multiple idle connections are available, which one gets picked? Two strategies:</p>
+  <ul>
+    <li><strong>FIFO (First In, First Out):</strong> Pick the connection that has been idle the longest. Spreads usage across all connections evenly. Sounds fair — is actually wrong. A connection that's been idle for 59 seconds is on the verge of being dropped by a NAT gateway or firewall. Using it now means it might be dead. Also, a FIFO pool under low traffic rotates through all connections, keeping all of them "warm" even if you only need one.</li>
+    <li><strong>LIFO (Last In, First Out):</strong> Pick the most recently used connection. It's the warmest — most likely to still be alive, most likely to have warm TCP buffers. Under low traffic, LIFO concentrates usage on a small set of connections, letting unused ones idle out and be evicted. This is the correct default. Node.js's <code>https.Agent</code> uses LIFO when you set <code>scheduling: 'lifo'</code>.</li>
+  </ul>
+
+  <h3>Sizing: the maxSockets formula</h3>
+  <p>Too small: requests queue waiting for a free connection, adding latency. Too large: you hold more connections than the upstream server's connection limit, causing connection refused errors or starving other clients. The formula:</p>
+  <p><code>maxSockets = (target_concurrency × avg_response_time_s) + headroom</code></p>
+  <p>Example: you make 200 requests/second to a payment API with a 50ms average response time. At any instant, you have 200 × 0.05 = 10 concurrent in-flight requests. Set <code>maxSockets: 15</code> (10 + 50% headroom for spikes). Setting it to 100 wastes connections and may overwhelm the upstream. Setting it to 5 creates a queue.</p>
+
+  <h3>Idle socket eviction and the NAT gateway problem</h3>
+  <p>Idle connections must be evicted before they're killed externally. AWS NAT Gateway drops connections idle for 350 seconds. Corporate firewalls often drop at 60-300 seconds. Your pool's <code>timeout</code> (idle eviction) must be shorter than the shortest external timeout you're behind.</p>
+  <p>The safe default: evict idle sockets after 30 seconds. This keeps the pool warm for sustained traffic while ensuring connections are retired well before NAT kills them.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Production HTTP client — full configuration with sizing rationale</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> https <span class="kw">from</span> <span class="str">'https'</span>;
+<span class="kw">import</span> { Dispatcher, Pool } <span class="kw">from</span> <span class="str">'undici'</span>; <span class="cm">// preferred over axios for Node.js</span>
+
+<span class="cm">// undici Pool — modern, no thread pool usage (unlike axios/node-fetch)</span>
+<span class="kw">const</span> <span class="var">paymentPool</span> = <span class="kw">new</span> <span class="fn">Pool</span>(<span class="str">'https://api.payments.example.com'</span>, {
+  connections:      <span class="num">15</span>,      <span class="cm">// maxSockets — see sizing formula above</span>
+  pipelining:       <span class="num">1</span>,       <span class="cm">// 1 = no pipelining (safer), 0 = disable</span>
+  keepAliveTimeout: <span class="num">30_000</span>, <span class="cm">// evict idle sockets after 30s (< NAT 350s)</span>
+  keepAliveMaxTimeout: <span class="num">30_000</span>,
+  connect: {
+    rejectUnauthorized: <span class="kw">true</span>,
+    sessionTimeout:    <span class="num">300</span>,   <span class="cm">// TLS session cache TTL in seconds</span>
+  },
+});
+
+<span class="cm">// Monitor pool health — export as metrics</span>
+<span class="kw">setInterval</span>(() => {
+  <span class="kw">const</span> { <span class="var">connected</span>, <span class="var">free</span>, <span class="var">queued</span>, <span class="var">size</span> } = paymentPool.<span class="fn">stats</span>();
+  metrics.<span class="fn">gauge</span>(<span class="str">'pool.connected'</span>, connected, { host: <span class="str">'payments'</span> });
+  metrics.<span class="fn">gauge</span>(<span class="str">'pool.free'</span>,      free,      { host: <span class="str">'payments'</span> });
+  metrics.<span class="fn">gauge</span>(<span class="str">'pool.queued'</span>,   queued,    { host: <span class="str">'payments'</span> });
+  <span class="cm">// Alert if queued > 0 for > 5s — pool is undersized or upstream is slow</span>
+}, <span class="num">5000</span>);
+
+<span class="cm">// If using axios (legacy): configure keep-alive agent</span>
+<span class="kw">const</span> <span class="var">httpsAgent</span> = <span class="kw">new</span> https.<span class="fn">Agent</span>({
+  keepAlive:        <span class="kw">true</span>,
+  maxSockets:       <span class="num">15</span>,
+  maxFreeSockets:   <span class="num">5</span>,       <span class="cm">// keep 5 idle warm connections</span>
+  timeout:          <span class="num">30_000</span>, <span class="cm">// idle socket eviction</span>
+  scheduling:       <span class="str">'lifo'</span>, <span class="cm">// always LIFO — uses freshest connection</span>
+});
+<span class="cm">// Pass httpsAgent to axios.create({ httpsAgent })</span></pre>
+  </div>
+
+  <div class="failure-grid">
+    <div class="failure-item">
+      <div class="failure-label">Queue buildup (pool too small)</div>
+      <div class="failure-desc">Requests wait for a free socket. Visible as P99 latency spikes that correlate with concurrency, not with upstream response time. The pool's <code>queued</code> stat will be non-zero.</div>
+      <div class="failure-fix">→ Increase maxSockets. Alert on queued > 0 sustained for 5+ seconds.</div>
+    </div>
+    <div class="failure-item">
+      <div class="failure-label">ECONNRESET on reused sockets (idle too long)</div>
+      <div class="failure-desc">The pool returns a socket that NAT or a firewall dropped while it was idle. The first write to the socket fails. Node.js emits ECONNRESET. Usually happens at low-traffic hours when connections sit idle longest.</div>
+      <div class="failure-fix">→ Set keepAliveTimeout to 30s. Deploy tcp_keepalive_time=60 at OS level.</div>
+    </div>
+    <div class="failure-item">
+      <div class="failure-label">Pool created per-request (the incident)</div>
+      <div class="failure-desc">HTTP client or agent instantiated inside a request handler. Every request pays full DNS + TCP + TLS setup. Pool is garbage-collected after the request. No reuse possible.</div>
+      <div class="failure-fix">→ Move pool/agent to module level. Create once, share forever.</div>
+    </div>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify in production</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Pool <code>free</code> stat is > 0 under normal load — if always 0, pool is undersized or not reusing connections.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">First request latency vs subsequent request latency — they should differ by DNS+TCP+TLS cost (~150ms). If all requests are slow, pooling isn't working.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>ss -s</code> on the server: ESTABLISHED count should be stable at roughly maxSockets × number of client instances. Climbing CLOSE_WAIT indicates pool not releasing connections.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Zero ECONNRESET errors during 3am low-traffic window — if they appear at night but not during the day, idle timeout is wrong.</span></div>
+  </div>
+</div>
+
+<!-- ── SECTION 2: TLS RESUMPTION ── -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>TLS session resumption:<br><em>eliminating the handshake cost</em></h2>
+  <p class="lead">A full TLS 1.3 handshake costs 1 round-trip (1 RTT). On a 20ms connection to your cloud region, that's 20ms added to every new connection. TLS session resumption eliminates this — subsequent connections to the same server skip the handshake entirely. Most engineers know resumption exists; few understand the two mechanisms or their tradeoffs.</p>
+
+  <h3>Mechanism 1: Session IDs (TLS 1.2 and earlier)</h3>
+  <p>The server assigns a session ID after a full handshake and stores the session state (negotiated cipher, keys) in server memory. On reconnect, the client presents the session ID. The server looks it up, skips the handshake, and resumes. Simple — but the session cache is server-local. In a multi-instance deployment behind a load balancer, the client might reconnect to a different server instance that doesn't have the session. Cache miss = full handshake again. Session ID resumption requires sticky sessions or a shared session cache (Redis) to work reliably at scale.</p>
+
+  <h3>Mechanism 2: Session Tickets (TLS 1.2+, primary in TLS 1.3)</h3>
+  <p>The server encrypts the session state and sends it to the client as a "ticket." The client stores the ticket and presents it on reconnect. The server decrypts it and resumes — no server-side storage required. This works across all server instances as long as they share the same ticket encryption key (TLS Session Ticket Key, STEK). nginx and most TLS terminators support configuring a shared STEK across instances.</p>
+  <p>The critical operational requirement: <strong>rotate the STEK regularly</strong> (every 24 hours is standard). An exposed STEK can decrypt all past session tickets, potentially revealing session keys. Most nginx defaults don't rotate automatically — you need a cron job or a ticket key management system.</p>
+
+  <h3>0-RTT (TLS 1.3 early data) — and why to be careful</h3>
+  <p>TLS 1.3 introduced 0-RTT resumption: the client can send application data in the first packet, before the handshake completes. This eliminates the connection setup latency entirely for resumed sessions. The performance gain is real — but so is the risk.</p>
+  <p><strong>The replay attack:</strong> 0-RTT data can be replayed by a network attacker. If the client sends a <code>POST /payments/charge</code> in 0-RTT early data, an attacker who captures that packet can replay it — causing a duplicate charge without the client's knowledge. This is not theoretical. The RFC explicitly prohibits using 0-RTT for non-idempotent requests.</p>
+  <p>Safe uses of 0-RTT: <code>GET</code> requests, read-only queries, anything idempotent. Never use it for mutations, payments, or anything with side effects unless you've implemented anti-replay protection (which is complex and server-specific).</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">nginx TLS configuration — session tickets, STEK rotation, 0-RTT control</span><span class="code-block-lang">NGINX</span></div>
+    <pre><span class="cm"># TLS session resumption — nginx</span>
+server {
+    listen 443 ssl http2;
+
+    <span class="cm"># Session cache (server-side, for session ID resumption)</span>
+    ssl_session_cache   shared:SSL:50m;  <span class="cm"># 50MB shared across workers</span>
+    ssl_session_timeout 1h;              <span class="cm"># session valid for 1 hour</span>
+
+    <span class="cm"># Session tickets (stateless, client-side storage)</span>
+    ssl_session_tickets on;             <span class="cm"># enabled by default in nginx</span>
+    ssl_session_ticket_key /etc/nginx/ticket.key;  <span class="cm"># shared STEK</span>
+    <span class="cm"># Rotate via cron: openssl rand 80 > /etc/nginx/ticket.key && nginx -s reload</span>
+    <span class="cm"># Rotate every 24h. All nginx instances must use the same key file.</span>
+
+    <span class="cm"># TLS 1.3 only (disables 1.2 — do this only if all clients support 1.3)</span>
+    ssl_protocols TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    <span class="cm"># 0-RTT: disabled by default in nginx. Enable only for GET-heavy APIs.</span>
+    <span class="cm"># ssl_early_data on;  ← dangerous for POST/mutation endpoints</span>
+    <span class="cm"># If you enable it, check: $ssl_early_data == "1" in POST handlers</span>
+    <span class="cm"># and reject those requests — they may be replays.</span>
+}
+
+<span class="cm"># Verify session resumption with openssl</span>
+<span class="cm">openssl s_client -connect api.example.com:443 -reconnect 2>&amp;1 | grep "Reused"</span>
+<span class="cm"># Output: "Reused, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384"</span>
+<span class="cm"># If you see "New" instead of "Reused" — resumption is not working</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify TLS resumption is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>openssl s_client -connect host:443 -reconnect 2>&1 | grep -E "New|Reused"</code> — should show "Reused" on second connection.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Check nginx stats: <code>ssl_session_reuses</code> counter should be increasing. If always 0, resumption is broken.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">All nginx instances use the same ticket key file — otherwise cross-instance resumption fails.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">STEK rotation cron is running — <code>ls -la /etc/nginx/ticket.key</code> — file should be modified within last 24h.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">If 0-RTT is enabled: POST/PUT/PATCH/DELETE handlers check <code>$ssl_early_data</code> and return 425 (Too Early) for early data mutations.</span></div>
+  </div>
+</div>
+
+<!-- ── SECTION 3: HTTP/2 HOL BLOCKING ── -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>HTTP/2 HOL blocking:<br><em>the problem multiplexing didn't fully solve</em></h2>
+  <p class="lead">HTTP/2's multiplexing eliminated HTTP/1.1's head-of-line blocking at the application layer. But it reintroduced it at the TCP layer — and in some conditions, this makes HTTP/2 worse than HTTP/1.1. Understanding exactly where the blocking happens tells you when HTTP/3 is worth the operational cost.</p>
+
+  <h3>What HTTP/1.1 HOL blocking was</h3>
+  <p>HTTP/1.1 without pipelining: one request per connection at a time. To make 6 requests in parallel, browsers open 6 connections. Pipelining (sending multiple requests without waiting for responses) was specified but widely disabled because of HOL blocking: if the first request's response is slow, all subsequent pipelined responses are held up behind it — even if they're ready to send. The pipeline is a queue; the head blocks the line.</p>
+
+  <h3>What HTTP/2 fixed (application-layer HOL)</h3>
+  <p>HTTP/2 multiplexes multiple streams over a single TCP connection. Each stream is independent at the HTTP layer — stream 3's response doesn't wait for stream 1's response to finish. The server can interleave frames from different streams freely. This eliminates application-layer HOL blocking.</p>
+
+  <h3>What HTTP/2 didn't fix (TCP-layer HOL)</h3>
+  <p>TCP guarantees ordered, reliable delivery. Every byte arrives in sequence. If a TCP segment is lost in transit, TCP halts delivery of all subsequent segments until the lost segment is retransmitted and received. This is called TCP HOL blocking — and it affects all streams on the connection simultaneously.</p>
+  <p>In HTTP/1.1 with 6 parallel connections, a packet loss on connection 1 only blocks connection 1. The other 5 connections continue normally. In HTTP/2 with 1 multiplexed connection, a single packet loss blocks all streams on that connection — potentially all 100 concurrent requests. Under lossy network conditions (mobile, congested links), HTTP/2 can actually be slower than HTTP/1.1 because a single loss event stalls everything.</p>
+
+  <h3>HTTP/3 and QUIC: the actual fix</h3>
+  <p>HTTP/3 runs over QUIC instead of TCP. QUIC implements streams natively at the transport layer — a packet loss only blocks the specific stream that was carrying that packet. Other streams continue unaffected. QUIC also eliminates the TCP + TLS handshake (merged into a single 1-RTT or 0-RTT handshake), and handles connection migration (IP address changes don't break the connection — useful for mobile clients switching between WiFi and cellular).</p>
+  <p>The operational cost: QUIC runs over UDP, which many corporate firewalls block or deprioritise. HTTP/3 clients fall back to HTTP/2 when QUIC is unavailable — but this fallback adds latency. For internal service-to-service communication on reliable datacenter networks, TCP HOL blocking is rarely a real problem. For consumer-facing APIs serving mobile clients on lossy networks, HTTP/3 is a genuine win.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Protocol</th><th>HOL at application layer</th><th>HOL at transport layer</th><th>Handshake RTTs</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td>HTTP/1.1</td><td>Yes (pipelining)</td><td>Per-connection only</td><td>TCP(1) + TLS1.3(1) = 2</td><td>Legacy, simple clients</td></tr>
+        <tr><td>HTTP/2</td><td>No</td><td>All streams on conn</td><td>TCP(1) + TLS1.3(1) = 2</td><td>Most APIs, reliable networks</td></tr>
+        <tr><td>HTTP/3</td><td>No</td><td>Per-stream only</td><td>QUIC+TLS = 1 (or 0-RTT)</td><td>Mobile, lossy networks, CDN edge</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>When HTTP/2 is actually worse</strong>
+      <p>A 1% packet loss rate on a 100-stream HTTP/2 connection means roughly 1 loss event per second. Each loss stalls all 100 streams while TCP retransmits. On 6 HTTP/1.1 connections with 1% loss, each connection has a 1% independent loss rate — the other 5 continue. Measure actual packet loss on your client paths before assuming HTTP/2 is always better. On reliable internal networks: HTTP/2 wins clearly. On mobile consumer traffic with 2-5% loss: the benefit is much smaller and HTTP/3 is worth investigating.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Enabling HTTP/3 in nginx + diagnosing HOL blocking</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># nginx with HTTP/3 support (nginx 1.25+ or nginx-quic build)</span>
+<span class="cm"># server {</span>
+<span class="cm">#   listen 443 ssl http2;       # HTTP/2 for TCP clients</span>
+<span class="cm">#   listen 443 quic reuseport;  # HTTP/3 for QUIC clients</span>
+<span class="cm">#   add_header Alt-Svc 'h3=":443"; ma=86400'; # advertise HTTP/3</span>
+<span class="cm"># }</span>
+
+<span class="cm"># Diagnose: what protocol is actually being used?</span>
+curl -I --http2 https://api.example.com/healthz
+<span class="cm"># Look for: HTTP/2 200 in the response — confirms HTTP/2</span>
+
+curl -I --http3 https://api.example.com/healthz
+<span class="cm"># Requires curl built with HTTP/3 support (brew install curl --with-quic)</span>
+
+<span class="cm"># Check if TCP retransmits are high (indicator of HOL blocking risk)</span>
+ss -s
+<span class="cm"># Look at "retransmitted" counter — high relative to "sent" = lossy path</span>
+
+<span class="cm"># Wireshark: filter for TCP retransmissions on a connection</span>
+<span class="cm">tcp.analysis.retransmission &amp;&amp; ip.addr == &lt;server_ip&gt;</span>
+
+<span class="cm"># nginx: confirm HTTP/2 stream multiplexing is working</span>
+<span class="cm">curl -v --http2 https://api.example.com 2>&amp;1 | grep "stream"</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify in production</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Confirm HTTP/2 is actually in use: <code>curl -I --http2 https://yourapi.com</code> — response line should start with <code>HTTP/2</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Check TCP retransmit rate on server: <code>netstat -s | grep retransmit</code>. Above 0.1% of total segments is worth investigating.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">For consumer mobile APIs: measure P99 vs P50 latency ratio. A ratio above 10× suggests HOL blocking on lossy paths.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">If enabling HTTP/3: verify the <code>Alt-Svc</code> header is returned, and monitor QUIC vs TCP connection ratio in access logs.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

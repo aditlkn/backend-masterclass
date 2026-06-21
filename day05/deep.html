@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 5 Deep Dive: nginx Upstream Config, HAProxy Runtime API, Health Check Design</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day05" class="back-link">&#8592; Day 5: Load Balancing</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 5 · Load Balancing · Deep Dive</div>
+  <h1>nginx upstream config in depth,<br>HAProxy runtime API,<br>&amp; <em>health check endpoint design</em></h1>
+  <p>The main lesson covered load balancing concepts and algorithms. This page covers the full nginx upstream configuration with every parameter that matters, the HAProxy runtime API for zero-downtime server management, and how to design health check endpoints that actually reflect real service health rather than just "the process is alive."</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">nginx upstream — complete config with all parameters</span><span class="deep-topic-sub">— keepalive, queue, backup servers, timeout hierarchy</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">HAProxy runtime API</span><span class="deep-topic-sub">— live weight changes, drain, enable/disable without reload</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Health check endpoint design</span><span class="deep-topic-sub">— liveness vs readiness, dependency checks, cascading failure prevention</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>nginx upstream:<br><em>every parameter that matters</em></h2>
+  <p class="lead">Most nginx upstream configs are 5 lines. A production config is 30 — the extra 25 lines prevent a specific category of failure at high traffic. Here's what each parameter does and what happens when it's wrong.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete production nginx upstream configuration</span><span class="code-block-lang">NGINX</span></div>
+    <pre><span class="cm"># /etc/nginx/conf.d/upstreams.conf</span>
+
+upstream api_backend {
+    <span class="cm"># Algorithm: least_conn uses P2C internally for multiple upstreams</span>
+    <span class="cm"># Use least_conn for any workload with variable request duration</span>
+    least_conn;
+
+    <span class="cm"># Primary servers</span>
+    server 10.0.0.1:3000 weight=1 max_fails=3 fail_timeout=30s slow_start=30s;
+    server 10.0.0.2:3000 weight=1 max_fails=3 fail_timeout=30s slow_start=30s;
+    server 10.0.0.3:3000 weight=1 max_fails=3 fail_timeout=30s slow_start=30s;
+    <span class="cm">#</span>
+    <span class="cm"># weight=1          — relative traffic share (all equal here)</span>
+    <span class="cm"># max_fails=3       — passive: 3 errors within fail_timeout → mark down</span>
+    <span class="cm"># fail_timeout=30s  — window for counting failures AND time server stays down</span>
+    <span class="cm"># slow_start=30s    — ramp new/recovered server over 30s (nginx Plus only)</span>
+
+    <span class="cm"># Backup server: only used when all primaries are down</span>
+    server 10.0.0.4:3000 backup;
+
+    <span class="cm"># keepalive: connection pool from nginx workers to upstream</span>
+    <span class="cm"># This is NOT max_connections — it's idle connections kept warm per worker</span>
+    <span class="cm"># Total connections = keepalive × worker_processes</span>
+    <span class="cm"># Set to: (target_rps / worker_processes) × avg_response_time_s</span>
+    keepalive 32;
+
+    <span class="cm"># keepalive_requests: max requests per keepalive connection before close</span>
+    <span class="cm"># Prevents memory leaks from long-lived upstream connections</span>
+    keepalive_requests 1000;
+
+    <span class="cm"># keepalive_time: max lifetime of a keepalive connection regardless of use</span>
+    keepalive_time 1h;
+
+    <span class="cm"># keepalive_timeout: close idle keepalive connections after this</span>
+    <span class="cm"># Must be shorter than upstream server's keepalive timeout</span>
+    keepalive_timeout 60s;
+
+    <span class="cm"># queue: buffer requests when all upstreams are busy (nginx Plus)</span>
+    <span class="cm"># Without this, nginx returns 502 immediately when all connections busy</span>
+    <span class="cm"># queue 100 timeout=10s;  ← queue up to 100, wait up to 10s</span>
+}
+
+server {
+    listen 443 ssl http2;
+
+    location /api/ {
+        proxy_pass http://api_backend;
+
+        <span class="cm"># Timeout hierarchy (must be: nginx < client timeout)</span>
+        proxy_connect_timeout  3s;    <span class="cm"># max time to establish TCP connection</span>
+        proxy_send_timeout     25s;   <span class="cm"># max time between writes to upstream</span>
+        proxy_read_timeout     25s;   <span class="cm"># max time waiting for upstream response</span>
+        <span class="cm"># Client timeout (set in client) should be 30s</span>
+        <span class="cm"># nginx times out at 25s → client gets 504 before its own 30s timeout</span>
+        <span class="cm"># This gives client useful information rather than a silent drop</span>
+
+        <span class="cm"># Required for keepalive to work</span>
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";  <span class="cm"># clear "close" that HTTP/1.0 would add</span>
+
+        <span class="cm"># Retry on specific errors (idempotent requests only)</span>
+        proxy_next_upstream error timeout http_502 http_503;
+        proxy_next_upstream_tries 2;       <span class="cm"># try 2 upstreams max</span>
+        proxy_next_upstream_timeout 5s;   <span class="cm"># total retry budget</span>
+        <span class="cm"># WARNING: never add http_500 here — retrying 500s can cause duplicates</span>
+
+        <span class="cm"># Buffering: off for streaming, on for regular requests</span>
+        proxy_buffering on;
+        proxy_buffer_size       4k;
+        proxy_buffers           8 4k;
+        proxy_busy_buffers_size 8k;
+    }
+}
+
+<span class="cm"># nginx stub_status — required for monitoring</span>
+server {
+    listen 127.0.0.1:8080;
+    location /nginx_status { stub_status; allow 127.0.0.1; deny all; }
+}</pre>
+  </div>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>The keepalive parameter is per-worker, not global</strong>
+      <p><code>keepalive 32</code> means 32 idle connections per nginx worker process, per upstream. If you have 4 worker processes and 3 upstream servers, you're keeping up to 4 × 3 × 32 = 384 connections warm. Make sure your upstream servers can handle this. For Node.js with a default connection limit of 1000, this is fine. For a service with a strict connection limit, calculate carefully.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>HAProxy runtime API:<br><em>zero-downtime server management</em></h2>
+  <p class="lead">HAProxy's runtime API lets you modify the load balancer's behaviour without a reload — no config file change, no service restart, no dropped connections. This is how you do controlled deployments, gradual traffic shifts, and emergency server management in production.</p>
+
+  <h3>Enabling the runtime API</h3>
+  <p>The runtime API is a Unix socket that HAProxy exposes. You communicate with it via <code>socat</code> or any tool that can write to a socket. Enable it in the global section of your haproxy.cfg:</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">HAProxy runtime API — enable + complete command reference</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># haproxy.cfg — enable the runtime API</span>
+<span class="cm"># global:</span>
+<span class="cm">#   stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners</span>
+<span class="cm">#   stats timeout 30s</span>
+
+<span class="cm">## ── Helper function (add to your ~/.bashrc) ──────────────────────────</span>
+<span class="fn">hactl</span>() { <span class="kw">echo</span> <span class="str">"$@"</span> | socat stdio /var/run/haproxy.sock; }
+
+<span class="cm">## ── View current state ───────────────────────────────────────────────</span>
+<span class="fn">hactl</span> <span class="str">"show servers state api_backend"</span>
+<span class="cm"># Shows: server name, address, state (UP/DOWN/DRAIN), weight, sessions</span>
+
+<span class="fn">hactl</span> <span class="str">"show stat"</span> | cut -d, -f1,2,18,19,48
+<span class="cm"># Columns: pxname, svname, status, weight, hrsp_5xx</span>
+
+<span class="cm">## ── Traffic weight management ────────────────────────────────────────</span>
+<span class="cm"># Shift traffic during canary deploy:</span>
+<span class="fn">hactl</span> <span class="str">"set weight api_backend/server-v2 10"</span>   <span class="cm"># 10% to new version</span>
+<span class="fn">hactl</span> <span class="str">"set weight api_backend/server-v2 50"</span>   <span class="cm"># 50% after validation</span>
+<span class="fn">hactl</span> <span class="str">"set weight api_backend/server-v2 100"</span>  <span class="cm"># full traffic</span>
+<span class="fn">hactl</span> <span class="str">"set weight api_backend/server-v1 0"</span>    <span class="cm"># drain v1</span>
+
+<span class="cm">## ── Server state management ──────────────────────────────────────────</span>
+<span class="cm"># Graceful drain: stop new connections, let existing complete</span>
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-1 state drain"</span>
+<span class="cm"># Wait until sessions = 0, then:</span>
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-1 state maint"</span>  <span class="cm"># maintenance</span>
+
+<span class="cm"># Emergency: immediately stop routing to a server</span>
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-1 state maint"</span>
+
+<span class="cm"># Re-enable after fix:</span>
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-1 state ready"</span>
+
+<span class="cm">## ── Slow-start workaround (HAProxy OSS — no native slow_start) ──────</span>
+<span class="cm"># Add new server at weight 1, gradually raise via cron or script:</span>
+<span class="fn">hactl</span> <span class="str">"add server api_backend/server-4 10.0.0.4:3000"</span>
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-4 weight 5"</span>
+sleep 10
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-4 weight 25"</span>
+sleep 10
+<span class="fn">hactl</span> <span class="str">"set server api_backend/server-4 weight 100"</span>
+
+<span class="cm">## ── Monitor sessions on a specific server ───────────────────────────</span>
+watch -n1 '<span class="fn">echo</span> "show servers state api_backend" | socat stdio /var/run/haproxy.sock'
+
+<span class="cm">## ── Clear error counters (after an incident) ────────────────────────</span>
+<span class="fn">hactl</span> <span class="str">"clear counters all"</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Health check endpoint design:<br><em>liveness vs readiness</em></h2>
+  <p class="lead">Most teams have one health endpoint. You need two — and they should check different things. Conflating liveness and readiness is one of the most common causes of self-inflicted outages: a startup failing its dependency check fails the liveness probe, Kubernetes kills and restarts the pod in a loop, the dependency is actually fine but you've taken yourself down.</p>
+
+  <h3>Liveness: is the process running?</h3>
+  <p>The liveness probe answers: "should this process be killed and restarted?" It should only fail if the process is in a state where it cannot recover without a restart — infinite loop, deadlock, OOM. It should <strong>never</strong> check dependencies like databases or Redis. If the database is down and the liveness probe fails, Kubernetes kills all your pods simultaneously, compounding the database outage with a full application outage.</p>
+  <p>Liveness check: return 200 if the event loop is responsive. That's it.</p>
+
+  <h3>Readiness: can this instance accept traffic?</h3>
+  <p>The readiness probe answers: "should this pod receive traffic from the load balancer?" It fails during startup (dependencies not yet connected), during graceful shutdown (returning 503 tells the LB to drain), and when a required dependency is unavailable (database down — no point sending traffic to an instance that can't serve it).</p>
+  <p>Readiness check: verify all required dependencies. Return 503 with detail on what's failing.</p>
+
+  <h3>The cascading failure trap</h3>
+  <p>A database goes down. All pods fail their readiness check. The load balancer removes all pods from its pool. The database comes back up. But now all pods are simultaneously starting their readiness checks, all hitting the database at the same moment, causing a connection storm that overwhelms the recovering database. The readiness probe caused the cascade.</p>
+  <p>Fix: add a circuit breaker to your health check's dependency verification. If the dependency has been down for 30+ seconds, return 503 with <code>"dependency_circuit_open": true</code>. The LB removes you. When the circuit resets (dependency recovers), do a gradual re-add — check the dependency a few times with back-off before returning 200. This prevents the thundering herd on recovery.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Production health endpoints — liveness, readiness, and startup probes</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Router } <span class="kw">from</span> <span class="str">'express'</span>;
+
+<span class="kw">const</span> <span class="var">router</span> = <span class="fn">Router</span>();
+<span class="kw">let</span> <span class="var">isShuttingDown</span>   = <span class="kw">false</span>;
+<span class="kw">let</span> <span class="var">startupComplete</span>  = <span class="kw">false</span>;
+<span class="kw">let</span> <span class="var">dbCircuitOpen</span>    = <span class="kw">false</span>;
+<span class="kw">let</span> <span class="var">dbFailsSince</span>: <span class="ty">number</span> | <span class="kw">null</span> = <span class="kw">null</span>;
+
+<span class="cm">// /ping — liveness only. Never checks dependencies.</span>
+<span class="cm">// Kubernetes: livenessProbe. LB: TCP check on port.</span>
+router.<span class="fn">get</span>(<span class="str">'/ping'</span>, (req, res) => {
+  res.<span class="fn">json</span>({ status: <span class="str">'alive'</span>, ts: Date.<span class="fn">now</span>() });
+});
+
+<span class="cm">// /healthz — readiness. Checks dependencies. Used by LB and k8s readinessProbe.</span>
+router.<span class="fn">get</span>(<span class="str">'/healthz'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">if</span> (isShuttingDown)  <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">503</span>).<span class="fn">json</span>({ status: <span class="str">'shutting_down'</span> });
+  <span class="kw">if</span> (!startupComplete) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">503</span>).<span class="fn">json</span>({ status: <span class="str">'starting'</span> });
+
+  <span class="kw">const</span> <span class="var">checks</span>: Record&lt;<span class="ty">string</span>, <span class="ty">boolean</span> | <span class="ty">string</span>&gt; = {};
+  <span class="kw">let</span> <span class="var">healthy</span> = <span class="kw">true</span>;
+
+  <span class="cm">// Database — check with a short timeout</span>
+  <span class="kw">try</span> {
+    <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">race</span>([
+      db.<span class="fn">raw</span>(<span class="str">'SELECT 1'</span>),
+      <span class="kw">new</span> <span class="fn">Promise</span>((_, r) => <span class="fn">setTimeout</span>(() => r(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'timeout'</span>)), <span class="num">2000</span>)),
+    ]);
+    checks.database = <span class="kw">true</span>;
+    dbFailsSince = <span class="kw">null</span>;
+    dbCircuitOpen = <span class="kw">false</span>;
+  } <span class="kw">catch</span> (err) {
+    checks.database = <span class="kw">false</span>;
+    healthy = <span class="kw">false</span>;
+    <span class="kw">if</span> (!dbFailsSince) dbFailsSince = Date.<span class="fn">now</span>();
+    <span class="cm">// Open circuit after 30s of failures — prevents stampede on recovery</span>
+    <span class="kw">if</span> (Date.<span class="fn">now</span>() - (dbFailsSince ?? <span class="num">0</span>) > <span class="num">30_000</span>) {
+      dbCircuitOpen = <span class="kw">true</span>;
+      checks.database_circuit = <span class="str">'open'</span>;
+    }
+  }
+
+  <span class="cm">// Redis — only if critical for your service</span>
+  <span class="kw">try</span> {
+    <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">race</span>([
+      redis.<span class="fn">ping</span>(),
+      <span class="kw">new</span> <span class="fn">Promise</span>((_, r) => <span class="fn">setTimeout</span>(() => r(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'timeout'</span>)), <span class="num">1000</span>)),
+    ]);
+    checks.redis = <span class="kw">true</span>;
+  } <span class="kw">catch</span> {
+    checks.redis = <span class="kw">false</span>;
+    <span class="cm">// Decide: is Redis critical? If session store, yes. If cache only, maybe not.</span>
+    <span class="cm">// healthy = false;  ← uncomment if Redis is required for core functionality</span>
+  }
+
+  <span class="kw">return</span> res.<span class="fn">status</span>(healthy ? <span class="num">200</span> : <span class="num">503</span>).<span class="fn">json</span>({
+    status: healthy ? <span class="str">'ok'</span> : <span class="str">'degraded'</span>,
+    checks,
+    uptime: process.<span class="fn">uptime</span>(),
+  });
+});
+
+<span class="cm">// Mark startup complete after dependencies are warm</span>
+<span class="kw">async function</span> <span class="fn">onAppReady</span>() {
+  <span class="kw">await</span> db.<span class="fn">raw</span>(<span class="str">'SELECT 1'</span>); <span class="cm">// verify DB before accepting traffic</span>
+  startupComplete = <span class="kw">true</span>;
+  logger.<span class="fn">info</span>(<span class="str">'Application ready — accepting traffic'</span>);
+}
+
+<span class="cm">// SIGTERM handler: fail readiness before closing</span>
+process.<span class="fn">on</span>(<span class="str">'SIGTERM'</span>, <span class="kw">async</span> () => {
+  isShuttingDown = <span class="kw">true</span>;    <span class="cm">// /healthz → 503 immediately</span>
+  <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">5000</span>);        <span class="cm">// wait for LB to detect 503 and drain</span>
+  server.<span class="fn">close</span>();             <span class="cm">// stop accepting new connections</span>
+  <span class="kw">await</span> db.<span class="fn">destroy</span>();        <span class="cm">// close pool gracefully</span>
+  process.<span class="fn">exit</span>(<span class="num">0</span>);
+});</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify your health endpoint design</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>/ping</code> never checks dependencies — verify by disconnecting Redis/DB and confirming <code>/ping</code> still returns 200.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>/healthz</code> returns 503 when DB is disconnected — verify by temporarily blocking DB access.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Health check timeout is 2s or less — verify with <code>time curl /healthz</code>. Slow health checks throw off LB detection timing.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Response body includes which dependency failed — verify with <code>curl /healthz | jq .checks</code>. "degraded" with no detail is useless.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Graceful shutdown: <code>/healthz</code> returns 503 within 1s of SIGTERM — verify with <code>kill -TERM $(pgrep node) && curl /healthz</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">LB health check interval matches: if LB polls every 2s and your health check takes 2s, you have zero margin. Health check must complete in &lt;50% of poll interval.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
