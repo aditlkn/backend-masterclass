@@ -116,6 +116,8 @@ tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mo
   <a href="#s-nobody">Nobody Tells You</a>
   <a href="#s-sequence">Debug Sequence</a>
   <a href="#s-checklist">Checklist</a>
+  <a href="/day08/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day08/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
 </nav>
 <article class="content">
 
@@ -824,6 +826,24 @@ ORDER BY t.n_tup_ins DESC;</pre>
 </div>
 
 <!-- CHECKLIST -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">A query that ran in 12ms for 8 months suddenly took 47 seconds</div>
+    <div style="font-size:13px;color:var(--text2)">Stale statistics · wrong planner strategy · ANALYZE fixes it instantly</div>
+  </div>
+  <a href="/day08/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap" onmouseover="this.style.background='rgba(62,207,142,.2)'" onmouseout="this.style.background='rgba(62,207,142,.1)'">&#8594; Incident Lab</a>
+</div>
+
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Covering index SQL, VACUUM internals, autovacuum tuning</div>
+    <div style="font-size:13px;color:var(--text2)">Heap Fetches: 0 · visibility map · the full autovacuum parameter table</div>
+  </div>
+  <a href="/day08/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap" onmouseover="this.style.background='rgba(168,127,255,.2)'" onmouseout="this.style.background='rgba(168,127,255,.1)'">&#8594; Go deep</a>
+</div>
+
 <div class="section" id="s-checklist">
   <div class="section-eyebrow">Section 12</div>
   <h2>Production indexing checklist</h2>
