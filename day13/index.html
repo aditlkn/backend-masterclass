@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 13: Network Architecture & Traffic Routing — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--accent);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* Network diagram styles */
+.net-layer{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;margin:6px 0;display:flex;align-items:center;gap:12px;transition:all .3s;cursor:default;}
+.net-layer:hover{border-color:var(--accent);background:rgba(91,143,255,.06);}
+.net-layer.highlight{border-color:var(--green);background:rgba(62,207,142,.07);}
+.net-layer.active-path{border-color:var(--orange);background:rgba(245,166,35,.07);animation:pulseBorder .8s ease infinite;}
+@keyframes pulseBorder{0%,100%{border-color:var(--orange);}50%{border-color:rgba(245,166,35,.3);}}
+.net-icon{font-size:18px;flex-shrink:0;}
+.net-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);font-weight:600;}
+.net-detail{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto;}
+.net-badge{font-size:10px;padding:1px 8px;border-radius:10px;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.badge-public{background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.25);}
+.badge-private{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.badge-virtual{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.25);}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 13 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-ip">IP Addressing</a>
+  <a href="#s-cidr">Subnets & CIDR</a>
+  <a href="#s-nat">NAT Explained</a>
+  <a href="#s-vpc">VPC Architecture</a>
+  <a href="#s-paths">4 Traffic Paths</a>
+  <a href="#s-svc">Service-to-Service</a>
+  <a href="#s-vpn">VPN</a>
+  <a href="#s-kong">Kong Gateway</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day13/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day13/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 13 · Network Architecture</div>
+  <h1>Your server has a private IP.<br>The internet has <em>no idea</em> it exists.</h1>
+  <p class="hero-sub">Every production server you've ever deployed runs on a private IP that's unreachable from the internet. Understanding how traffic gets in, how services talk to each other, and when a packet leaves your network entirely — this is the layer between your code and the world.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--purple)"></div>VPC · NAT · VPN · Kong</div>
+  </div>
+</div>
+
+<!-- S1: IP ADDRESSING -->
+<div class="section" id="s-ip">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Private vs public IP addresses: why the distinction exists</h2>
+
+  <p>IPv4 has approximately 4.3 billion addresses. The internet has far more than 4.3 billion devices. This was known to be a problem in the early 1990s, and the fix — before IPv6 was ready — was to designate certain IP ranges as "private": usable by anyone on their internal network, but not routable on the public internet.</p>
+
+  <h3>The three private ranges (RFC 1918)</h3>
+  <p>These IP ranges are reserved for private use. Every router on the public internet is configured to drop packets destined for these addresses — they simply don't route:</p>
+  <ul>
+    <li><code>10.0.0.0/8</code> — 16,777,216 addresses. The most common in cloud environments. Your AWS VPC is probably in this range.</li>
+    <li><code>172.16.0.0/12</code> — 1,048,576 addresses. Docker's default bridge network uses <code>172.17.0.0/16</code> from this range.</li>
+    <li><code>192.168.0.0/16</code> — 65,536 addresses. Your home router almost certainly assigns addresses here.</li>
+  </ul>
+
+  <p>The implication: thousands of companies can all use <code>10.0.0.1</code> internally without conflict, because these addresses never appear on the public internet. Your laptop at <code>192.168.1.100</code> and your company's VPN endpoint at <code>192.168.1.100</code> don't collide — they're in separate networks.</p>
+
+  <h3>Public IP addresses</h3>
+  <p>Everything outside the RFC 1918 ranges is "public" — globally unique, routable on the internet. When you buy a domain and point it at your server, you're pointing it at a public IP. Your server itself almost never has a public IP directly assigned to its network interface — instead, a load balancer or NAT gateway has the public IP and forwards traffic to the server's private IP.</p>
+
+  <h3>Special addresses to know</h3>
+  <ul>
+    <li><code>127.0.0.1</code> — loopback (localhost). Traffic never leaves the machine.</li>
+    <li><code>169.254.x.x</code> — link-local. AWS uses <code>169.254.169.254</code> as the instance metadata endpoint — reachable from any EC2 instance without routing through anything.</li>
+    <li><code>0.0.0.0</code> — "any address" — used in routing tables and server bind configs to mean "all interfaces."</li>
+  </ul>
+</div>
+
+<!-- VIZ 1: IP address explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">IP address classifier — paste any IP to understand it</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="viz-btn" onclick="classifyIP('10.0.1.50')">10.0.1.50</button>
+      <button class="viz-btn" onclick="classifyIP('172.17.0.3')">172.17.0.3</button>
+      <button class="viz-btn" onclick="classifyIP('192.168.1.1')">192.168.1.1</button>
+      <button class="viz-btn" onclick="classifyIP('54.239.28.85')">54.239.28.85</button>
+      <button class="viz-btn" onclick="classifyIP('127.0.0.1')">127.0.0.1</button>
+      <button class="viz-btn" onclick="classifyIP('169.254.169.254')">169.254.169.254</button>
+      <button class="viz-btn" onclick="classifyIP('0.0.0.0')">0.0.0.0</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input id="ip-input" type="text" placeholder="Enter any IP address..." style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;" oninput="classifyIP(this.value)">
+    </div>
+    <div id="ip-output" class="mono-out" style="min-height:100px">Select or type an IP address above.</div>
+  </div>
+</div>
+
+<!-- S2: CIDR -->
+<div class="section" id="s-cidr">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Subnets and CIDR: slicing up an IP range</h2>
+
+  <p>CIDR (Classless Inter-Domain Routing) notation describes a range of IP addresses. The format is <code>IP/prefix-length</code> where the prefix length tells you how many bits are fixed (the network part) and how many are variable (the host part). <code>10.0.0.0/24</code> means the first 24 bits are fixed (<code>10.0.0</code>) and the last 8 bits vary — giving you 256 addresses (<code>10.0.0.0</code> through <code>10.0.0.255</code>).</p>
+
+  <h3>The math</h3>
+  <p>Available host addresses = 2^(32 - prefix). Subtract 2 for the network address (first) and broadcast address (last):</p>
+  <ul>
+    <li><code>/32</code> — exactly 1 address. Used for a specific host in routing rules.</li>
+    <li><code>/30</code> — 4 addresses, 2 usable. Point-to-point links.</li>
+    <li><code>/24</code> — 256 addresses, 254 usable. A typical small subnet.</li>
+    <li><code>/16</code> — 65,536 addresses. A VPC or large network segment.</li>
+    <li><code>/8</code> — 16,777,216 addresses. The entire <code>10.x.x.x</code> range.</li>
+  </ul>
+
+  <h3>Subnets in a VPC</h3>
+  <p>A VPC starts with a CIDR block (e.g. <code>10.0.0.0/16</code> — 65,536 addresses). You carve it into subnets. A typical two-tier setup: public subnets for load balancers and NAT gateways (<code>10.0.1.0/24</code>, <code>10.0.2.0/24</code>) and private subnets for application servers and databases (<code>10.0.10.0/24</code>, <code>10.0.20.0/24</code>). Each subnet lives in one Availability Zone — this is why you need multiple subnets for high availability.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Overlapping CIDRs break VPC peering</strong>
+      <p>If two VPCs have overlapping CIDR blocks (both use <code>10.0.0.0/16</code>), you cannot peer them — the routing is ambiguous. Plan your VPC CIDR blocks before creating them. A common pattern: dev uses <code>10.1.0.0/16</code>, staging uses <code>10.2.0.0/16</code>, prod uses <code>10.3.0.0/16</code>. This lets you peer them freely for cross-environment tools.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 2: CIDR calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">CIDR calculator — understand any subnet</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="viz-btn" onclick="calcCIDR('10.0.0.0/8')">10.0.0.0/8</button>
+      <button class="viz-btn" onclick="calcCIDR('10.0.0.0/16')">10.0.0.0/16 (VPC)</button>
+      <button class="viz-btn" onclick="calcCIDR('10.0.1.0/24')">10.0.1.0/24 (subnet)</button>
+      <button class="viz-btn" onclick="calcCIDR('10.0.1.0/28')">10.0.1.0/28 (small)</button>
+      <button class="viz-btn" onclick="calcCIDR('192.168.0.0/16')">192.168.0.0/16</button>
+      <button class="viz-btn" onclick="calcCIDR('0.0.0.0/0')">0.0.0.0/0 (default route)</button>
+    </div>
+    <div id="cidr-output" class="mono-out" style="min-height:100px">Select a CIDR block above.</div>
+  </div>
+</div>
+
+<!-- S3: NAT -->
+<div class="section" id="s-nat">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>NAT: how private IPs reach the internet</h2>
+
+  <p>Network Address Translation solves the fundamental problem: a server with a private IP (<code>10.0.1.50</code>) wants to call an external API (<code>api.stripe.com</code>). The internet can't route a response back to <code>10.0.1.50</code> — that address is meaningless outside your network. NAT is the mechanism that makes this work.</p>
+
+  <h3>How NAT works (SNAT — Source NAT)</h3>
+  <p>When a packet leaves your private subnet toward the internet, the NAT gateway intercepts it. It replaces the source IP (<code>10.0.1.50</code>) with its own public IP (<code>54.239.28.85</code>) and assigns a port number to track the connection. When the response arrives (<code>src: api.stripe.com, dst: 54.239.28.85:41234</code>), the NAT gateway looks up its translation table, replaces the destination with the original private IP and port, and forwards it back to the server.</p>
+
+  <p>The server at <code>10.0.1.50</code> sees the response as if it came directly. The internet sees all outbound traffic from your entire private subnet appearing to come from a single public IP — the NAT gateway's IP.</p>
+
+  <h3>DNAT — Destination NAT (how inbound traffic works)</h3>
+  <p>The reverse: a user hits your load balancer's public IP. The load balancer (or a DNAT rule) replaces the destination IP with the private IP of a backend server. The packet arrives at the backend with the load balancer's private IP as the source — which is why your application logs show internal IPs unless you explicitly forward the original client IP via <code>X-Forwarded-For</code>.</p>
+
+  <h3>The AWS NAT Gateway timeout problem</h3>
+  <p>AWS NAT Gateway is a managed NAT service. It maintains a connection tracking table — for each active connection through NAT, it remembers the port mapping. If a connection is idle for 350 seconds (about 6 minutes), AWS NAT Gateway drops the entry. From the client's perspective, the connection appears alive. The next packet through that connection gets a TCP RST. This is the exact cause of the Day 2 lab incident — database connections idle through a NAT Gateway get silently killed. Fix: TCP keepalives at 60s (Day 2), or use PrivateLink/VPC peering so DB traffic never goes through NAT.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">NAT in AWS — how traffic flows out and why it matters</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Your EC2 in private subnet</span>
+<span class="cm">$ ip addr</span>
+eth0: 10.0.10.50/24   <span class="cm"># private IP — internet can't route to this</span>
+
+<span class="cm"># What does external traffic see?</span>
+<span class="cm">$ curl ifconfig.me</span>
+54.239.28.85          <span class="cm"># NAT Gateway's public IP — your real IP to the world</span>
+
+<span class="cm"># What happens when you call api.stripe.com:</span>
+<span class="cm"># 1. Packet leaves 10.0.10.50 → route table: 0.0.0.0/0 → NAT Gateway</span>
+<span class="cm"># 2. NAT Gateway: src 10.0.10.50:54321 → src 54.239.28.85:41234</span>
+<span class="cm"># 3. api.stripe.com sees request from 54.239.28.85</span>
+<span class="cm"># 4. Response arrives at 54.239.28.85:41234</span>
+<span class="cm"># 5. NAT Gateway translates back: dst 10.0.10.50:54321</span>
+
+<span class="cm"># Cost: $0.045/hour + $0.045/GB data processed</span>
+<span class="cm"># Keep internal traffic off NAT: use VPC endpoints for AWS services</span>
+
+<span class="cm"># AWS VPC endpoint: S3 traffic stays in AWS network, no NAT cost/latency</span>
+<span class="cm"># Without endpoint: EC2 → NAT GW → internet → S3</span>
+<span class="cm"># With endpoint:   EC2 → VPC endpoint → S3  (free, faster)</span>
+aws ec2 create-vpc-endpoint \
+  --vpc-id vpc-abc123 \
+  --service-name com.amazonaws.us-east-1.s3 \
+  --route-table-ids rtb-xyz789</pre>
+  </div>
+</div>
+
+<!-- VIZ 3: NAT flow -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">NAT translation table — watch packets get translated</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showNAT('outbound')">Outbound (SNAT)</button>
+      <button class="viz-btn" onclick="showNAT('inbound')">Inbound (DNAT via LB)</button>
+      <button class="viz-btn" onclick="showNAT('timeout')">NAT timeout (AWS 350s)</button>
+      <button class="viz-btn" onclick="showNAT('keepalive')">Fix: TCP keepalive</button>
+    </div>
+    <div id="nat-output" class="mono-out" style="font-size:12px;min-height:140px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- S4: VPC -->
+<div class="section" id="s-vpc">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>VPC architecture: the canonical layout</h2>
+
+  <p>A VPC (Virtual Private Cloud) is a logically isolated network within AWS. You define its IP range (CIDR block), create subnets within it, and control traffic with route tables, security groups, and network ACLs. Understanding the standard architecture explains why your infrastructure is set up the way it is.</p>
+
+  <h3>The canonical two-tier layout</h3>
+  <p><strong>Public subnets</strong> have a route to an Internet Gateway (IGW) — resources here can receive inbound traffic from the internet and initiate outbound traffic directly. This is where your load balancers and NAT gateways live.</p>
+  <p><strong>Private subnets</strong> have no route to the IGW — resources here cannot receive unsolicited inbound traffic from the internet. For outbound internet access (calling external APIs, pulling packages), they route through the NAT gateway in the public subnet. This is where your application servers and databases live.</p>
+
+  <h3>Security groups vs Network ACLs</h3>
+  <p><strong>Security groups</strong> are stateful firewalls attached to individual resources (EC2 instances, RDS, load balancers). "Stateful" means: if you allow outbound traffic to port 443, the response is automatically allowed back in, even without an explicit inbound rule. Security groups operate at the instance level. This is your primary traffic control tool.</p>
+  <p><strong>Network ACLs (NACLs)</strong> are stateless firewalls attached to subnets. Stateless means you must explicitly allow both directions. They're coarser — they apply to everything in the subnet. Most teams rely on security groups and rarely touch NACLs.</p>
+
+  <h3>The traffic path in — step by step</h3>
+  <p>User request → DNS resolves to load balancer's public IP → Internet Gateway passes traffic to the load balancer (in public subnet) → security group on LB allows port 443 → LB forwards to app server's private IP (in private subnet) → security group on app server allows only traffic from the LB's security group → app server processes, calls database using database's private IP → RDS security group allows only traffic from the app server's security group.</p>
+</div>
+
+<!-- VIZ 4: VPC architecture -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">VPC architecture — click a component to see its role</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Click any layer to understand what it does and why it's positioned there:</p>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px">
+      <div class="net-layer" onclick="showVPCComponent('internet')"><span class="net-icon">🌐</span><span class="net-label">Internet</span><span class="net-badge badge-public">PUBLIC</span><span class="net-detail">src: user's IP</span></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">↓ DNS → public IP</div>
+      <div class="net-layer" onclick="showVPCComponent('igw')"><span class="net-icon">🚪</span><span class="net-label">Internet Gateway (IGW)</span><span class="net-badge badge-public">VPC EDGE</span><span class="net-detail">VPC entry point</span></div>
+      <div style="background:rgba(91,143,255,.04);border:1px dashed rgba(91,143,255,.2);border-radius:8px;padding:8px 12px;margin:4px 0">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:6px">PUBLIC SUBNET (10.0.1.0/24) — AZ-1a</div>
+        <div class="net-layer" onclick="showVPCComponent('alb')" style="margin:4px 0"><span class="net-icon">⚖️</span><span class="net-label">Application Load Balancer</span><span class="net-badge badge-public">PUBLIC IP</span><span class="net-detail">:443</span></div>
+        <div class="net-layer" onclick="showVPCComponent('natgw')" style="margin:4px 0"><span class="net-icon">🔄</span><span class="net-label">NAT Gateway</span><span class="net-badge badge-public">PUBLIC IP</span><span class="net-detail">outbound only</span></div>
+      </div>
+      <div style="background:rgba(62,207,142,.04);border:1px dashed rgba(62,207,142,.2);border-radius:8px;padding:8px 12px;margin:4px 0">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);margin-bottom:6px">PRIVATE SUBNET (10.0.10.0/24) — AZ-1a</div>
+        <div class="net-layer" onclick="showVPCComponent('appserver')" style="margin:4px 0"><span class="net-icon">🖥️</span><span class="net-label">App Server (EC2/ECS)</span><span class="net-badge badge-private">10.0.10.50</span><span class="net-detail">:3000</span></div>
+        <div class="net-layer" onclick="showVPCComponent('rds')" style="margin:4px 0"><span class="net-icon">🗄️</span><span class="net-label">RDS PostgreSQL</span><span class="net-badge badge-private">10.0.10.100</span><span class="net-detail">:5432</span></div>
+      </div>
+    </div>
+    <div id="vpc-output" class="mono-out" style="font-size:12px;min-height:80px">Click a component above to see its role.</div>
+  </div>
+</div>
+
+<!-- S5: FOUR TRAFFIC PATHS -->
+<div class="section" id="s-paths">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>The four traffic paths every backend engineer encounters</h2>
+
+  <p>Every network call your system makes falls into one of four patterns. Understanding which pattern applies determines the latency, cost, security posture, and failure modes of that call.</p>
+
+  <h3>Path 1: Public ingress (internet → your service)</h3>
+  <p>User → DNS → public IP → IGW → Load Balancer (public subnet) → App Server (private subnet). This is the only path that should ever accept unsolicited traffic from the internet. Everything else should be private.</p>
+  <p><strong>Characteristics:</strong> Goes through IGW, LB, two security group hops. TLS terminates at the LB. App server never sees the public internet directly. Latency: whatever the user's internet + your region + LB overhead.</p>
+
+  <h3>Path 2: Internal service-to-service (same VPC)</h3>
+  <p>Service A (10.0.10.50) → Service B (10.0.10.80). Direct private IP routing, entirely within the VPC. Never touches NAT, never leaves AWS's network, never hits the internet.</p>
+  <p><strong>Characteristics:</strong> Fastest possible path. Free (no data transfer costs within AZ, $0.01/GB cross-AZ). Sub-millisecond within the same AZ. Uses internal DNS — <code>payment-svc.internal</code> resolves to <code>10.0.10.80</code>. This is the correct path for all microservice calls.</p>
+
+  <h3>Path 3: Cross-VPC (VPC peering or Transit Gateway)</h3>
+  <p>Service in VPC-A → Service in VPC-B. Requires VPC peering or Transit Gateway. Once peered, traffic flows via private IPs between VPCs — still within AWS, never on the public internet.</p>
+  <p><strong>Characteristics:</strong> Requires explicit routing setup. CIDRs must not overlap. Same latency profile as internal once peered. Use case: separate VPCs for prod/staging, or different teams owning different VPCs. Transit Gateway is more scalable than peering for hub-and-spoke topologies (many VPCs).</p>
+
+  <h3>Path 4: External API call (your service → internet)</h3>
+  <p>Service (private subnet) → NAT Gateway (public subnet) → Internet Gateway → Public internet → api.stripe.com. Traffic leaves AWS's network and traverses the public internet.</p>
+  <p><strong>Characteristics:</strong> Slowest. Costs money (NAT Gateway data processing charges). Subject to NAT timeout issues. 350s idle timeout kills long-lived connections. Mitigate: connection pooling, keep-alives, or use AWS PrivateLink for AWS-hosted services.</p>
+</div>
+
+<!-- VIZ 5: Traffic path explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Traffic path explorer — trace any call through the network</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPath('user_to_api')">User → your API</button>
+      <button class="viz-btn" onclick="showPath('svc_to_svc')">order-svc → payment-svc</button>
+      <button class="viz-btn" onclick="showPath('svc_to_db')">app → RDS</button>
+      <button class="viz-btn" onclick="showPath('svc_to_stripe')">app → Stripe API</button>
+      <button class="viz-btn" onclick="showPath('svc_to_s3')">app → S3 (no endpoint)</button>
+      <button class="viz-btn" onclick="showPath('svc_to_s3_ep')">app → S3 (VPC endpoint)</button>
+      <button class="viz-btn" onclick="showPath('cross_vpc')">prod-svc → staging-svc</button>
+    </div>
+    <div id="path-output" class="mono-out" style="font-size:12px;min-height:160px">Select a traffic path above.</div>
+  </div>
+</div>
+
+<!-- S6: SERVICE-TO-SERVICE -->
+<div class="section" id="s-svc">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Internal service-to-service communication</h2>
+
+  <p>When service A calls service B inside your VPC, the traffic path and discovery mechanism depend on how you've set things up. There are three common patterns, each with different characteristics:</p>
+
+  <h3>Direct private IP</h3>
+  <p>Hardcode the private IP of the destination service. Simple, fast, zero overhead. The problem: private IPs can change if an instance is replaced or the service scales. Almost never the right answer for services — use DNS instead.</p>
+
+  <h3>Internal DNS (Route 53 private hosted zone or service discovery)</h3>
+  <p>Service B registers as <code>payment-svc.prod.internal</code>. Service A calls that DNS name. The DNS resolver (Route 53 Resolver in AWS, running at <code>169.254.169.253</code>) returns the current private IP(s). When instances are replaced, DNS updates. This is the standard pattern.</p>
+  <p>In ECS/Kubernetes: service discovery is automatic. ECS Service Connect or AWS Cloud Map registers task IPs. Kubernetes gives every Service a stable internal DNS name: <code>payment-svc.default.svc.cluster.local</code>.</p>
+
+  <h3>Internal load balancer</h3>
+  <p>An internal (non-internet-facing) ALB sits in front of the service. Internal ALB has a private IP, not reachable from the internet. Service A calls the ALB's DNS name, ALB load balances across instances of service B. This adds an extra hop but provides: health checking, load balancing, TLS termination, and connection pooling at the network level.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Service discovery patterns — DNS-based internal routing</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># What your service sees internally</span>
+
+<span class="cm"># Public DNS (external): api.yourcompany.com → 54.239.28.85 (load balancer public IP)</span>
+<span class="cm">$ dig api.yourcompany.com</span>
+54.239.28.85
+
+<span class="cm"># Internal service DNS: payment-svc.prod.internal → 10.0.10.80 (direct private IP)</span>
+<span class="cm">$ dig payment-svc.prod.internal</span>
+10.0.10.80
+
+<span class="cm"># AWS Cloud Map: auto-registers ECS task IPs</span>
+<span class="cm">$ dig payment-svc.prod.local</span>
+10.0.10.80    <span class="cm"># instance 1</span>
+10.0.11.95    <span class="cm"># instance 2 (cross-AZ)</span>
+
+<span class="cm"># Kubernetes internal DNS</span>
+<span class="cm">$ curl http://payment-svc.payments-namespace.svc.cluster.local:8080/health</span>
+<span class="cm"># Resolves to ClusterIP (virtual IP), kube-proxy routes to actual pod</span>
+
+<span class="cm"># AWS RDS: always use the endpoint DNS, never hardcode IP</span>
+<span class="cm"># mydb.cluster-xyz.us-east-1.rds.amazonaws.com → 10.0.20.100</span>
+<span class="cm"># If instance is replaced/failover, DNS updates — hardcoded IP would break</span>
+
+<span class="cm"># Internal ALB DNS (private, not internet-facing)</span>
+<span class="cm"># internal-payment-alb-1234.us-east-1.elb.amazonaws.com → 10.0.1.25</span>
+
+<span class="cm"># Never call internal services via their public-facing hostname</span>
+<span class="cm"># Bad:  fetch('https://api.yourcompany.com/payment/charge')  ← goes out to internet and back</span>
+<span class="cm"># Good: fetch('http://payment-svc.prod.internal:8080/charge') ← stays internal</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 6: Internal vs external routing -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Internal vs external call — latency and cost comparison</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showSvcComm('same_az')">Same AZ private</button>
+      <button class="viz-btn" onclick="showSvcComm('cross_az')">Cross-AZ private</button>
+      <button class="viz-btn" onclick="showSvcComm('internal_alb')">Internal ALB</button>
+      <button class="viz-btn" onclick="showSvcComm('external_loop')">Via public hostname (bad)</button>
+      <button class="viz-btn" onclick="showSvcComm('nat_external')">Via NAT → internet</button>
+    </div>
+    <div id="svc-comm-output" class="mono-out" style="font-size:12px;min-height:120px">Select a communication pattern.</div>
+  </div>
+</div>
+
+<!-- S7: VPN -->
+<div class="section" id="s-vpn">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>VPN: private network over public internet</h2>
+
+  <p>A VPN (Virtual Private Network) creates an encrypted tunnel over the public internet, allowing devices or networks to communicate as if they were directly connected on the same private network. It doesn't change the underlying routing — packets still travel over the public internet — but they're encrypted and encapsulated so the contents are private.</p>
+
+  <h3>Two types you'll encounter as a backend engineer</h3>
+  <p><strong>Site-to-site VPN:</strong> Connects two entire networks — e.g. your on-premises office network to your AWS VPC. Once established, all resources on both sides can reach each other via private IPs, as if the networks were merged. AWS Site-to-Site VPN is the standard tool for this. Used when you need to access AWS resources from your own data centre, or extend your corporate network into the cloud.</p>
+  <p><strong>Client VPN:</strong> Connects individual devices (developer laptops, remote workers) to a private network. When your developers need to SSH into EC2 instances in a private subnet, they connect via VPN first. The VPN gives their laptop a private IP in your VPC's range, and from there they can reach private resources directly.</p>
+
+  <h3>How WireGuard works (the modern VPN protocol)</h3>
+  <p>WireGuard is the modern, fast, simpler alternative to OpenVPN and IPsec. It runs in the Linux kernel, uses state-of-the-art cryptography (Curve25519, ChaCha20, Poly1305), and has ~4000 lines of code vs ~400,000 for OpenVPN. Each peer has a public/private key pair. To add a peer, you add their public key to your config. Packets are encrypted with the recipient's public key and decrypted with their private key. No certificates, no CA — just keys.</p>
+
+  <h3>Split tunneling</h3>
+  <p>By default, a VPN routes all traffic through the tunnel — including your Netflix stream. Split tunneling routes only specific traffic through the VPN (e.g. your company's <code>10.0.0.0/8</code> subnets) and sends everything else directly. Better for performance, but means company-bound traffic is the only traffic encrypted through the tunnel. Most corporate VPNs for developers use split tunneling.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>VPN vs VPC Peering vs PrivateLink</strong>
+      <p>These three solve different problems. <strong>VPN</strong>: encrypted tunnel over public internet, used for connecting external networks (office, developer laptops) to your VPC. <strong>VPC Peering</strong>: direct private routing between two VPCs within AWS, no internet involved — fastest, but requires non-overlapping CIDRs and has no transitive routing. <strong>AWS PrivateLink</strong>: exposes a specific service (not a whole VPC) to other VPCs or AWS accounts, with a private endpoint in the consumer's VPC — used for SaaS products to offer private connectivity to customers without exposing the whole network.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 7: VPN vs peering vs privatelink -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">VPN vs peering vs PrivateLink — when to use each</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showConnType('vpn_client')">Dev laptop → VPC</button>
+      <button class="viz-btn" onclick="showConnType('vpn_site')">On-prem DC → VPC</button>
+      <button class="viz-btn" onclick="showConnType('peering')">VPC-prod → VPC-staging</button>
+      <button class="viz-btn" onclick="showConnType('tgw')">5 VPCs hub-and-spoke</button>
+      <button class="viz-btn" onclick="showConnType('privatelink')">Customer → your SaaS API</button>
+      <button class="viz-btn" onclick="showConnType('direct')">On-prem (dedicated line)</button>
+    </div>
+    <div id="conn-type-output" class="mono-out" style="font-size:12px;min-height:140px">Select a connectivity scenario.</div>
+  </div>
+</div>
+
+<!-- S8: KONG -->
+<div class="section" id="s-kong">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Kong Gateway: the public ingress layer in practice</h2>
+
+  <p>Kong sits at the boundary between public traffic and your internal services — exactly at the transition from public subnet to private subnet in the VPC architecture above. Understanding Kong's object model explains how it routes incoming requests to the right internal service.</p>
+
+  <h3>The Kong object model</h3>
+  <p>Everything in Kong is built from five objects:</p>
+  <ul>
+    <li><strong>Service:</strong> Represents an upstream service — your internal API. Points to the internal DNS name or private IP: <code>host: payment-svc.prod.internal, port: 8080</code>. Kong forwards matched requests to this address.</li>
+    <li><strong>Route:</strong> Defines what incoming traffic matches a Service. Match rules: host, path, method, headers. <code>paths: [/api/payment]</code> → forward to Payment Service. A Service can have many Routes.</li>
+    <li><strong>Plugin:</strong> Middleware attached to a Service, Route, or globally. Rate limiting, authentication, request transformation, logging. Plugins run in a defined phase order (access, header_filter, body_filter, log).</li>
+    <li><strong>Upstream:</strong> Load balancing config for a Service's backend pool. Defines health checks, load balancing algorithm, targets. One Service maps to one Upstream.</li>
+    <li><strong>Target:</strong> An individual backend server in an Upstream pool. <code>10.0.10.50:3000</code>, <code>10.0.10.51:3000</code>. Targets have weights for weighted round-robin.</li>
+  </ul>
+
+  <h3>The request lifecycle</h3>
+  <p>Request arrives at Kong → Route matching (which Service?) → Plugin chain runs (auth, rate limiting, transforms) → Kong forwards to Upstream → picks a Target via load balancing → response returns through Plugin chain (response transforms, logging) → back to client.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Kong object model — complete setup via Admin API</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Kong Admin API runs at :8001 (internal only — never expose to internet)</span>
+<span class="cm"># Kong Proxy runs at :8000/:8443 (public — this is what users hit)</span>
+
+<span class="cm">## 1. Create an Upstream (backend pool with health checks)</span>
+curl -X POST http://kong:8001/upstreams \
+  -d name=payment-upstream \
+  -d healthchecks.active.http_path=/health \
+  -d healthchecks.active.interval=10 \
+  -d healthchecks.active.healthy.successes=2 \
+  -d healthchecks.active.unhealthy.http_failures=3
+
+<span class="cm">## 2. Add Targets to the Upstream</span>
+curl -X POST http://kong:8001/upstreams/payment-upstream/targets \
+  -d target=10.0.10.50:8080 \
+  -d weight=100
+
+curl -X POST http://kong:8001/upstreams/payment-upstream/targets \
+  -d target=10.0.10.51:8080 \
+  -d weight=100
+
+<span class="cm">## 3. Create a Service pointing to the Upstream</span>
+curl -X POST http://kong:8001/services \
+  -d name=payment-service \
+  -d host=payment-upstream \   <span class="cm"># references upstream by name</span>
+  -d protocol=http \
+  -d port=80 \
+  -d connect_timeout=5000 \
+  -d write_timeout=30000 \
+  -d read_timeout=30000
+
+<span class="cm">## 4. Create a Route matching incoming traffic to the Service</span>
+curl -X POST http://kong:8001/services/payment-service/routes \
+  -d name=payment-route \
+  -d paths[]=/api/v1/payments \
+  -d methods[]=GET \
+  -d methods[]=POST \
+  -d strip_path=false       <span class="cm"># keep /api/v1/payments in the upstream request</span>
+
+<span class="cm">## 5. Attach Plugins to the Route</span>
+<span class="cm"># Rate limiting</span>
+curl -X POST http://kong:8001/routes/payment-route/plugins \
+  -d name=rate-limiting \
+  -d config.minute=1000 \
+  -d config.hour=10000 \
+  -d config.policy=redis \
+  -d config.redis_host=redis.prod.internal
+
+<span class="cm"># JWT authentication</span>
+curl -X POST http://kong:8001/routes/payment-route/plugins \
+  -d name=jwt \
+  -d config.secret_is_base64=false \
+  -d config.key_claim_name=kid
+
+<span class="cm"># Request ID injection (trace correlation)</span>
+curl -X POST http://kong:8001/services/payment-service/plugins \
+  -d name=correlation-id \
+  -d config.header_name=X-Request-ID \
+  -d config.generator=uuid
+
+<span class="cm">## Declarative config (preferred for production — store in git)</span>
+<span class="cm"># deck sync --config kong.yaml</span>
+<span class="cm"># deck diff --config kong.yaml  # preview changes</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 8: Kong request flow -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Kong request lifecycle — from public internet to internal service</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showKongFlow('happy')">&#9654; Happy path request</button>
+      <button class="viz-btn" onclick="showKongFlow('auth_fail')" style="border-color:var(--red);color:var(--red)">Auth failure</button>
+      <button class="viz-btn" onclick="showKongFlow('rate_limit')" style="border-color:var(--orange);color:var(--orange)">Rate limited</button>
+      <button class="viz-btn" onclick="showKongFlow('upstream_down')" style="border-color:var(--red);color:var(--red)">Upstream down</button>
+      <button class="viz-btn" onclick="showKongFlow('plugin_order')">Plugin phase order</button>
+    </div>
+    <div id="kong-flow-output" class="mono-out" style="font-size:12px;min-height:160px">Select a scenario to trace the request through Kong.</div>
+  </div>
+</div>
+
+<!-- S9: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+
+  <h3>Your services calling each other via public hostname is a common mistake</h3>
+  <p>A new service gets deployed. The developer tests it by calling <code>https://api.yourcompany.com/payment/charge</code> — the public URL. It works! They leave it. That call now: goes out through NAT Gateway, across the internet, back into your load balancer, through a security group, to the service. It costs money, adds latency, and goes through your internet bandwidth cap. The correct call: <code>http://payment-svc.prod.internal:8080/charge</code>. Add an internal DNS check to your code review checklist.</p>
+
+  <h3>Cross-AZ traffic has a cost</h3>
+  <p>AWS charges $0.01/GB for traffic crossing Availability Zones. An app server in AZ-1a calling a database in AZ-1b pays this for every byte. At high throughput this adds up. Mitigation: deploy your service and its primary data source in the same AZ. Use multi-AZ for failover, but optimise for same-AZ in normal operation.</p>
+
+  <h3>Security group rules are not documentation</h3>
+  <p>Security groups accumulate rules over time. An engineer opens port 5432 to an IP range "temporarily" and forgets. A year later, nobody knows why the rule exists or whether removing it would break something. Use Infrastructure as Code (Terraform, CDK) for security groups and review them in code review. The code is the documentation.</p>
+
+  <h3>The VPC CIDR you can't change</h3>
+  <p>AWS lets you add secondary CIDR blocks to a VPC, but you cannot change the primary CIDR. If you started with <code>10.0.0.0/16</code> and later need to peer with another VPC that also uses <code>10.0.0.0/16</code> — you're stuck. Plan CIDR blocks before creating VPCs. One team, one CIDR range, no overlaps.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>169.254.169.254 is the AWS metadata endpoint and you should memorise it</h3>
+  <p>Any EC2 instance can reach <code>http://169.254.169.254/latest/meta-data/</code> without any routing setup. This returns instance metadata: instance ID, IAM role credentials, AZ, public hostname, everything. It's also a security target — SSRF attacks that can reach this endpoint can steal IAM credentials. IMDSv2 (token-based access) mitigates this. Always enforce IMDSv2 in your launch templates.</p>
+
+  <h3>0.0.0.0/0 in a route table means "everything else goes here"</h3>
+  <p>Route tables work by longest-prefix-match. <code>10.0.0.0/16 → local</code> takes priority over <code>0.0.0.0/0 → IGW</code> for local traffic. The default route (<code>0.0.0.0/0</code>) only handles traffic that doesn't match any more specific route. Public subnets have <code>0.0.0.0/0 → IGW</code>. Private subnets have <code>0.0.0.0/0 → NAT Gateway</code>. This is the fundamental difference between public and private subnets — one line in the route table.</p>
+
+  <h3>Kong's Admin API must never be publicly accessible</h3>
+  <p>Kong runs two ports: <code>:8000</code>/<code>:8443</code> (proxy — the one users hit) and <code>:8001</code>/<code>:8444</code> (admin API — the one you configure Kong with). If <code>:8001</code> is exposed to the internet, anyone can add routes, plugins, and backend targets to your API gateway. Lock the admin API to a security group that only allows access from your bastion host or VPN IP range.</p>
+
+  <h3>Split DNS: different answers inside vs outside the VPC</h3>
+  <p>Route 53 private hosted zones let you return different DNS answers inside vs outside your VPC. <code>api.yourcompany.com</code> resolves to the load balancer's public IP from the internet, but to the load balancer's private IP (or the internal ALB directly) from within the VPC. This eliminates unnecessary NAT traversal and reduces latency for internal callers without any application code changes.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Designing how service A calls service B</h2>
+  <p class="ds-sub">Work through this every time you write a URL in application code or design a new integration.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Is service B in the same VPC?</div>
+        <div class="ds-detail">If yes: use its internal DNS name and private IP. Never use the public hostname. The internal path is faster, free, and doesn't leave your network. Check whether B has an internal load balancer — use that DNS name rather than hardcoding IPs.
+          <br><span class="ds-tag ds-tag-ok">same VPC = internal DNS, private IP, no NAT, no cost</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Is service B in a different VPC (same company)?</div>
+        <div class="ds-detail">Establish VPC peering or use a Transit Gateway if you have many VPCs. Once peered, add routes in both route tables and use private IPs — same as same-VPC. Verify CIDRs don't overlap before starting. For one-to-one VPC connections: peering. For five or more VPCs talking to each other: Transit Gateway.
+          <br><span class="ds-tag ds-tag-info">different VPC = peering or TGW, then private IPs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it an AWS service (S3, DynamoDB, SQS)?</div>
+        <div class="ds-detail">Use a VPC Endpoint instead of going through NAT. Gateway endpoints (S3, DynamoDB) are free and keep traffic in AWS's network. Interface endpoints (most other services) cost ~$0.01/hour but eliminate NAT costs and latency. Check your NAT Gateway data transfer bill — most of it is usually S3 traffic that should be using a gateway endpoint.
+          <br><span class="ds-tag ds-tag-ok">AWS services = VPC endpoint, not NAT</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it a third-party API (Stripe, Twilio, GitHub)?</div>
+        <div class="ds-detail">Traffic goes through NAT Gateway → internet. This is unavoidable for true external APIs. Mitigate: connection pooling (don't establish new connections per request), DNS caching (don't re-resolve on every call), and TCP keepalives (avoid NAT timeout at 350s). Set <code>keepalive</code> in your HTTP client to 60s.
+          <br><span class="ds-tag ds-tag-warn">external API = NAT → internet. Enable keepalives, pool connections.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Is it on-premises or a different cloud?</div>
+        <div class="ds-detail">VPN tunnel (encrypted, over internet, ~10ms overhead) or AWS Direct Connect (dedicated physical line, expensive, ~1ms, no internet). VPN is the right default for most companies. Direct Connect only makes sense if you have very high bandwidth requirements (&gt;1 Gbps sustained) or strict compliance requirements that prohibit internet-transited data.
+          <br><span class="ds-tag ds-tag-info">on-prem = Site-to-Site VPN or Direct Connect</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Does traffic pass through Kong? Check what plugins run.</div>
+        <div class="ds-detail">If the call goes through Kong (whether internal or external), verify: which plugins are attached to the route? Rate limits that were appropriate for external clients may be too restrictive for internal service-to-service calls. Add a <code>Consumer</code> in Kong for each internal service with higher rate limits, and authenticate service-to-service calls using JWT or a shared secret so Kong can identify the caller.
+          <br><span class="ds-tag ds-tag-warn">Kong rate limits apply to internal callers too — configure consumers</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Microservice calling its own public URL — 40ms became 400ms at scale</div>
+    <div style="font-size:13px;color:var(--text2)">Internal traffic routing · NAT hairpin · split DNS fix</div>
+  </div>
+  <a href="/day13/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">WireGuard setup, Kong declarative config, AWS VPC Terraform</div>
+    <div style="font-size:13px;color:var(--text2)">WireGuard peer config · deck sync for Kong · Terraform VPC module</div>
+  </div>
+  <a href="/day13/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Network architecture checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">INT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Internal DNS</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Services in the same VPC must call each other by internal DNS, not public hostname. Code review: no api.yourcompany.com in service code.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">EP</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">VPC Endpoints</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">S3 and DynamoDB get gateway endpoints (free). Check your NAT bill — most of it is usually avoidable AWS-to-AWS traffic.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">SG</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Security Groups</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Managed in Terraform, not console. Reference security groups by ID not CIDR. RDS allows only app-server SG, not 0.0.0.0/0.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">NAT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">NAT keepalives</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">TCP keepalive ≤ 60s for connections through NAT Gateway. AWS drops idle connections at 350s. This catches 80% of ECONNRESET incidents.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">CIDR</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">CIDR planning</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">One team = one CIDR range. Dev/staging/prod don't overlap. Document the plan before creating any VPC — you can't change the primary CIDR later.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">KON</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Kong admin locked</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Port 8001 (Kong admin) accessible only from VPN or bastion. Declarative config (deck) in git. Internal services have their own Consumers with higher rate limits.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+// TOC scroll
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, { passive: true });
+
+// ── VIZ 1: IP classifier ──
+function classifyIP(ip) {
+  ip = ip.trim();
+  if (!ip) return;
+  document.getElementById('ip-input').value = ip;
+  var parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(function(p) { return isNaN(p) || p < 0 || p > 255; })) {
+    document.getElementById('ip-output').textContent = ip + ' — not a valid IPv4 address';
+    return;
+  }
+  var a = parts[0], b = parts[1];
+  var result, scope, routable, example;
+  if (a === 10) {
+    result = 'RFC 1918 Private (10.0.0.0/8)'; scope = 'PRIVATE'; routable = 'NOT routable on public internet';
+    example = 'Typical use: AWS VPC CIDR, internal network, Kubernetes pod IPs\nThe entire 10.x.x.x range (16M addresses) is reserved for private use.\nAWS VPCs commonly use 10.0.0.0/16 or 10.0.0.0/8 subnets.';
+  } else if (a === 172 && b >= 16 && b <= 31) {
+    result = 'RFC 1918 Private (172.16.0.0/12)'; scope = 'PRIVATE'; routable = 'NOT routable on public internet';
+    example = 'Typical use: Docker default bridge network uses 172.17.0.0/16\nLess common than 10.x.x.x but valid private space.\n172.17.0.1 is the Docker bridge gateway.';
+  } else if (a === 192 && b === 168) {
+    result = 'RFC 1918 Private (192.168.0.0/16)'; scope = 'PRIVATE'; routable = 'NOT routable on public internet';
+    example = 'Typical use: Home routers, small office networks\nYour router assigns 192.168.1.x to devices on your WiFi.\nVery common in home/office, less common in cloud environments.';
+  } else if (a === 127) {
+    result = 'Loopback (127.0.0.0/8)'; scope = 'LOCAL'; routable = 'Never leaves the machine';
+    example = 'The loopback interface. 127.0.0.1 is always "this machine."\nTraffic to loopback never hits any network interface.\nUsed for: local services, testing, inter-process communication on same host.';
+  } else if (a === 169 && b === 254) {
+    result = 'Link-local (169.254.0.0/16)'; scope = 'LINK-LOCAL'; routable = 'Only reachable on direct link';
+    example = 'Special AWS use: 169.254.169.254 is the EC2 Instance Metadata Service\n$ curl http://169.254.169.254/latest/meta-data/iam/security-credentials/\nReturns: IAM role credentials for this instance\n\n⚠ SSRF attacks targeting this IP can steal AWS credentials.\nAlways enforce IMDSv2 (token-based) in production.';
+  } else if (a === 0 && b === 0 && parts[2] === 0 && parts[3] === 0) {
+    result = '0.0.0.0 — special "any" address'; scope = 'SPECIAL'; routable = 'Not a real address';
+    example = 'Meaning depends on context:\n  Route table: 0.0.0.0/0 = default route (match everything else)\n  Server bind: 0.0.0.0 = listen on all network interfaces\n  Source address: "I don\'t have an IP yet" (DHCP discovery)\n\nIn a route table: 0.0.0.0/0 → igw-xxx means "default route to internet gateway"';
+  } else {
+    result = 'Public IP (globally routable)'; scope = 'PUBLIC'; routable = 'Routable on the public internet';
+    example = 'This IP is globally unique and reachable from anywhere on the internet.\nAssigned by IANA/RIRs to ISPs and organisations.\n\nIn AWS: public IPs are assigned to:\n  - Internet-facing load balancers\n  - NAT Gateways\n  - EC2 instances in public subnets (if assigned)\nYour servers almost never have this — the load balancer does.';
+  }
+  var col = scope === 'PRIVATE' ? 'var(--green)' : scope === 'PUBLIC' ? 'var(--red)' : scope === 'LOCAL' ? 'var(--accent)' : 'var(--orange)';
+  document.getElementById('ip-output').innerHTML =
+    'IP:           ' + ip + '\nType:         <span style="color:' + col + ';font-weight:700">' + result + '</span>\nScope:        <span style="color:' + col + '">' + scope + '</span>\nInternet:     ' + routable + '\n\n' + example;
+}
+
+// ── VIZ 2: CIDR calculator ──
+function calcCIDR(cidr) {
+  var parts = cidr.split('/');
+  var ip = parts[0], prefix = parseInt(parts[1]);
+  var totalAddresses = Math.pow(2, 32 - prefix);
+  var usable = prefix >= 31 ? totalAddresses : totalAddresses - 2;
+  var ipParts = ip.split('.').map(Number);
+  var ipNum = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
+  var mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+  var network = (ipNum & mask) >>> 0;
+  var broadcast = (network | ~mask) >>> 0;
+  function numToIP(n) { return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join('.'); }
+  var first = prefix >= 31 ? numToIP(network) : numToIP(network + 1);
+  var last  = prefix >= 31 ? numToIP(broadcast) : numToIP(broadcast - 1);
+  var isDefault = cidr === '0.0.0.0/0';
+  document.getElementById('cidr-output').innerHTML = [
+    'CIDR block:       ' + cidr,
+    'Network address:  ' + numToIP(network) + '  (first address — identifies the network)',
+    'Broadcast:        ' + numToIP(broadcast) + '  (last address — sent to all hosts)',
+    'First usable:     ' + first,
+    'Last usable:      ' + last,
+    'Total addresses:  ' + totalAddresses.toLocaleString(),
+    'Usable hosts:     <span style="color:var(--green)">' + usable.toLocaleString() + '</span>',
+    'Subnet mask:      ' + numToIP(mask),
+    '',
+    isDefault
+      ? '<span style="color:var(--orange)">0.0.0.0/0 = "match everything." Used as the default route.\nIn a route table: 0.0.0.0/0 → igw means "send all unmatched traffic to the internet gateway."</span>'
+      : prefix <= 8
+        ? '<span style="color:var(--accent)">Typical use: entire RFC 1918 range or large corporate allocation</span>'
+        : prefix <= 16
+          ? '<span style="color:var(--accent)">Typical use: VPC CIDR block (10.0.0.0/16 gives 65K addresses)</span>'
+          : prefix <= 24
+            ? '<span style="color:var(--accent)">Typical use: subnet within a VPC (254 usable hosts)</span>'
+            : '<span style="color:var(--accent)">Typical use: small subnet, specific host routing (/32), or point-to-point</span>',
+  ].join('\n');
+}
+
+// ── VIZ 3: NAT flow ──
+var NAT_FLOWS = {
+  outbound: [
+    'OUTBOUND (SNAT) — private server calling an external API',
+    '─────────────────────────────────────────────────────────',
+    '',
+    'Your server:     10.0.10.50:54321',
+    'Destination:     api.stripe.com:443',
+    '',
+    '  Step 1: Server sends packet',
+    '          SRC: 10.0.10.50:54321  DST: 54.187.201.11:443',
+    '',
+    '  Step 2: Route table: 0.0.0.0/0 → nat-gateway',
+    '          Packet arrives at NAT Gateway (10.0.1.5)',
+    '',
+    '  Step 3: NAT Gateway rewrites source address',
+    '          SRC: 54.239.28.85:41234  DST: 54.187.201.11:443',
+    '          Stores mapping: 54.239.28.85:41234 ↔ 10.0.10.50:54321',
+    '',
+    '  Step 4: Packet exits via Internet Gateway to Stripe',
+    '          Stripe sees request from 54.239.28.85 (your NAT public IP)',
+    '',
+    '  Step 5: Stripe responds',
+    '          SRC: 54.187.201.11:443  DST: 54.239.28.85:41234',
+    '',
+    '  Step 6: NAT Gateway looks up translation table',
+    '          Rewrites: DST → 10.0.10.50:54321',
+    '          Forwards to your server',
+    '',
+    '  Result: Server receives response as if it came directly.',
+    '          Stripe never knows the real IP.',
+  ].join('\n'),
+
+  inbound: [
+    'INBOUND (DNAT) — user calling your API',
+    '───────────────────────────────────────',
+    '',
+    'User browser:    203.0.113.45',
+    'Your public IP:  54.239.100.10  (load balancer)',
+    'Your server:     10.0.10.50:3000 (private subnet)',
+    '',
+    '  Step 1: User sends HTTPS request',
+    '          SRC: 203.0.113.45:52000  DST: 54.239.100.10:443',
+    '',
+    '  Step 2: Internet Gateway passes to ALB',
+    '          (ALB has a public IP in the public subnet)',
+    '',
+    '  Step 3: ALB TLS termination, selects backend',
+    '          Rewrites DST to backend: 10.0.10.50:3000',
+    '          Adds: X-Forwarded-For: 203.0.113.45',
+    '',
+    '  Step 4: Packet arrives at your server',
+    '          SRC: 10.0.1.25 (ALB private IP)  DST: 10.0.10.50:3000',
+    '',
+    '  ⚠ Your server sees the ALB\'s private IP as the source,',
+    '    NOT the user\'s IP. Use X-Forwarded-For header for real client IP.',
+    '',
+    '  Note: This uses the ALB as the translation point (DNAT).',
+    '  Your server NEVER has a public IP — the ALB does.',
+  ].join('\n'),
+
+  timeout: [
+    'NAT TIMEOUT — connection silently killed after 350 seconds',
+    '──────────────────────────────────────────────────────────',
+    '',
+    'Timeline:',
+    '  T+0s:    App server connects to external DB via NAT Gateway',
+    '           NAT table entry created: 10.0.10.50:54321 ↔ 54.239.28.85:41234',
+    '',
+    '  T+1s:    Connection established. All is well.',
+    '',
+    '  T+300s:  Connection is idle (no data sent for 5 minutes)',
+    '           Both endpoints believe connection is alive.',
+    '',
+    '  T+350s:  ⚠ AWS NAT Gateway silently drops the table entry.',
+    '           From AWS\'s perspective: connection timed out.',
+    '           From your app\'s perspective: connection still open.',
+    '',
+    '  T+360s:  App sends a query on the "open" connection.',
+    '           Packet arrives at NAT Gateway — no table entry.',
+    '           NAT Gateway sends TCP RST back to the server.',
+    '',
+    '  T+360s:  Server receives ECONNRESET.',
+    '           App crashes / throws error.',
+    '',
+    'Root cause: AWS NAT Gateway idle timeout = 350 seconds.',
+    'The connection tracking entry expired while the TCP connection',
+    'was still logically alive.',
+  ].join('\n'),
+
+  keepalive: [
+    'FIX: TCP KEEPALIVE at 60 seconds',
+    '─────────────────────────────────',
+    '',
+    'Timeline with keepalive enabled (keepalive_time=60s):',
+    '',
+    '  T+0s:    Connection established through NAT Gateway.',
+    '',
+    '  T+60s:   No data sent for 60s. Keepalive probe sent.',
+    '           Tiny packet traverses NAT → resets idle timer.',
+    '           NAT table entry stays alive.',
+    '',
+    '  T+120s:  Another keepalive probe. Timer reset again.',
+    '           ...',
+    '',
+    '  T+350s:  NAT would have timed out without keepalives.',
+    '           But last keepalive was at T+300s (timer reset then).',
+    '           Connection stays alive.',
+    '',
+    '  Result:  ECONNRESET never happens.',
+    '',
+    'Linux sysctl settings:',
+    '  net.ipv4.tcp_keepalive_time    = 60    # first probe after 60s idle',
+    '  net.ipv4.tcp_keepalive_intvl   = 10    # probe every 10s',
+    '  net.ipv4.tcp_keepalive_probes  = 3     # 3 failures = dead',
+    '',
+    '  # or per-socket in your application:',
+    '  socket.setKeepAlive(true, 60000);  // Node.js',
+    '',
+    'Alternative: VPC Endpoint for AWS services (no NAT at all)',
+    'Alternative: PrivateLink for external APIs that support it',
+  ].join('\n'),
+};
+function showNAT(key) {
+  document.getElementById('nat-output').textContent = NAT_FLOWS[key];
+}
+
+// ── VIZ 4: VPC components ──
+var VPC_COMPONENTS = {
+  internet: 'Internet\n\nThe public internet — billions of users, global routing infrastructure.\nPackets here are visible to anyone who can intercept them.\n\nKey fact: private IPs (10.x.x.x, 192.168.x.x, 172.16-31.x.x) are INVISIBLE\nto the internet. Routers drop packets destined for these addresses.\nYour backend servers are completely hidden from here.',
+  igw:    'Internet Gateway (IGW)\n\nThe controlled entry/exit point for your VPC.\n\nProperties:\n  - One IGW per VPC (AWS-managed, highly available)\n  - Allows traffic between VPC and internet\n  - Performs 1:1 NAT for resources with public IPs (like NAT Gateways)\n  - Does NOT provide internet access to private subnets — that\'s the NAT Gateway\'s job\n\nRoute table:\n  Public subnets:  0.0.0.0/0 → igw-abc123  (can reach internet)\n  Private subnets: 0.0.0.0/0 → nat-xyz789  (must go through NAT GW first)',
+  alb:    'Application Load Balancer (ALB)\n\nLives in the PUBLIC subnet. Has a public IP (or public DNS).\nThis is the only component users directly connect to.\n\nWhat it does:\n  - TLS termination (your backend never deals with TLS)\n  - Routes by path, host, header (GET /api/orders → order-service)\n  - Health checks on backends (removes unhealthy instances)\n  - Adds X-Forwarded-For with real client IP\n  - Logs every request (access logs to S3)\n\nSecurity group: allows 443 from 0.0.0.0/0 (any internet user)\n                allows 80 from 0.0.0.0/0 (redirect to 443)\n                nothing else',
+  natgw:  'NAT Gateway\n\nLives in the PUBLIC subnet. Has a public Elastic IP.\nHandles OUTBOUND traffic from private subnets to the internet.\nInbound-only: internet cannot initiate connections through NAT GW.\n\nWhat it does:\n  - Translates private IP (10.0.10.50) → its public IP (54.239.28.85)\n  - Tracks connections for return traffic\n  - Scales automatically (AWS-managed)\n\nCost: $0.045/hour + $0.045/GB data processed\nTip: Use VPC Endpoints for S3/DynamoDB to avoid NAT costs.\nIdle timeout: 350 seconds — enable TCP keepalives!',
+  appserver: 'App Server (EC2 / ECS Task)\n\nLives in the PRIVATE subnet. Has ONLY a private IP.\nNever directly reachable from the internet.\n\nSecurity group:\n  Inbound:  port 3000 from ALB security group ONLY\n            (not 0.0.0.0/0 — only the load balancer can reach it)\n  Outbound: 443 to 0.0.0.0/0 (via NAT for external APIs)\n            5432 to RDS security group (database)\n\nCalling other services:\n  Internal: http://payment-svc.prod.internal:8080  → direct private IP\n  External: https://api.stripe.com  → via NAT Gateway',
+  rds:    'RDS PostgreSQL\n\nLives in the PRIVATE subnet (usually a separate "data subnet").\nNo internet access. No inbound from internet. No outbound to internet.\n\nSecurity group:\n  Inbound:  port 5432 from app-server security group ONLY\n            (nothing else — not even your laptop directly)\n  Outbound: typically unrestricted within VPC\n\nConnection string uses the RDS endpoint DNS name:\n  mydb.cluster-abc.us-east-1.rds.amazonaws.com → 10.0.20.100\n\nNever hardcode the private IP — DNS updates on failover.\nFor bastion access: SSH tunnel through bastion, or use RDS Proxy.',
+};
+function showVPCComponent(key) {
+  document.getElementById('vpc-output').textContent = VPC_COMPONENTS[key] || 'Click a component above.';
+}
+
+// ── VIZ 5: Traffic paths ──
+var PATHS = {
+  user_to_api: 'Path: User → Your API  [PUBLIC INGRESS]\n\n  203.0.113.45 (user)\n    ↓ DNS: api.yourcompany.com → 54.239.100.10\n    ↓ HTTPS to public IP\n  Internet Gateway (VPC edge)\n    ↓ routes to ALB (public subnet)\n  ALB (10.0.1.25, public subnet)\n    ↓ TLS termination, health check, route matching\n    ↓ adds X-Forwarded-For: 203.0.113.45\n  App Server (10.0.10.50, private subnet)\n    ↓ processes request\n  ← response reverse path\n\nLatency: ~RTT + ALB overhead (~1ms)\nCost:    $0.008/LCU-hour (ALB pricing)\nLeaves AWS network: YES (internet segment)\nSecurity: ALB SG allows :443 from 0.0.0.0/0. App SG from ALB SG only.',
+
+  svc_to_svc: 'Path: order-svc → payment-svc  [INTERNAL SERVICE-TO-SERVICE]\n\n  order-svc (10.0.10.50)\n    ↓ DNS: payment-svc.prod.internal → 10.0.10.80\n    ↓ HTTP to private IP directly\n  payment-svc (10.0.10.80, same subnet)\n\nAlternative via internal ALB:\n  order-svc (10.0.10.50)\n    ↓ DNS: internal-payment-alb.elb.amazonaws.com → 10.0.1.80\n    ↓ HTTP to internal ALB\n  Internal ALB (10.0.1.80, same VPC public subnet)\n    ↓ routes to payment-svc instances\n  payment-svc (10.0.10.80 or 10.0.11.90)\n\nLatency: ~0.1-0.3ms (same AZ), ~1-2ms (cross-AZ)\nCost:    FREE (same AZ), $0.01/GB (cross-AZ)\nLeaves AWS network: NO\nSecurity: payment SG allows :8080 from order-svc SG only.',
+
+  svc_to_db: 'Path: App Server → RDS  [INTERNAL TO DATA LAYER]\n\n  App Server (10.0.10.50)\n    ↓ DNS: mydb.cluster-abc.us-east-1.rds.amazonaws.com → 10.0.20.100\n    ↓ TCP :5432 to private IP\n  RDS PostgreSQL (10.0.20.100, private data subnet)\n\nConnection via PgBouncer (Day 11 pattern):\n  App Server (10.0.10.50)\n    ↓ TCP :5432 to PgBouncer\n  PgBouncer (10.0.10.200, private subnet)\n    ↓ TCP :5432 to RDS private IP\n  RDS (10.0.20.100)\n\nLatency: ~0.2-0.5ms (typical same-AZ RDS query network latency)\nCost:    FREE (same AZ), $0.01/GB (cross-AZ)\nLeaves AWS network: NO\n⚠ Always use DNS endpoint — RDS IP changes on failover.',
+
+  svc_to_stripe: 'Path: App → Stripe API  [EXTERNAL API CALL]\n\n  App Server (10.0.10.50)\n    ↓ route table: 0.0.0.0/0 → nat-gateway\n  NAT Gateway (10.0.1.5, elastic IP: 54.239.28.85)\n    ↓ SNAT: src → 54.239.28.85:XXXX\n  Internet Gateway\n    ↓ public internet\n  api.stripe.com (54.187.201.11)\n\nLatency: RTT to Stripe (~20-80ms US, ~100-200ms India)\nCost:    $0.045/GB data through NAT Gateway\nLeaves AWS network: YES — public internet\n\n⚠ NAT idle timeout: 350s. Enable TCP keepalive at 60s.\n⚠ All traffic appears to come from NAT GW public IP.\n   Stripe webhook IPs: whitelist your NAT GW elastic IP.',
+
+  svc_to_s3: 'Path: App → S3 (WITHOUT VPC Endpoint)  [AVOIDABLE EGRESS]\n\n  App Server (10.0.10.50)\n    ↓ route table: 0.0.0.0/0 → nat-gateway\n  NAT Gateway (costs $0.045/GB!)\n    ↓ internet\n  s3.amazonaws.com (still AWS, but via public internet)\n\nLatency: ~5-20ms (extra NAT + internet hops)\nCost:    $0.045/GB NAT data processing + $0.09/GB S3 egress\nLeaves AWS network: Technically yes (routes via internet)\n\n⚠ This is unnecessary and expensive. Use a VPC Endpoint instead.',
+
+  svc_to_s3_ep: 'Path: App → S3 (WITH VPC Gateway Endpoint)  [CORRECT]\n\n  App Server (10.0.10.50)\n    ↓ route table: pl-68a54001 (S3 prefix list) → vpce-abc123\n  S3 Gateway VPC Endpoint\n    ↓ AWS internal network (never leaves AWS backbone)\n  S3 Bucket\n\nLatency: ~1-5ms (AWS internal network, no internet)\nCost:    FREE (Gateway endpoints for S3/DynamoDB are free)\nLeaves AWS network: NO\n\n✓ Setup:\n  aws ec2 create-vpc-endpoint \\\n    --vpc-id vpc-abc123 \\\n    --service-name com.amazonaws.us-east-1.s3 \\\n    --route-table-ids rtb-xyz\n\nThis automatically adds S3 routes to your route table.\nAny S3 traffic now stays within AWS and costs nothing for NAT.',
+
+  cross_vpc: 'Path: prod-svc → staging-svc  [CROSS-VPC PEERING]\n\n  prod-svc (10.3.10.50, VPC-prod: 10.3.0.0/16)\n    ↓ route table: 10.2.0.0/16 → pcx-abc123\n  VPC Peering Connection (pcx-abc123)\n    ↓ direct AWS internal routing (NOT internet)\n  staging-svc (10.2.10.80, VPC-staging: 10.2.0.0/16)\n\nRequirements:\n  - VPC peering established between prod and staging VPCs\n  - Route tables updated in BOTH VPCs\n  - CIDRs must NOT overlap (10.3.0.0/16 ≠ 10.2.0.0/16 ✓)\n  - Security groups in staging allow traffic from prod CIDR\n\nLatency: ~0.5ms (same region, AWS backbone)\nCost:    FREE (same AZ), $0.01/GB (cross-AZ or cross-region)\nLeaves AWS network: NO\n\nNote: VPC peering is NOT transitive.\n  prod → staging ✓ (direct peering)\n  prod → dev via staging ✗ (must peer prod↔dev directly too)',
+};
+function showPath(key) {
+  document.getElementById('path-output').textContent = PATHS[key];
+}
+
+// ── VIZ 6: Service communication ──
+var SVC_COMM = {
+  same_az: 'Same AZ private IP communication\n\norder-svc (10.0.10.50, AZ-1a) → payment-svc (10.0.10.80, AZ-1a)\n\nLatency:     0.1 - 0.3ms (sub-millisecond, direct routing)\nCost:        FREE — no data transfer charge within same AZ\nHops:        1 (direct private IP routing within VPC)\nNetwork:     Stays within AWS hyperplane — never leaves AWS\nDNS lookup:  payment-svc.prod.internal → 10.0.10.80 (~0.1ms)\n\n✓ This is the optimal path for all microservice communication.\n  Deploy related services in the same AZ for zero data cost.',
+
+  cross_az: 'Cross-AZ private IP communication\n\norder-svc (10.0.10.50, AZ-1a) → payment-svc (10.0.11.80, AZ-1b)\n\nLatency:     1 - 3ms (cross-AZ within same region)\nCost:        $0.01/GB — AWS charges for cross-AZ data transfer\nHops:        2 (routing through AZ boundary)\nNetwork:     Still private, still within AWS — just crosses AZ\n\n⚠ At high throughput, cross-AZ costs add up.\n  100GB/day cross-AZ = $30/month unexpected bill.\n\nMitigation:\n  - Deploy service replicas in each AZ\n  - Route to same-AZ replica first (locality-aware routing)\n  - Kubernetes: topologySpreadConstraints for same-AZ scheduling',
+
+  internal_alb: 'Via Internal ALB\n\norder-svc → internal-payment-alb.elb.amazonaws.com:80 → payment-svc\n\nLatency:     0.5 - 2ms (extra ALB hop)\nCost:        $0.008/LCU-hour (ALB) + possible cross-AZ charge\nHops:        2 (ALB + backend)\nBenefits:    Health checking, load balancing, connection pooling\n             Weighted routing (canary deploys by updating ALB weights)\n             TLS between services (if needed)\n\nUse when:\n  - payment-svc has multiple instances and needs load balancing\n  - You need health-checked failover between payment-svc instances\n  - You want to do canary deploys with traffic weighting\n\nSkip when:\n  - Single instance or handled by Kubernetes service (which provides LB)',
+
+  external_loop: '⚠ Via public hostname (WRONG — "NAT hairpin")\n\norder-svc (10.0.10.50) → api.yourcompany.com → 54.239.100.10 → 10.0.10.80\n\nLatency:     40 - 200ms (internet round trip!)\nCost:        NAT Gateway outbound + LB inbound charges\nHops:        5+ (NAT GW → internet → ALB → security groups → backend)\nNetwork:     LEAVES AWS → traverses public internet → comes back\n\nThis is called "NAT hairpin" or "hairpin NAT."\nA service calling its own public domain routes OUT to the internet\nand BACK IN through the load balancer.\n\nHow it happens: developer tests with the public URL, it works, ships it.\nFix immediately:\n  1. Use internal DNS: payment-svc.prod.internal\n  2. Or split DNS: api.yourcompany.com resolves to private IP inside VPC',
+
+  nat_external: 'Via NAT to external third-party API\n\norder-svc (10.0.10.50) → NAT GW → internet → api.stripe.com\n\nLatency:     20 - 200ms (internet latency to third party)\nCost:        $0.045/GB NAT data processing\nHops:        3+ (NAT GW → internet → Stripe)\nNetwork:     Leaves AWS backbone — public internet\n\nThis is unavoidable for true third-party services.\nMitigation:\n  1. HTTP/2 or keep-alive — reuse connections (avoid TLS handshake per request)\n  2. Connection pooling — one pool of open connections, not new per request\n  3. TCP keepalive at 60s — avoid NAT timeout at 350s\n  4. DNS caching — don\'t re-resolve api.stripe.com on every call\n  5. PrivateLink — if Stripe/vendor offers AWS PrivateLink, use it (stays in AWS)',
+};
+function showSvcComm(key) {
+  document.getElementById('svc-comm-output').textContent = SVC_COMM[key];
+}
+
+// ── VIZ 7: Connectivity types ──
+var CONN_TYPES = {
+  vpn_client: 'Scenario: Developer laptop → AWS VPC\n\nSolution: AWS Client VPN or WireGuard on a bastion\n\nHow it works:\n  1. Developer installs VPN client (OpenVPN, WireGuard, AWS VPN Client)\n  2. Authenticates (certificate, SSO/SAML)\n  3. Receives a VPN IP (e.g. 10.0.100.x) in the VPC range\n  4. All traffic to 10.0.0.0/16 routes through the VPN tunnel\n  5. Developer can now SSH to 10.0.10.50 (private EC2) directly\n\nSplit tunneling (recommended for developers):\n  Only 10.0.0.0/16 → VPN tunnel\n  Everything else (Google, GitHub, Netflix) → direct internet\n\nCost: AWS Client VPN ~$0.05/hr per connection + $0.10/hr endpoint\nAlternative: WireGuard on a small EC2 (much cheaper, ~$5/mo)',
+
+  vpn_site: 'Scenario: On-premises office/datacenter → AWS VPC\n\nSolution: AWS Site-to-Site VPN\n\nHow it works:\n  1. Configure a Virtual Private Gateway (VGW) on AWS side\n  2. Configure Customer Gateway (CGW) — your on-prem router IP\n  3. AWS creates two IPsec tunnels (for redundancy)\n  4. Add routes: 10.0.0.0/16 via VGW (AWS side)\n                 192.168.0.0/16 via customer gateway (on-prem side)\n  5. On-prem servers can now reach AWS private IPs and vice versa\n\nCost: ~$0.05/hr per VPN connection + $0.10/GB data\nThroughput: up to ~1.25 Gbps per tunnel\nLatency: internet RTT + encryption overhead (~5-10ms extra)\n\nFor higher bandwidth or lower latency: AWS Direct Connect\n(dedicated physical fibre — $0.03-0.10/GB, very low latency)',
+
+  peering: 'Scenario: VPC-prod ↔ VPC-staging  \n\nSolution: VPC Peering\n\nSetup:\n  1. Create peering connection: prod-vpc → staging-vpc\n  2. Accept request on staging side\n  3. Update route tables:\n     prod route table:    10.2.0.0/16 → pcx-abc123\n     staging route table: 10.3.0.0/16 → pcx-abc123\n  4. Update security groups to allow traffic from peer CIDR\n\nKey constraint: CIDRs must NOT overlap.\n  ✓ prod: 10.3.0.0/16  staging: 10.2.0.0/16\n  ✗ both: 10.0.0.0/16  → can\'t peer\n\nNot transitive: prod ↔ staging, staging ↔ dev does NOT give prod ↔ dev\n  Must create separate prod ↔ dev peering\n\nCost: FREE within region, $0.01/GB cross-region',
+
+  tgw: 'Scenario: 5+ VPCs that all need to communicate\n\nSolution: AWS Transit Gateway\n\nProblem with N-way peering:\n  5 VPCs need full mesh = 10 peering connections\n  10 VPCs = 45 connections. Unmanageable.\n\nTransit Gateway solution:\n  One Transit Gateway = hub\n  Each VPC attaches to TGW = spoke\n  All routing goes through TGW: VPC-A → TGW → VPC-B\n\nSetup:\n  1. Create Transit Gateway\n  2. Attach each VPC (VPC attachment)\n  3. Update route tables in each VPC: 10.0.0.0/8 → tgw-abc\n  4. TGW route table: routes to each VPC attachment\n\nCost: $0.05/hr per attachment + $0.02/GB processed\nAlso supports: VPN attachments, Direct Connect, peering TGWs across regions',
+
+  privatelink: 'Scenario: Customer → Your SaaS API (private, no internet)\n\nSolution: AWS PrivateLink\n\nProblem: your SaaS API is public. Customer doesn\'t want to send\ndata over the internet — compliance, security, bandwidth.\n\nPrivateLink solution:\n  Your side: create a Network Load Balancer + VPC Endpoint Service\n  Customer side: create a VPC Interface Endpoint in their VPC\n  \n  Customer traffic: their VPC → interface endpoint (gets a private IP\n  in their subnet!) → AWS backbone → your NLB → your service\n\n  Customer calls "your" API via a private IP in their own VPC.\n  Traffic never touches the internet.\n\nThis is how many AWS services work (S3 interface endpoint, RDS Proxy).\nCost: $0.01/hr per endpoint + $0.01/GB\nRequirement: your service needs an NLB (not ALB) to expose via PrivateLink',
+
+  direct: 'Scenario: On-premises with high bandwidth or compliance needs\n\nSolution: AWS Direct Connect\n\nPhysical dedicated fibre from your datacenter to AWS.\nNot over the internet — dedicated private line.\n\nWhen to use:\n  - >1 Gbps sustained transfer to/from AWS\n  - Strict latency requirements (<10ms to AWS, consistent)\n  - Compliance requires no internet-transited data\n  - Long-term commitment (Direct Connect is a 1-3 year contract)\n\nCost: $0.03-0.10/GB (much cheaper than internet egress at scale)\n      Port fee: $216-1620/month for 1-10 Gbps port\n      Plus cross-connect fee at colocation facility\n\nLatency: ~1-5ms (vs 10-50ms for VPN over internet)\n\nVPN vs Direct Connect:\n  VPN: encrypted over internet, ~$100/mo, available immediately\n  Direct Connect: dedicated line, $1000+/mo, 1-3 month setup',
+};
+function showConnType(key) {
+  document.getElementById('conn-type-output').textContent = CONN_TYPES[key];
+}
+
+// ── VIZ 8: Kong flow ──
+var KONG_FLOWS = {
+  happy: [
+    'Happy path: POST /api/v1/payments  [Authorization: Bearer <jwt>]',
+    '──────────────────────────────────────────────────────────────────',
+    '',
+    '  1. [ROUTER]     Kong receives request on :8443',
+    '                  Route matching: path=/api/v1/payments, method=POST',
+    '                  Matched: payment-route → payment-service',
+    '',
+    '  2. [ACCESS]     Plugin chain — access phase:',
+    '                  jwt plugin:          validate JWT signature ✓',
+    '                                       extract consumer: api-client-mobile',
+    '                  rate-limiting:       check counter for api-client-mobile',
+    '                                       current: 450/1000 per minute ✓',
+    '                  correlation-id:      add X-Request-ID: abc-123-def',
+    '                  request-transformer: add X-Internal-Service: true',
+    '',
+    '  3. [PROXY]      Kong selects Target from Upstream (round-robin):',
+    '                  payment-upstream → 10.0.10.51:8080 (healthy)',
+    '                  Forwards: POST http://10.0.10.51:8080/api/v1/payments',
+    '',
+    '  4. [UPSTREAM]   payment-svc processes, returns 200',
+    '',
+    '  5. [RESPONSE]   Plugin chain — response phase:',
+    '                  response-transformer: add X-Kong-Latency header',
+    '                  prometheus plugin:   record metrics',
+    '',
+    '  6. [CLIENT]     Kong returns 200 to client',
+    '                  Total Kong overhead: ~1-3ms',
+  ].join('\n'),
+
+  auth_fail: [
+    'Auth failure: POST /api/v1/payments  [Authorization: Bearer <expired_jwt>]',
+    '─────────────────────────────────────────────────────────────────────────────',
+    '',
+    '  1. [ROUTER]     Route matched: payment-route → payment-service',
+    '',
+    '  2. [ACCESS]     jwt plugin runs:',
+    '                  ✗ JWT signature valid but token expired',
+    '                    exp: 1700000000 < now: 1700001000',
+    '',
+    '  3. [REJECT]     Kong returns 401 Unauthorized',
+    '                  {"message": "Unauthorized"}',
+    '',
+    '  ✓ payment-svc (10.0.10.51) is NEVER called.',
+    '    Auth rejection happens entirely in Kong.',
+    '    No load on your backend for bad tokens.',
+    '',
+    'Common JWT issues through Kong:',
+    '  - Expired token: 401 {"message":"Unauthorized"}',
+    '  - Wrong audience: 401',
+    '  - JWKS kid not found: 401 (check JWKS cache — Day 6)',
+    '  - No Authorization header: 401',
+    '',
+    'Debug: curl -v → inspect Kong response headers',
+    '  X-Kong-Response-Latency: shows time Kong spent before rejecting',
+  ].join('\n'),
+
+  rate_limit: [
+    'Rate limited: consumer "mobile-api" exceeded limit',
+    '─────────────────────────────────────────────────',
+    '',
+    '  1. [ROUTER]     Route matched',
+    '',
+    '  2. [ACCESS]     jwt plugin: valid token, consumer = mobile-api',
+    '',
+    '  3. [ACCESS]     rate-limiting plugin:',
+    '                  policy: redis',
+    '                  counter key: mobile-api | minute',
+    '                  current: 1001/1000 — LIMIT EXCEEDED',
+    '',
+    '  4. [REJECT]     Kong returns 429 Too Many Requests',
+    '                  Headers:',
+    '                    X-RateLimit-Limit-Minute: 1000',
+    '                    X-RateLimit-Remaining-Minute: 0',
+    '                    Retry-After: 23  (seconds until reset)',
+    '',
+    '  ✓ Backend not called. Kong absorbs the burst.',
+    '',
+    'Rate limit levels in Kong:',
+    '  Global plugin:     applies to ALL consumers on this route',
+    '  Consumer plugin:   override per consumer (internal services get higher limits)',
+    '',
+    'Internal service exemption:',
+    '  order-svc calls payment API as consumer "internal-order-svc"',
+    '  Attach rate-limiting plugin to consumer with limit=100000/min',
+    '  Internal calls never hit the 1000/min external limit.',
+  ].join('\n'),
+
+  upstream_down: [
+    'Upstream failure: all payment-svc targets unhealthy',
+    '───────────────────────────────────────────────────',
+    '',
+    '  1. [ROUTER]     Route matched',
+    '',
+    '  2. [ACCESS]     Auth and rate-limit pass ✓',
+    '',
+    '  3. [PROXY]      Kong selects target from payment-upstream',
+    '                  Active health checks: /health returns 503',
+    '                  10.0.10.50:8080 — UNHEALTHY (3 failures)',
+    '                  10.0.10.51:8080 — UNHEALTHY (3 failures)',
+    '                  No healthy targets available',
+    '',
+    '  4. [REJECT]     Kong returns 502 Bad Gateway',
+    '                  {"message": "An invalid response was received from the upstream server"}',
+    '',
+    'Passive vs Active health checks:',
+    '  Active:  Kong polls /health endpoint every 10s',
+    '           Marks target unhealthy after 3 consecutive 5xx/timeouts',
+    '           Marks healthy again after 2 consecutive 200s',
+    '  Passive: Kong watches actual request responses',
+    '           No extra traffic, but slower to detect failures',
+    '',
+    'Circuit breaker in Kong (via kong-plugin-circuit-breaker or Lua):',
+    '  After N failures → open circuit → fast 503 without hitting upstream',
+    '  After timeout → half-open → allow one probe request',
+  ].join('\n'),
+
+  plugin_order: [
+    'Kong plugin execution phases — order matters',
+    '─────────────────────────────────────────────',
+    '',
+    'Phase 1: init_worker   — once on Kong startup (load config, init Redis)',
+    'Phase 2: certificate   — TLS cert selection (before SSL handshake)',
+    'Phase 3: rewrite       — modify request BEFORE route matching',
+    '                         use: strip prefixes, rewrite paths',
+    'Phase 4: access        — MAIN PHASE. After route match, before proxy.',
+    '                         use: auth, rate limiting, request transform',
+    '                         If plugin returns here, upstream is NOT called.',
+    'Phase 5: response (buffered) — after upstream responds, before client',
+    '                         use: modify response body (expensive — buffers entire response)',
+    'Phase 6: header_filter  — modify response headers (streaming)',
+    '                         use: add/remove headers, inject tracking IDs',
+    'Phase 7: body_filter    — modify response body (streaming)',
+    '                         use: transform body chunks as they stream',
+    'Phase 8: log           — after response sent to client',
+    '                         use: logging, metrics, webhooks',
+    '                         Errors here don\'t affect the client response.',
+    '',
+    'Plugin priority order within a phase:',
+    '  Higher priority number = runs first',
+    '  jwt: 1005, rate-limiting: 902, request-transformer: 801',
+    '  See: GET /plugins?size=100 sorted by priority',
+  ].join('\n'),
+};
+function showKongFlow(key) {
+  document.getElementById('kong-flow-output').textContent = KONG_FLOWS[key];
+}
+
+// Init defaults
+classifyIP('10.0.1.50');
+calcCIDR('10.0.0.0/16');
+showNAT('outbound');
+showVPCComponent('alb');
+showPath('svc_to_svc');
+showSvcComm('same_az');
+showConnType('peering');
+showKongFlow('happy');
+</script>
+</body>
+</html>

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 13 Deep Dive: WireGuard Setup, Kong declarative config, AWS VPC Terraform</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day13" class="back-link">&#8592; Day 13: Network Architecture</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 13 · Network Architecture · Deep Dive</div>
+  <h1>WireGuard setup,<br>Kong declarative config,<br>&amp; <em>VPC in Terraform</em></h1>
+  <p>The main lesson covered the concepts: private/public IPs, NAT, VPC architecture, the four traffic paths, and Kong's object model. This page covers the implementation: a complete WireGuard VPN server setup for developer access, Kong's declarative config with deck, and a production-ready VPC in Terraform with public/private subnets, NAT gateway, and VPC endpoints.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">WireGuard VPN server setup</span><span class="deep-topic-sub">— server config, client config, split tunneling, key management</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Kong declarative config with deck</span><span class="deep-topic-sub">— kong.yaml, deck sync, full service/route/plugin/upstream config</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">AWS VPC in Terraform</span><span class="deep-topic-sub">— VPC, subnets, IGW, NAT GW, route tables, S3 endpoint, security groups</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: WIREGUARD -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>WireGuard VPN:<br><em>developer access to private subnets</em></h2>
+  <p class="lead">WireGuard is the fastest, simplest VPN protocol available. Installing it on a small EC2 instance in your public subnet gives developers SSH and database access to private resources without exposing anything publicly.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">WireGuard server setup — EC2 in public subnet</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># ── On the WireGuard EC2 (Ubuntu 22.04, public subnet) ─────────</span>
+
+<span class="cm"># 1. Install WireGuard</span>
+apt update && apt install -y wireguard
+
+<span class="cm"># 2. Generate server keypair</span>
+wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
+chmod 600 /etc/wireguard/server_private.key
+cat /etc/wireguard/server_public.key    <span class="cm"># share this with clients</span>
+
+<span class="cm"># 3. Enable IP forwarding (required to route traffic)</span>
+echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+sysctl -p
+
+<span class="cm"># 4. Create server config (/etc/wireguard/wg0.conf)</span>
+cat > /etc/wireguard/wg0.conf << 'EOF'
+[Interface]
+Address    = 10.100.0.1/24          <span class="cm"># VPN subnet (different from VPC CIDR)</span>
+ListenPort = 51820
+PrivateKey = <span class="str">&lt;server_private_key&gt;</span>
+
+<span class="cm"># Forward VPN traffic into the VPC</span>
+PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT; \
+           iptables -A FORWARD -o wg0 -j ACCEPT; \
+           iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; \
+           iptables -D FORWARD -o wg0 -j ACCEPT; \
+           iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+<span class="cm"># Add each developer as a [Peer] block</span>
+[Peer]
+<span class="cm"># Developer: Adnan</span>
+PublicKey  = <span class="str">&lt;adnan_public_key&gt;</span>
+AllowedIPs = 10.100.0.2/32           <span class="cm"># Adnan gets this VPN IP</span>
+
+[Peer]
+<span class="cm"># Developer: Backend team</span>
+PublicKey  = <span class="str">&lt;team_public_key&gt;</span>
+AllowedIPs = 10.100.0.3/32
+EOF
+
+<span class="cm"># 5. Start WireGuard</span>
+systemctl enable wg-quick@wg0
+systemctl start wg-quick@wg0
+wg show                               <span class="cm"># verify interface is up</span>
+
+<span class="cm"># 6. Security group for WireGuard EC2</span>
+<span class="cm"># Inbound: UDP 51820 from 0.0.0.0/0 (VPN handshake)</span>
+<span class="cm"># Inbound: SSH 22 from your office IP only (for administration)</span>
+<span class="cm"># Outbound: all to 10.0.0.0/8 (the VPC) — for routing VPN traffic</span>
+
+<span class="cm"># 7. VPC route table: add route so VPN clients can reach private subnets</span>
+<span class="cm"># In private subnet route table: 10.100.0.0/24 → wg-instance-id</span>
+<span class="cm"># (Add a route pointing to the WireGuard EC2 instance)</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">WireGuard client config — developer laptop (split tunneling)</span><span class="code-block-lang">INI</span></div>
+    <pre><span class="cm"># /etc/wireguard/wg0.conf (on developer laptop)</span>
+<span class="cm"># Or use a GUI client: Wireguard app on macOS/Windows</span>
+
+[Interface]
+PrivateKey = <span class="str">&lt;developer_private_key&gt;</span>
+Address    = 10.100.0.2/32           <span class="cm"># this developer's VPN IP</span>
+DNS        = 10.0.0.2                <span class="cm"># VPC DNS resolver (for .internal names)</span>
+
+[Peer]
+PublicKey  = <span class="str">&lt;server_public_key&gt;</span>
+Endpoint   = 54.239.28.85:51820      <span class="cm"># WireGuard EC2 public IP:port</span>
+
+<span class="cm"># SPLIT TUNNELING: only route VPC traffic through VPN</span>
+<span class="cm"># YouTube, GitHub, Slack go directly (not through VPN)</span>
+AllowedIPs = 10.0.0.0/8,            <span class="cm"># all RFC 1918 10.x.x.x (your VPC)</span>
+             10.100.0.0/24           <span class="cm"># VPN subnet itself</span>
+
+<span class="cm"># FULL TUNNEL (all traffic through VPN — simpler but slower):</span>
+<span class="cm"># AllowedIPs = 0.0.0.0/0</span>
+
+PersistentKeepalive = 25             <span class="cm"># send keepalive every 25s (keeps NAT table alive)</span>
+
+<span class="cm"># After connecting, developer can:</span>
+<span class="cm"># ssh ec2-user@10.0.10.50          # SSH to private EC2 directly</span>
+<span class="cm"># psql -h 10.0.20.100 -U app mydb  # connect to RDS private IP</span>
+<span class="cm"># curl http://10.0.10.80:8080/health  # hit internal services directly</span>
+<span class="cm"># dig payment-svc.prod.internal     # resolves via VPC DNS</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify WireGuard is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Server: <code>wg show</code> shows the interface and connected peers with latest handshake timestamps.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Client: <code>ping 10.0.10.1</code> reaches the VPC gateway (proves routing works).</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Split tunneling: <code>curl ifconfig.me</code> returns your actual ISP IP (not the VPN server's), confirming internet traffic doesn't go through VPN.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Internal DNS: <code>dig payment-svc.prod.internal</code> resolves to a private IP when connected (uses VPC DNS at 10.0.0.2).</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: KONG DECK -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Kong declarative config:<br><em>full kong.yaml with deck</em></h2>
+  <p class="lead">The Kong Admin API is great for exploration. For production, you want declarative config stored in git — kong.yaml managed by <code>deck</code> (the declarative config tool). Changes go through code review, diffs are previewed before applying, and your entire gateway config is version-controlled.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">kong.yaml — complete production config for a microservices gateway</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># kong.yaml — managed by deck, stored in git</span>
+_format_version: "3.0"
+_transform: true
+
+<span class="cm">## ── Upstreams (backend server pools with health checks) ──────────</span>
+upstreams:
+  - name: payment-upstream
+    algorithm: round-robin
+    healthchecks:
+      active:
+        http_path: /health
+        interval: 10
+        healthy:
+          successes: 2
+          http_statuses: [200]
+        unhealthy:
+          http_failures: 3
+          timeouts: 3
+          interval: 5
+    targets:
+      - target: 10.0.10.50:8080
+        weight: 100
+      - target: 10.0.10.51:8080
+        weight: 100
+
+  - name: order-upstream
+    algorithm: least-connections    <span class="cm"># prefer less-loaded backends</span>
+    healthchecks:
+      active:
+        http_path: /health
+        interval: 10
+        healthy: { successes: 2, http_statuses: [200] }
+        unhealthy: { http_failures: 3, timeouts: 3 }
+    targets:
+      - target: 10.0.10.60:8080
+        weight: 100
+
+<span class="cm">## ── Services (logical backends) ─────────────────────────────────</span>
+services:
+  - name: payment-service
+    host: payment-upstream
+    protocol: http
+    port: 80
+    connect_timeout: 5000    <span class="cm"># 5s to establish connection</span>
+    write_timeout: 30000     <span class="cm"># 30s to send full request</span>
+    read_timeout: 30000      <span class="cm"># 30s to receive full response</span>
+    retries: 2               <span class="cm"># retry failed requests twice</span>
+    routes:
+      - name: payment-route
+        paths: [/api/v1/payments]
+        methods: [GET, POST]
+        strip_path: false
+        protocols: [https]
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: kid
+              secret_is_base64: false
+          - name: rate-limiting
+            config:
+              minute: 1000
+              hour: 10000
+              policy: redis
+              redis_host: redis.prod.internal
+              redis_port: 6379
+          - name: correlation-id
+            config:
+              header_name: X-Request-ID
+              generator: uuid
+
+  - name: order-service
+    host: order-upstream
+    protocol: http
+    port: 80
+    connect_timeout: 5000
+    write_timeout: 60000     <span class="cm"># orders can take longer to process</span>
+    read_timeout: 60000
+    routes:
+      - name: order-route
+        paths: [/api/v1/orders]
+        methods: [GET, POST, PUT]
+        strip_path: false
+        plugins:
+          - name: jwt
+          - name: rate-limiting
+            config:
+              minute: 500
+              policy: redis
+              redis_host: redis.prod.internal
+
+<span class="cm">## ── Global plugins (apply to all services) ───────────────────────</span>
+plugins:
+  - name: prometheus
+    config:
+      per_consumer: true
+      status_code_metrics: true
+      latency_metrics: true
+
+  - name: request-termination
+    enabled: false           <span class="cm"># disabled by default, enable for maintenance mode</span>
+    config:
+      status_code: 503
+      message: "Service temporarily unavailable for maintenance"
+
+<span class="cm">## ── Consumers (identified callers with custom limits) ────────────</span>
+consumers:
+  - username: internal-order-svc
+    jwt_secrets:
+      - key: order-svc-key
+        secret: ${ORDER_SVC_JWT_SECRET}    <span class="cm"># deck reads from env</span>
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 50000      <span class="cm"># internal services get much higher limits</span>
+          policy: redis
+          redis_host: redis.prod.internal
+
+  - username: mobile-app-ios
+    jwt_secrets:
+      - key: mobile-ios-key
+        secret: ${MOBILE_IOS_JWT_SECRET}
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 200        <span class="cm"># per mobile client limit</span>
+          policy: redis
+          redis_host: redis.prod.internal</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">deck workflow — diff, sync, backup</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Install deck</span>
+brew install deck                     <span class="cm"># macOS</span>
+<span class="cm"># or: curl -sL https://github.com/Kong/deck/releases/latest/.../deck_linux_amd64.tar.gz | tar -xz</span>
+
+<span class="cm"># Preview changes before applying (always do this first)</span>
+deck diff --kong-addr http://kong-admin:8001 --state kong.yaml
+<span class="cm"># Output shows: + added, ~ modified, - removed objects</span>
+<span class="cm"># Review carefully — accidental deletions are possible</span>
+
+<span class="cm"># Apply changes</span>
+deck sync --kong-addr http://kong-admin:8001 --state kong.yaml
+
+<span class="cm"># Export current Kong state to file (for initial migration)</span>
+deck dump --kong-addr http://kong-admin:8001 --output-file kong-current.yaml
+
+<span class="cm"># Validate yaml syntax before pushing to git</span>
+deck validate --state kong.yaml
+
+<span class="cm"># CI/CD pipeline (GitHub Actions)</span>
+<span class="cm"># on: pull_request</span>
+<span class="cm">#   - deck validate --state kong.yaml</span>
+<span class="cm">#   - deck diff --kong-addr $KONG_STAGING --state kong.yaml</span>
+<span class="cm"># on: push to main</span>
+<span class="cm">#   - deck sync --kong-addr $KONG_PROD --state kong.yaml</span>
+
+<span class="cm"># Secrets: never put secrets in kong.yaml directly</span>
+<span class="cm"># deck reads from environment: ${ORDER_SVC_JWT_SECRET}</span>
+<span class="cm"># Set env vars in your CI/CD secrets store</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3: TERRAFORM VPC -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>AWS VPC in Terraform:<br><em>the complete production setup</em></h2>
+  <p class="lead">This is the Terraform for a production-ready VPC: two AZs, public and private subnets, NAT gateway, S3 VPC endpoint, and security groups using reference-based rules (not CIDR ranges). Copy-paste with your CIDR choices.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">vpc.tf — complete production VPC</span><span class="code-block-lang">TERRAFORM</span></div>
+    <pre><span class="cm"># vpc.tf</span>
+<span class="var">variable</span> <span class="str">"vpc_cidr"</span> { default = <span class="str">"10.3.0.0/16"</span> }   <span class="cm"># prod VPC range</span>
+<span class="var">variable</span> <span class="str">"env"</span>      { default = <span class="str">"prod"</span> }
+
+<span class="cm">## ── VPC ───────────────────────────────────────────────────────────</span>
+resource <span class="str">"aws_vpc"</span> <span class="str">"main"</span> {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = <span class="kw">true</span>    <span class="cm"># needed for VPC endpoints and RDS hostnames</span>
+  enable_dns_hostnames = <span class="kw">true</span>    <span class="cm"># gives EC2 instances internal DNS hostnames</span>
+  tags = { Name = <span class="str">"${var.env}-vpc"</span> }
+}
+
+<span class="cm">## ── Internet Gateway ───────────────────────────────────────────────</span>
+resource <span class="str">"aws_internet_gateway"</span> <span class="str">"igw"</span> {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = <span class="str">"${var.env}-igw"</span> }
+}
+
+<span class="cm">## ── Public Subnets (one per AZ) ────────────────────────────────────</span>
+resource <span class="str">"aws_subnet"</span> <span class="str">"public"</span> {
+  for_each          = { <span class="str">"a"</span> = <span class="str">"10.3.1.0/24"</span>, <span class="str">"b"</span> = <span class="str">"10.3.2.0/24"</span> }
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = each.value
+  availability_zone = <span class="str">"us-east-1${each.key}"</span>
+  map_public_ip_on_launch = <span class="kw">false</span>  <span class="cm"># never auto-assign public IPs</span>
+  tags = { Name = <span class="str">"${var.env}-public-${each.key}"</span>, Tier = <span class="str">"public"</span> }
+}
+
+<span class="cm">## ── Private Subnets ────────────────────────────────────────────────</span>
+resource <span class="str">"aws_subnet"</span> <span class="str">"private"</span> {
+  for_each          = { <span class="str">"a"</span> = <span class="str">"10.3.10.0/24"</span>, <span class="str">"b"</span> = <span class="str">"10.3.20.0/24"</span> }
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = each.value
+  availability_zone = <span class="str">"us-east-1${each.key}"</span>
+  tags = { Name = <span class="str">"${var.env}-private-${each.key}"</span>, Tier = <span class="str">"private"</span> }
+}
+
+<span class="cm">## ── NAT Gateway (one per AZ for HA) ───────────────────────────────</span>
+resource <span class="str">"aws_eip"</span> <span class="str">"nat"</span> {
+  for_each = aws_subnet.public
+  domain   = <span class="str">"vpc"</span>
+}
+
+resource <span class="str">"aws_nat_gateway"</span> <span class="str">"ngw"</span> {
+  for_each      = aws_subnet.public
+  subnet_id     = each.value.id
+  allocation_id = aws_eip.nat[each.key].id
+  tags          = { Name = <span class="str">"${var.env}-nat-${each.key}"</span> }
+}
+
+<span class="cm">## ── Route Tables ────────────────────────────────────────────────────</span>
+<span class="cm"># Public: 0.0.0.0/0 → IGW</span>
+resource <span class="str">"aws_route_table"</span> <span class="str">"public"</span> {
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block = <span class="str">"0.0.0.0/0"</span>
+    gateway_id = aws_internet_gateway.igw.id
+  }
+  tags = { Name = <span class="str">"${var.env}-public-rt"</span> }
+}
+
+resource <span class="str">"aws_route_table_association"</span> <span class="str">"public"</span> {
+  for_each       = aws_subnet.public
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}
+
+<span class="cm"># Private: 0.0.0.0/0 → NAT Gateway (per AZ)</span>
+resource <span class="str">"aws_route_table"</span> <span class="str">"private"</span> {
+  for_each = aws_subnet.private
+  vpc_id   = aws_vpc.main.id
+  route {
+    cidr_block     = <span class="str">"0.0.0.0/0"</span>
+    nat_gateway_id = aws_nat_gateway.ngw[each.key].id
+  }
+  tags = { Name = <span class="str">"${var.env}-private-rt-${each.key}"</span> }
+}
+
+resource <span class="str">"aws_route_table_association"</span> <span class="str">"private"</span> {
+  for_each       = aws_subnet.private
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private[each.key].id
+}
+
+<span class="cm">## ── S3 Gateway Endpoint (free — eliminates NAT for S3) ─────────────</span>
+resource <span class="str">"aws_vpc_endpoint"</span> <span class="str">"s3"</span> {
+  vpc_id            = aws_vpc.main.id
+  service_name      = <span class="str">"com.amazonaws.us-east-1.s3"</span>
+  vpc_endpoint_type = <span class="str">"Gateway"</span>
+  route_table_ids   = concat(
+    [aws_route_table.public.id],
+    [for rt in aws_route_table.private : rt.id]
+  )
+  tags = { Name = <span class="str">"${var.env}-s3-endpoint"</span> }
+}
+
+<span class="cm">## ── Security Groups ─────────────────────────────────────────────────</span>
+<span class="cm"># ALB security group: internet → ALB</span>
+resource <span class="str">"aws_security_group"</span> <span class="str">"alb"</span> {
+  name   = <span class="str">"${var.env}-alb-sg"</span>
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port   = 443; to_port = 443; protocol = <span class="str">"tcp"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+  }
+  ingress {
+    from_port   = 80; to_port = 80; protocol = <span class="str">"tcp"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+  }
+  egress {
+    from_port = 0; to_port = 0; protocol = <span class="str">"-1"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+  }
+}
+
+<span class="cm"># App security group: ALB → app (referenced by SG, not CIDR!)</span>
+resource <span class="str">"aws_security_group"</span> <span class="str">"app"</span> {
+  name   = <span class="str">"${var.env}-app-sg"</span>
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port       = 3000; to_port = 3000; protocol = <span class="str">"tcp"</span>
+    security_groups = [aws_security_group.alb.id]  <span class="cm"># only from ALB SG</span>
+  }
+  egress {
+    from_port = 0; to_port = 0; protocol = <span class="str">"-1"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+  }
+}
+
+<span class="cm"># RDS security group: app → RDS only</span>
+resource <span class="str">"aws_security_group"</span> <span class="str">"rds"</span> {
+  name   = <span class="str">"${var.env}-rds-sg"</span>
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port       = 5432; to_port = 5432; protocol = <span class="str">"tcp"</span>
+    security_groups = [aws_security_group.app.id]  <span class="cm"># only from app SG</span>
+  }
+  <span class="cm"># No egress needed for RDS — RDS doesn't initiate outbound connections</span>
+}</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify VPC setup is correct</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Public subnets route to IGW: <code>aws ec2 describe-route-tables --filters "Name=tag:Tier,Values=public"</code> — should show 0.0.0.0/0 → igw-xxx.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Private subnets route to NAT GW: same command for private — should show 0.0.0.0/0 → nat-xxx (not igw).</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">S3 endpoint active: <code>aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=*s3*"</code> — state should be "available".</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">RDS only reachable from app SG: attempt connection from a host NOT in the app SG — should timeout (connection refused at network level).</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No overlapping CIDRs with other VPCs: <code>aws ec2 describe-vpcs --query "Vpcs[].CidrBlock"</code> — all VPCs should have unique non-overlapping ranges.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

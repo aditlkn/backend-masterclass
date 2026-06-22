@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 13 Lab: The NAT Hairpin Incident</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:56px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--orange));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.incident-eyebrow::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+.incident p{color:var(--text2);font-size:15px;line-height:1.85;margin-bottom:16px;}
+.incident p strong{color:var(--text);}
+.incident-timeline{margin:24px 0;border-left:2px solid var(--border2);padding-left:20px;}
+.tl-item{margin-bottom:18px;position:relative;}
+.tl-item::before{content:'';position:absolute;left:-26px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);}
+.tl-item.bad::before{border-color:var(--red);background:rgba(240,96,96,.2);}
+.tl-item.ok::before{border-color:var(--green);background:rgba(62,207,142,.2);}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px;}
+.tl-event{font-size:14px;color:var(--text2);line-height:1.6;}
+.tl-event strong{color:var(--text);}
+.incident-reveal{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);border-radius:8px;padding:18px 20px;margin-top:24px;}
+.incident-reveal-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.incident-reveal p{color:var(--text2);font-size:14px;margin-bottom:0;line-height:1.7;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:16px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;align-items:flex-end;}
+.ctrl-group{display:flex;flex-direction:column;gap:4px;}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.ctrl-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);transition:all .15s;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);}
+.ctrl-toggle:hover{border-color:var(--accent);color:var(--text);}
+.ctrl-toggle.enabled{border-color:var(--green);color:var(--green);background:rgba(62,207,142,.08);}
+.ctrl-toggle.disabled{border-color:var(--red);color:var(--red);background:rgba(240,96,96,.08);}
+.ctrl-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.fire-btn{font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 18px;border-radius:6px;border:1px solid var(--accent);background:rgba(91,143,255,.1);color:var(--accent);cursor:pointer;transition:all .15s;}
+.fire-btn:hover{background:rgba(91,143,255,.2);}
+.packet-trace{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.packet-trace-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.trace-body{padding:16px 20px;min-height:160px;}
+.hop{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:11px;animation:slideIn .25s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px);}to{opacity:1;transform:none;}}
+.hop-num{min-width:24px;color:var(--text3);}
+.hop-node{min-width:160px;color:var(--text);}
+.hop-detail{color:var(--text2);}
+.hop.bad .hop-node{color:var(--red);}
+.hop.bad .hop-detail{color:var(--red);}
+.hop.good .hop-node{color:var(--green);}
+.hop.good .hop-detail{color:var(--green);}
+.hop.warn .hop-node{color:var(--orange);}
+.stats-row{display:flex;gap:20px;padding:10px 20px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.stat-val{font-size:22px;font-weight:700;display:block;}
+.log{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 18px;height:140px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;margin-bottom:24px;}
+.log-line{animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.log-ok{color:var(--green)}.log-err{color:var(--red)}.log-warn{color:var(--orange)}.log-info{color:var(--text3)}.log-accent{color:var(--accent)}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.cm{color:#5c6370;font-style:italic}.str{color:#98c379}.kw{color:#c678dd}
+.hl{background:rgba(240,96,96,.1);border-left:2px solid var(--red);display:block;margin:0 -20px;padding:0 20px;}
+.hl-fix{background:rgba(62,207,142,.07);border-left:2px solid var(--green);display:block;margin:0 -20px;padding:0 20px;}
+.learned{background:var(--bg2);border:1px solid rgba(91,143,255,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}
+.learned-text strong{color:var(--text);}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day13" class="back-link">&#8592; Day 13: Network Architecture</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">Production Incident &nbsp;·&nbsp; Network Routing &nbsp;·&nbsp; NAT Hairpin</div>
+  <h2>Internal service calling its own public URL — 40ms became 400ms under load</h2>
+  <div class="incident-meta">Thursday 16:00 IST &nbsp;·&nbsp; Discovered during load test &nbsp;·&nbsp; Severity: P2 &nbsp;·&nbsp; order-svc latency 10× higher than expected</div>
+
+  <p>The platform had three microservices: order-svc, payment-svc, and notification-svc. The developer who built order-svc had originally written it as a monolith and tested it against the staging API endpoint. When it was split into a microservice, the API calls stayed pointing at the public hostname: <code>https://api.staging.company.com/payment/charge</code>.</p>
+
+  <p>In development this was fine — the call took 40-60ms, well within acceptable limits. During the load test before the production launch, the team noticed order-svc latency climbing above 400ms under sustained load. They added more instances of order-svc. Latency still climbed. They scaled payment-svc. Still climbing. They added more NAT gateways. Better, but still slow.</p>
+
+  <p>The root cause took 90 minutes to find: every call from order-svc to payment-svc was exiting through the NAT gateway to the public internet, hitting the load balancer's public IP, and routing back into payment-svc. Under load, the NAT gateway and load balancer became the shared bottleneck. The fix was a single URL change.</p>
+
+  <div class="incident-timeline">
+    <div class="tl-item bad">
+      <div class="tl-time">During development</div>
+      <div class="tl-event">order-svc hardcoded to call <code>https://api.staging.company.com/payment/charge</code>. Works fine in dev — 40ms call time, nobody notices the path.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">Load test, 500 concurrent users</div>
+      <div class="tl-event">order-svc latency: <strong>400ms+</strong>. Expected: &lt;50ms. Team scales order-svc pods from 3 → 12. No improvement.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">+30 min</div>
+      <div class="tl-event">Scales payment-svc from 3 → 6 pods. Latency drops slightly to 300ms. Team adds second NAT gateway. Still 280ms.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">+60 min</div>
+      <div class="tl-event">Engineer traces actual network path with <code>curl -v --trace-time</code>. Sees DNS resolves to the public ALB IP. Realises traffic is going out to internet and back.</div>
+    </div>
+    <div class="tl-item ok">
+      <div class="tl-time">+90 min</div>
+      <div class="tl-event">Fix: change URL to <code>http://payment-svc.prod.internal:8080/charge</code>. Latency: <strong>0.8ms</strong>. Load test passes. Root cause: internal service calling its own public hostname.</div>
+    </div>
+  </div>
+
+  <div class="incident-reveal">
+    <div class="incident-reveal-label">Root cause</div>
+    <p>Internal services calling each other via public hostnames causes traffic to exit through NAT Gateway, traverse the public internet, hit the load balancer, and return to the private subnet. This "NAT hairpin" adds 50-400ms of latency (internet RTT) and adds NAT Gateway and ALB as shared bottlenecks. The fix is always the same: use the internal DNS name of the destination service. The fact that it worked at low load masked the problem until the load test.</p>
+  </div>
+</div>
+
+<h3>Lab: trace the packet path — hairpin vs direct</h3>
+<p>Configure the call URL and load level. Watch the packet trace: every hop the request takes, the latency at each hop, and the bottleneck that emerges under load.</p>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">Call URL (order-svc → payment-svc)</div>
+    <div style="display:flex;gap:6px;flex-direction:column">
+      <div class="ctrl-toggle disabled" id="url-public" onclick="setURL('public',this)">https://api.company.com/payment (public)</div>
+      <div class="ctrl-toggle" id="url-internal" onclick="setURL('internal',this)">http://payment-svc.prod.internal:8080 (internal)</div>
+      <div class="ctrl-toggle" id="url-split" onclick="setURL('split',this)">Split DNS: api.company.com (same name, private IP inside VPC)</div>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Simulate</div>
+    <button class="fire-btn" onclick="traceRequest()">&#9654; Trace one request</button>
+    <button class="fire-btn" onclick="loadTest()" style="border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.1);margin-top:4px">&#9889; Load test (100 rps)</button>
+  </div>
+</div>
+
+<div class="packet-trace">
+  <div class="packet-trace-header">Packet trace — network hops</div>
+  <div class="trace-body" id="trace-body">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">Select a URL and press "Trace one request".</div>
+  </div>
+  <div class="stats-row">
+    <div><span class="stat-val" id="stat-latency" style="color:var(--text3)">—</span><span>Latency</span></div>
+    <div><span class="stat-val" id="stat-hops" style="color:var(--text3)">—</span><span>Hops</span></div>
+    <div><span class="stat-val" id="stat-leaves" style="color:var(--text3)">—</span><span>Leaves AWS</span></div>
+    <div><span class="stat-val" id="stat-cost" style="color:var(--text3)">—</span><span>Est. cost/M req</span></div>
+  </div>
+</div>
+
+<div class="log" id="log">
+  <div class="log-info">// Start with "public URL" to reproduce the incident. Then switch to "internal" to see the fix.</div>
+</div>
+
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-title">The fix — and how to catch it in code review</span><span class="code-block-lang">TYPESCRIPT + BASH</span></div>
+  <pre><span class="cm">❌ The incident: calling internal service via public URL</span>
+<span class="hl">const PAYMENT_URL = process.env.PAYMENT_URL || 'https://api.company.com';
+<span class="hl">// ↑ Goes out to internet, comes back in. 40ms → 400ms under load.
+
+<span class="cm">✅ Fix 1: Internal DNS (simplest, best)</span>
+<span class="hl-fix">const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment-svc.prod.internal:8080';
+<span class="hl-fix">// 0.8ms. Never leaves AWS. Free. The correct default.
+
+<span class="cm">✅ Fix 2: Split DNS (api.company.com resolves differently inside vs outside VPC)</span>
+<span class="hl-fix"><span class="cm"># Route 53 private hosted zone: api.company.com → 10.0.1.25 (internal ALB IP)</span>
+<span class="hl-fix"><span class="cm"># Public Route 53:               api.company.com → 54.239.100.10 (public ALB IP)</span>
+<span class="hl-fix"><span class="cm"># Same URL, different answer depending on where you resolve from.</span>
+<span class="hl-fix"><span class="cm"># Benefit: no code change needed, works for all services immediately.</span>
+
+<span class="cm"># How to detect NAT hairpin in production:</span>
+<span class="cm"># Any request where source and destination are both in your VPC</span>
+<span class="cm"># but the packet passes through NAT GW is a hairpin.</span>
+
+<span class="cm"># Check NAT Gateway traffic volume:</span>
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/NatGateway \
+  --metric-name BytesOutToDestination \
+  --period 3600 --statistics Sum
+<span class="cm"># If this is high while your external API calls are known/small:</span>
+<span class="cm"># Internal services are leaking through NAT.</span>
+
+<span class="cm"># Code review checklist: grep for internal-service-calling-public-URL</span>
+grep -r "api.company.com\|api.staging.company.com" ./src --include="*.ts" --include="*.js"
+<span class="cm"># Any match in a backend service should be changed to internal DNS</span>
+<span class="cm"># UNLESS it's a test file or SDK that needs the public endpoint</span></pre>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>40ms at low load becomes 400ms under load because the bottleneck isn't the service — it's the shared NAT gateway and load balancer.</strong> A single NAT Gateway becomes a funnel for all outbound traffic from all private subnets.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Internal services must use internal DNS names.</strong> Add a grep check to CI: if a backend service contains <code>api.yourcompany.com</code> in its service-to-service call URLs, fail the build. This catches hairpin routing before it ships.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Split DNS is the zero-code-change fix.</strong> Configure Route 53 private hosted zones so <code>api.company.com</code> returns the internal ALB IP from inside the VPC. All existing code works correctly without any URL changes.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Load tests reveal routing bugs that low-traffic testing misses.</strong> The hairpin was invisible in development (40ms is acceptable). It only became a problem at scale when the NAT Gateway saturated. Always load test before launch.</span></div>
+</div>
+
+</div>
+<script>
+var currentURL = 'public';
+var loadTestRunning = false;
+var ltTimer = null;
+var requestCount = 0;
+
+function setURL(type, btn) {
+  currentURL = type;
+  document.querySelectorAll('#url-public,#url-internal,#url-split').forEach(function(b) {
+    b.classList.remove('enabled', 'disabled');
+  });
+  if (type === 'public') btn.classList.add('disabled');
+  else btn.classList.add('enabled');
+  log('info', 'URL changed to: ' + type);
+}
+
+var TRACES = {
+  public: {
+    hops: [
+      { cls:'', node:'order-svc (10.0.10.50)', detail:'initiates HTTP call to api.company.com' },
+      { cls:'', node:'DNS resolver', detail:'api.company.com → 54.239.100.10 (PUBLIC IP!)' },
+      { cls:'warn', node:'Route table', detail:'0.0.0.0/0 → NAT Gateway (traffic exits VPC!)' },
+      { cls:'warn', node:'NAT Gateway', detail:'SNAT: 10.0.10.50:54321 → 54.239.28.85:41234  [+5ms]' },
+      { cls:'warn', node:'Internet Gateway', detail:'packet leaves AWS network  [+1ms]' },
+      { cls:'bad', node:'Public Internet', detail:'routes to 54.239.100.10  [+20-80ms RTT!]' },
+      { cls:'', node:'ALB (public, 54.239.100.10)', detail:'TLS handshake, route match  [+5ms]' },
+      { cls:'', node:'payment-svc (10.0.10.80)', detail:'processes request  [+2ms]' },
+      { cls:'bad', node:'Response: same reverse path', detail:'total: ~40-100ms (low load), ~300-400ms (under load)' },
+    ],
+    latency: '~80ms', hops: '8', leaves: 'YES', cost: '$4.50'
+  },
+  internal: {
+    hops: [
+      { cls:'', node:'order-svc (10.0.10.50)', detail:'initiates HTTP call to payment-svc.prod.internal:8080' },
+      { cls:'good', node:'DNS resolver (169.254.169.253)', detail:'payment-svc.prod.internal → 10.0.10.80 (PRIVATE IP)  [+0.1ms]' },
+      { cls:'good', node:'VPC routing', detail:'10.0.10.80 is local → direct private routing. No NAT.' },
+      { cls:'good', node:'payment-svc (10.0.10.80)', detail:'receives request directly. No internet involved.  [+0.5ms]' },
+      { cls:'good', node:'Response', detail:'direct private IP return path. Total: ~0.8ms' },
+    ],
+    latency: '~0.8ms', hops: '2', leaves: 'NO', cost: '$0.00'
+  },
+  split: {
+    hops: [
+      { cls:'', node:'order-svc (10.0.10.50)', detail:'initiates HTTPS call to api.company.com' },
+      { cls:'good', node:'DNS resolver (169.254.169.253)', detail:'checks Route 53 private hosted zone first' },
+      { cls:'good', node:'Private hosted zone', detail:'api.company.com → 10.0.1.25 (INTERNAL ALB!)  [+0.1ms]' },
+      { cls:'good', node:'Internal ALB (10.0.1.25)', detail:'private, not internet-facing. Routes to payment-svc.  [+0.5ms]' },
+      { cls:'good', node:'payment-svc (10.0.10.80)', detail:'receives request. Traffic stayed private.  [+0.5ms]' },
+      { cls:'good', node:'Response', detail:'reverse path via internal ALB. Total: ~2ms. No code change needed.' },
+    ],
+    latency: '~2ms', hops: '4', leaves: 'NO', cost: '$0.00'
+  }
+};
+
+function traceRequest() {
+  requestCount++;
+  var trace = TRACES[currentURL];
+  var body = document.getElementById('trace-body');
+  body.innerHTML = '';
+  trace.hops.forEach(function(hop, i) {
+    setTimeout(function() {
+      var div = document.createElement('div');
+      div.className = 'hop ' + (hop.cls || '');
+      div.innerHTML = '<span class="hop-num">' + (i+1) + '.</span>' +
+        '<span class="hop-node">' + hop.node + '</span>' +
+        '<span class="hop-detail"> — ' + hop.detail + '</span>';
+      body.appendChild(div);
+    }, i * 200);
+  });
+
+  setTimeout(function() {
+    document.getElementById('stat-latency').textContent = trace.latency;
+    document.getElementById('stat-latency').style.color = parseFloat(trace.latency) > 10 ? 'var(--red)' : 'var(--green)';
+    document.getElementById('stat-hops').textContent = trace.hops;
+    document.getElementById('stat-leaves').textContent = trace.leaves;
+    document.getElementById('stat-leaves').style.color = trace.leaves === 'YES' ? 'var(--red)' : 'var(--green)';
+    document.getElementById('stat-cost').textContent = trace.cost;
+    document.getElementById('stat-cost').style.color = trace.cost === '$0.00' ? 'var(--green)' : 'var(--orange)';
+    log(currentURL === 'public' ? 'err' : 'ok', 
+      'Request #' + requestCount + ': ' + trace.latency + ' latency, ' + trace.hops + ' hops, leaves AWS: ' + trace.leaves);
+  }, trace.hops.length * 200 + 100);
+}
+
+function loadTest() {
+  if (loadTestRunning) {
+    clearInterval(ltTimer); loadTestRunning = false;
+    log('info', 'Load test stopped.');
+    return;
+  }
+  loadTestRunning = true;
+  var rps = 0;
+  log('accent', 'Load test started: 100 rps → ' + (currentURL === 'public' ? 'watch NAT GW saturate' : 'should stay stable'));
+  ltTimer = setInterval(function() {
+    rps++;
+    var baseLatency = currentURL === 'public' ? 80 : currentURL === 'internal' ? 0.8 : 2;
+    var loadFactor = currentURL === 'public' ? Math.min(rps * 3, 350) : currentURL === 'split' ? Math.min(rps * 0.05, 5) : Math.min(rps * 0.02, 2);
+    var latency = (baseLatency + loadFactor).toFixed(1);
+    document.getElementById('stat-latency').textContent = latency + 'ms';
+    document.getElementById('stat-latency').style.color = parseFloat(latency) > 100 ? 'var(--red)' : parseFloat(latency) > 20 ? 'var(--orange)' : 'var(--green)';
+    if (rps % 5 === 0) {
+      log(parseFloat(latency) > 200 ? 'err' : parseFloat(latency) > 50 ? 'warn' : 'ok',
+        'T+' + rps + 's: p99=' + latency + 'ms' + (currentURL === 'public' && rps > 20 ? ' — NAT GW saturating!' : ''));
+    }
+    if (rps >= 30) { clearInterval(ltTimer); loadTestRunning = false; log('info', 'Load test complete. ' + (currentURL === 'public' ? 'Latency degraded 4×. This is the incident.' : 'Latency stable. Internal routing works.')); }
+  }, 300);
+}
+
+function log(type, msg) {
+  var el = document.getElementById('log');
+  var line = document.createElement('div');
+  line.className = 'log-line log-' + type;
+  var ts = new Date().toLocaleTimeString('en-IN',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+
+setURL('public', document.getElementById('url-public'));
+</script>
+</body>
+</html>
