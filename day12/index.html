@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 12: Sharding & Partitioning — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--red);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--red);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* shard grid */
+.shard-grid{display:grid;gap:8px;margin:12px 0;}
+.shard-node{background:var(--bg3);border:2px solid var(--border2);border-radius:8px;padding:10px 14px;transition:all .3s;}
+.shard-node.hot{border-color:var(--red);background:rgba(240,96,96,.08);}
+.shard-node.normal{border-color:var(--green);background:rgba(62,207,142,.06);}
+.shard-node.empty{border-color:var(--border);opacity:.4;}
+.shard-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.shard-bar{height:8px;border-radius:4px;background:var(--border2);margin-bottom:4px;overflow:hidden;}
+.shard-bar-fill{height:100%;border-radius:4px;transition:width .4s,background .4s;}
+.shard-value{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--red);color:var(--red);background:rgba(240,96,96,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 12 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-when">When to Shard</a>
+  <a href="#s-partition">Partitioning First</a>
+  <a href="#s-shard-keys">Shard Key Design</a>
+  <a href="#s-strategies">Sharding Strategies</a>
+  <a href="#s-hotspots">Hotspot Problem</a>
+  <a href="#s-cross">Cross-Shard Queries</a>
+  <a href="#s-citus">Citus</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day12/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day12/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 2 · Day 12 · Databases &amp; Storage</div>
+  <h1>Your shard key is wrong.<br>You won't know it until <em>you can't change it</em>.</h1>
+  <p class="hero-sub">Sharding distributes data across multiple database instances. The shard key — the column you partition by — determines whether your shards are balanced or whether one shard holds 80% of your traffic while the others sit idle. Choosing it wrong is one of the most expensive mistakes in backend engineering.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>PostgreSQL partitioning + Citus</div>
+  </div>
+</div>
+
+<!-- S1: WHEN TO SHARD -->
+<div class="section" id="s-when">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>When sharding is actually the right answer</h2>
+
+  <p>Sharding is often reached for prematurely. It introduces fundamental operational complexity — cross-shard queries, distributed transactions, resharding pain — that you want to avoid as long as possible. Most applications never need it. The engineers who implement sharding too early spend months managing complexity that a read replica and better indexes would have handled.</p>
+
+  <h3>Exhaust these first</h3>
+  <p>Before sharding, verify you've genuinely exhausted:</p>
+  <ul>
+    <li><strong>Read replicas:</strong> If your bottleneck is read throughput, replicas scale reads horizontally without any of sharding's complexity.</li>
+    <li><strong>Better indexes:</strong> A missing index on a 500GB table causes more pain than the table size. Confirm with EXPLAIN ANALYZE that you're not doing sequential scans.</li>
+    <li><strong>Connection pooling:</strong> High connection count is often mistaken for database capacity limits. PgBouncer can solve this.</li>
+    <li><strong>Partitioning:</strong> PostgreSQL native partitioning keeps data on a single server but distributes it across logical tables. Range partitioning by date enables partition pruning — queries for this week's data never touch last year's partitions. This can provide 10-100× speedup with no application changes.</li>
+    <li><strong>Vertical scaling:</strong> A larger instance with more RAM and faster NVMe SSDs is often cheaper and simpler than sharding. AWS RDS goes up to 256 vCPUs and 12TB storage. If your data fits on one machine, sharding is premature.</li>
+  </ul>
+
+  <h3>The actual sharding signals</h3>
+  <p><strong>Write throughput exceeds what a single primary can handle</strong> — replicas don't help with writes; only sharding distributes write load. <strong>Data volume exceeds what a single machine can economically store</strong> — when you're looking at 10+ TB and the cost of vertical scaling exceeds horizontal. <strong>Single-table hot spots</strong> — a specific partition of your data receives so much traffic that even a very large instance struggles to keep up.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Sharding adds permanent complexity</strong>
+      <p>Once you shard, every query involving data from multiple shards becomes a cross-shard query that must be assembled in the application layer or by a query router. Foreign keys across shards don't exist. Transactions spanning shards require 2PC or sagas. Resharding (adding shards or changing the key) is a major operational event. These costs are permanent — you don't get to un-shard once you've built around it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: When to shard decision tree -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Do you actually need sharding? — decision tree</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Answer questions about your situation:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="shardDecision('read_heavy')">Bottleneck: reads</button>
+      <button class="viz-btn" onclick="shardDecision('write_heavy')">Bottleneck: writes</button>
+      <button class="viz-btn" onclick="shardDecision('storage')">Problem: storage</button>
+      <button class="viz-btn" onclick="shardDecision('slow_queries')">Problem: slow queries</button>
+      <button class="viz-btn" onclick="shardDecision('connections')">Problem: connections</button>
+      <button class="viz-btn" onclick="shardDecision('multi_tenant')">Pattern: multi-tenant SaaS</button>
+    </div>
+    <div id="shard-decision-output" class="mono-out" style="min-height:100px">Select your situation above.</div>
+  </div>
+</div>
+
+<!-- S2: PARTITIONING FIRST -->
+<div class="section" id="s-partition">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>PostgreSQL partitioning: the step before sharding</h2>
+
+  <p>PostgreSQL native partitioning splits a single logical table into multiple physical sub-tables (partitions), all on the same server. The table looks and behaves like one table to queries — but the query planner knows to only access the relevant partitions. This enables partition pruning: a query for "orders this week" only touches this week's partition, even if the orders table contains 5 years of data.</p>
+
+  <h3>Partition types</h3>
+  <p><strong>Range partitioning:</strong> Partitions defined by a column range — typically time (monthly or quarterly partitions). Best for time-series data where queries almost always include a time filter. Old partitions can be detached and archived or dropped without touching other partitions.</p>
+  <p><strong>List partitioning:</strong> Partitions defined by explicit values — regions, countries, status types. Good for data that naturally clusters by a categorical value and where queries filter by that value.</p>
+  <p><strong>Hash partitioning:</strong> Partitions defined by a hash of a column, distributing rows evenly. No single "large" partition emerges. Good for distributing write load evenly without natural range boundaries.</p>
+
+  <h3>The partition pruning guarantee</h3>
+  <p>For partition pruning to work, your query's WHERE clause must include the partition key column. <code>SELECT * FROM orders WHERE created_at > '2024-01-01'</code> on a monthly-partitioned table touches only 2024 partitions. But <code>SELECT * FROM orders WHERE user_id = 123</code> on the same table touches every partition — no pruning possible without the partition key in the WHERE clause.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">PostgreSQL range partitioning — monthly orders table</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Create the partitioned parent table</span>
+CREATE TABLE orders (
+  id           BIGSERIAL,
+  user_id      BIGINT NOT NULL,
+  status       TEXT NOT NULL,
+  amount_paise BIGINT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+) PARTITION BY RANGE (created_at);
+
+<span class="cm">-- Create monthly partitions (can be automated with pg_partman)</span>
+CREATE TABLE orders_2024_01 PARTITION OF orders
+  FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+CREATE TABLE orders_2024_02 PARTITION OF orders
+  FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+
+<span class="cm">-- Each partition can have its own indexes</span>
+CREATE INDEX ON orders_2024_01 (user_id, created_at DESC);
+CREATE INDEX ON orders_2024_02 (user_id, created_at DESC);
+<span class="cm">-- Partitioned indexes (apply to all partitions at once):</span>
+CREATE INDEX ON orders (user_id, created_at DESC);
+
+<span class="cm">-- Verify partition pruning is happening</span>
+EXPLAIN SELECT * FROM orders WHERE created_at >= '2024-01-01' AND created_at < '2024-02-01';
+<span class="cm">-- Should show: Append → Seq Scan on orders_2024_01 (only one partition!)</span>
+<span class="cm">-- NOT: Append → Seq Scan on orders_2024_01, orders_2024_02, ... (all partitions)</span>
+
+<span class="cm">-- Archive old partition (no DELETE, no rewrite — instant)</span>
+ALTER TABLE orders DETACH PARTITION orders_2022_01;
+<span class="cm">-- orders_2022_01 now exists as a standalone table, can be moved to cold storage</span>
+
+<span class="cm">-- Drop old partition (instant, regardless of row count)</span>
+DROP TABLE orders_2022_01;
+<span class="cm">-- vs DELETE FROM orders WHERE created_at < '2022-02-01' → takes hours on large table</span>
+
+<span class="cm">-- Automate with pg_partman extension</span>
+SELECT partman.create_parent(
+  p_parent_table   := 'public.orders',
+  p_control        := 'created_at',
+  p_type           := 'range',
+  p_interval       := 'monthly',
+  p_premake        := 4    <span class="cm">-- pre-create 4 future partitions</span>
+);</pre>
+  </div>
+</div>
+
+<!-- VIZ 2: Partition pruning -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Partition pruning — watch which partitions a query touches</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="margin-bottom:14px">
+      <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:8px">Query predicate:</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="viz-btn" onclick="showPruning('range_current')">WHERE created_at &gt; now()-7d</button>
+        <button class="viz-btn" onclick="showPruning('range_year')">WHERE created_at &gt; '2024-01-01'</button>
+        <button class="viz-btn" onclick="showPruning('no_key')">WHERE user_id = 123 (no partition key)</button>
+        <button class="viz-btn" onclick="showPruning('full_scan')">SELECT * (no WHERE)</button>
+        <button class="viz-btn" onclick="showPruning('exact')">WHERE created_at = '2024-06-15'</button>
+      </div>
+    </div>
+    <div id="partition-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px"></div>
+    <div id="pruning-output" class="mono-out" style="font-size:12px;min-height:80px">Select a query predicate above.</div>
+  </div>
+</div>
+
+<!-- S3: SHARD KEY DESIGN -->
+<div class="section" id="s-shard-keys">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Shard key design: the most consequential decision</h2>
+
+  <p>The shard key determines which shard stores which rows. It cannot be changed after the fact without resharding the entire dataset — an operation that can take days and carries significant risk. Getting it wrong means living with an imbalanced, poorly-performing distributed system indefinitely.</p>
+
+  <h3>Properties of a good shard key</h3>
+  <ul>
+    <li><strong>High cardinality:</strong> Enough distinct values to distribute rows across many shards. Sharding by a boolean column is catastrophic — only 2 possible values, so you'll always have 2 shards max, and they'll likely be unbalanced.</li>
+    <li><strong>Uniform distribution:</strong> Values that spread rows evenly across shards. Sharding by user_id works if users are equally active. Sharding by city fails if Mumbai has 10× the traffic of all other cities combined.</li>
+    <li><strong>Query locality:</strong> The most common queries should hit a single shard. If your most frequent query is "all orders for user X," sharding by user_id means all of user X's orders are on one shard — one network call. Sharding by order_id instead means user X's orders are spread across all shards — every query is a cross-shard scatter-gather.</li>
+    <li><strong>Avoid sequential keys:</strong> Using an auto-incrementing ID as a shard key means all new rows route to the same shard (the highest range). You'll have one perpetually hot shard and many empty ones. Use consistent hashing on the ID instead.</li>
+  </ul>
+
+  <h3>Common shard key patterns</h3>
+  <p><strong>user_id:</strong> Best for multi-user applications where most queries are per-user. All of a user's data (orders, notifications, sessions) co-locates on the same shard. Cross-user analytics become expensive.</p>
+  <p><strong>tenant_id:</strong> Best for B2B SaaS. All of a tenant's data lives together. Large tenants can overwhelm their shard (the "whale tenant" problem) — mitigated with tenant-to-shard mapping tables that allow large tenants to get their own dedicated shard.</p>
+  <p><strong>geographic region:</strong> Best when data sovereignty or latency requirements dictate where data lives. EU user data must stay in EU. Cross-region queries are explicitly forbidden.</p>
+  <p><strong>hash(primary_key):</strong> Uniform distribution but no query locality. Every per-entity query hits all shards. Only works if your queries are truly random and you don't need per-entity aggregations.</p>
+</div>
+
+<!-- VIZ 3: Shard key simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Shard key simulator — see how different keys distribute data</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="margin-bottom:14px">
+      <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:8px">Shard key:</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="viz-btn active" id="sk-uid" onclick="setShardKey('user_id',this)">user_id</button>
+        <button class="viz-btn" id="sk-city" onclick="setShardKey('city',this)">city (skewed)</button>
+        <button class="viz-btn" id="sk-hash" onclick="setShardKey('hash_id',this)">hash(order_id)</button>
+        <button class="viz-btn" id="sk-seq" onclick="setShardKey('sequential',this)">auto_increment (bad)</button>
+        <button class="viz-btn" id="sk-region" onclick="setShardKey('region',this)">region</button>
+      </div>
+    </div>
+    <div id="shard-key-grid" class="shard-grid" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div id="shard-key-output" class="mono-out" style="font-size:12px;margin-top:12px;min-height:80px"></div>
+  </div>
+</div>
+
+<!-- S4: SHARDING STRATEGIES -->
+<div class="section" id="s-strategies">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Sharding strategies: range, hash, and directory</h2>
+
+  <h3>Range sharding</h3>
+  <p>Rows are distributed based on a value range of the shard key. Shard 1 gets user_id 1-1,000,000; shard 2 gets 1,000,001-2,000,000. Simple to understand and implement. The problem: if newer users are more active (they are), the highest-range shard always receives the most traffic. Sequential inserts always land on the same shard.</p>
+  <p>Works well for: time-series data where old data is cold and new data is hot but you can plan for it. Archive old shards as they go cold.</p>
+
+  <h3>Hash sharding (consistent hashing)</h3>
+  <p>A hash function is applied to the shard key, and the hash value determines the shard. <code>shard = hash(user_id) % num_shards</code>. Distribution is uniform by construction — no hot shards caused by skewed values. The downside: range queries become cross-shard. <code>WHERE user_id BETWEEN 1000 AND 2000</code> must query all shards because the hash function destroys ordering.</p>
+  <p><strong>Consistent hashing</strong> is the production-grade version: instead of <code>hash % N</code>, keys are placed on a virtual ring, and shards own segments of the ring. Adding a new shard only redistributes a fraction of keys (not everything), making it practical to add capacity without full resharding.</p>
+
+  <h3>Directory (lookup) sharding</h3>
+  <p>A central lookup table maps each shard key value to a shard. When a new user signs up, the directory assigns them to a shard. The directory can use any logic — it can deliberately assign whale tenants to dedicated shards, balance load by shard utilisation, or move tenants between shards by updating the directory.</p>
+  <p>This is the most flexible approach and the most common in mature B2B SaaS products. The cost: the directory itself becomes a critical dependency — it must be highly available, fast (usually cached in Redis), and consistent.</p>
+</div>
+
+<!-- VIZ 4: Sharding strategy comparison -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Sharding strategies — compare range, hash, directory</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showStrategy('range')">Range sharding</button>
+      <button class="viz-btn" onclick="showStrategy('hash')">Hash sharding</button>
+      <button class="viz-btn" onclick="showStrategy('consistent_hash')">Consistent hashing</button>
+      <button class="viz-btn" onclick="showStrategy('directory')">Directory sharding</button>
+    </div>
+    <div id="strategy-output" class="mono-out" style="font-size:12px;min-height:140px">Select a strategy to see how it works, when to use it, and its failure modes.</div>
+  </div>
+</div>
+
+<!-- S5: HOTSPOT PROBLEM -->
+<div class="section" id="s-hotspots">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>The hotspot problem: when one shard gets all the traffic</h2>
+
+  <p>A hotspot occurs when one shard receives disproportionately more reads or writes than others. The shard is overwhelmed while others sit idle. Hotspots defeat the entire purpose of sharding — you've added distributed system complexity but haven't distributed the load.</p>
+
+  <h3>Causes of hotspots</h3>
+  <p><strong>Viral content or events:</strong> A specific item, user, or event suddenly becomes popular. All reads for that item route to one shard.</p>
+  <p><strong>Skewed shard keys:</strong> Using a categorical key with uneven distribution (city, country, category) where one value has far more data than others.</p>
+  <p><strong>Sequential inserts:</strong> All new rows go to the highest-range shard. Common with auto-increment IDs and time-based range sharding without proper planning.</p>
+  <p><strong>Whale tenants:</strong> In B2B SaaS, one large customer can have 10× the data and traffic of all others combined. Sharding by tenant_id puts the whale on one shard.</p>
+
+  <h3>Mitigation strategies</h3>
+  <p><strong>Random suffix (write hotspot):</strong> For counters or high-write keys, append a random suffix to create multiple virtual keys. <code>user:123:views → user:123:views:1, user:123:views:2, ..., user:123:views:10</code>. Write to a random suffix; read by summing all suffixes.</p>
+  <p><strong>Dedicated shard for whales:</strong> In directory sharding, assign large tenants to a dedicated shard (or multiple shards). The directory maps tenant_id=bigcorp → shard_cluster_5 which has extra capacity.</p>
+  <p><strong>Time-based rotation:</strong> For time-series hotspots, ensure new partitions (recent data) aren't on a single shard. Rotate new partition assignments across shards.</p>
+  <p><strong>Caching:</strong> A hotspot shard suffering from read pressure can be mitigated with a cache layer (Redis). Writes still hit the shard, but reads are served from cache.</p>
+</div>
+
+<!-- VIZ 5: Hotspot simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Hotspot simulator — watch load concentrate on one shard</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="setHotspot('balanced')">Balanced (hash key)</button>
+      <button class="viz-btn" onclick="setHotspot('city_skew')">City skew (Mumbai)</button>
+      <button class="viz-btn" onclick="setHotspot('viral')">Viral event (shard 2)</button>
+      <button class="viz-btn" onclick="setHotspot('sequential')">Sequential inserts</button>
+      <button class="viz-btn" onclick="setHotspot('whale')">Whale tenant</button>
+    </div>
+    <div id="hotspot-grid" class="shard-grid" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div id="hotspot-output" class="mono-out" style="font-size:12px;margin-top:12px;min-height:80px"></div>
+  </div>
+</div>
+
+<!-- S6: CROSS-SHARD QUERIES -->
+<div class="section" id="s-cross">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Cross-shard queries: the distributed system tax</h2>
+
+  <p>When a query needs data from multiple shards, the application (or a query router) must fan out the query to all relevant shards, wait for all responses, and assemble the final result. This is called a scatter-gather query. It works — but it's slower, more complex, and introduces new failure modes.</p>
+
+  <h3>Scatter-gather mechanics</h3>
+  <p>For a query like "find all orders with status=pending across all users" on a user-sharded system: send the query to all N shards in parallel (fan-out), collect N result sets, merge and sort them in memory, return the final result. The latency is max(shard_latency) + merge_time, not sum(shard_latency) since they run in parallel. But a slow shard (GC pause, lock contention) makes the entire query slow.</p>
+
+  <h3>What becomes impossible or very expensive</h3>
+  <ul>
+    <li><strong>Cross-shard JOINs:</strong> Joining tables from different shards requires fetching data from multiple shards and joining in application memory. With large result sets this is impractical.</li>
+    <li><strong>Cross-shard transactions:</strong> No single-shard ACID. Need 2PC or sagas, with all their complexity and failure modes.</li>
+    <li><strong>Global uniqueness constraints:</strong> UNIQUE on an email column only enforces uniqueness within a shard. Across shards: application must check all shards or use a global lookup table.</li>
+    <li><strong>Global aggregates:</strong> COUNT(*) across all shards requires querying all shards and summing. ORDER BY with LIMIT requires fetching top-N from each shard and re-sorting.</li>
+    <li><strong>Foreign keys:</strong> Cannot reference a row in a different shard. Referential integrity is application responsibility.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cross-shard scatter-gather in application code</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">class</span> <span class="ty">ShardRouter</span> {
+  <span class="kw">private</span> shards: <span class="ty">Pool</span>[] = [shard0, shard1, shard2, shard3];
+
+  <span class="cm">// Single-shard query (fast — hits one shard by key)</span>
+  <span class="kw">async</span> <span class="fn">getUserOrders</span>(userId: <span class="ty">number</span>): <span class="kw">Promise</span>&lt;<span class="ty">Order</span>[]&gt; {
+    <span class="kw">const</span> shard = <span class="kw">this</span>.shards[userId % <span class="kw">this</span>.shards.length];
+    <span class="kw">return</span> shard.<span class="fn">query</span>(<span class="str">'SELECT * FROM orders WHERE user_id = $1'</span>, [userId]);
+  }
+
+  <span class="cm">// Cross-shard scatter-gather (slow — hits all shards)</span>
+  <span class="kw">async</span> <span class="fn">getPendingOrders</span>(): <span class="kw">Promise</span>&lt;<span class="ty">Order</span>[]&gt; {
+    <span class="cm">// Fan out to all shards in parallel</span>
+    <span class="kw">const</span> results = <span class="kw">await</span> Promise.<span class="fn">all</span>(
+      <span class="kw">this</span>.shards.<span class="fn">map</span>(shard =>
+        shard.<span class="fn">query</span>(<span class="str">'SELECT * FROM orders WHERE status = $1 ORDER BY created_at DESC LIMIT 100'</span>, [<span class="str">'pending'</span>])
+      )
+    );
+
+    <span class="cm">// Merge and re-sort in memory</span>
+    <span class="kw">const</span> allOrders = results.<span class="fn">flatMap</span>(r => r.rows);
+    allOrders.<span class="fn">sort</span>((a, b) => b.created_at - a.created_at);
+    <span class="kw">return</span> allOrders.<span class="fn">slice</span>(0, 100); <span class="cm">// global top-100</span>
+    <span class="cm">// Note: had to fetch top-100 from EACH shard to guarantee global top-100</span>
+    <span class="cm">// With 4 shards: 400 rows fetched, 300 discarded — wasteful at scale</span>
+  }
+
+  <span class="cm">// Global COUNT — must sum across all shards</span>
+  <span class="kw">async</span> <span class="fn">getTotalOrderCount</span>(): <span class="kw">Promise</span>&lt;<span class="ty">number</span>&gt; {
+    <span class="kw">const</span> counts = <span class="kw">await</span> Promise.<span class="fn">all</span>(
+      <span class="kw">this</span>.shards.<span class="fn">map</span>(<span class="kw">async</span> shard => {
+        <span class="kw">const</span> r = <span class="kw">await</span> shard.<span class="fn">query</span>(<span class="str">'SELECT count(*) AS n FROM orders'</span>);
+        <span class="kw">return</span> parseInt(r.rows[0].n);
+      })
+    );
+    <span class="kw">return</span> counts.<span class="fn">reduce</span>((a, b) => a + b, 0);
+  }
+}</pre>
+  </div>
+</div>
+
+<!-- VIZ 6: Cross-shard query cost -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Cross-shard query cost — single-shard vs scatter-gather</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Number of shards: <span id="ns-val" style="color:var(--accent)">4</span></label>
+        <input type="range" class="viz-slider" id="num-shards" min="2" max="64" value="4" oninput="calcCrossQuery()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Per-shard query time (ms): <span id="sq-val" style="color:var(--accent)">20</span></label>
+        <input type="range" class="viz-slider" id="shard-qt" min="1" max="500" value="20" oninput="calcCrossQuery()">
+      </div>
+    </div>
+    <div id="cross-query-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S7: CITUS -->
+<div class="section" id="s-citus">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Citus: distributed PostgreSQL without leaving Postgres</h2>
+
+  <p>Citus is a PostgreSQL extension (acquired by Microsoft, now open source) that turns a PostgreSQL cluster into a distributed database. You define distribution columns for your tables, and Citus automatically handles routing queries to the correct shards, parallelising across nodes, and assembling results.</p>
+
+  <h3>How Citus works</h3>
+  <p>Citus adds a coordinator node and one or more worker nodes. The coordinator stores the shard metadata — which shards contain which row ranges, which workers hold which shards. Application queries go to the coordinator, which rewrites them into distributed queries, fans them out to workers, and assembles the result.</p>
+  <p>Table types: <strong>distributed tables</strong> are sharded across workers by a distribution column. <strong>Reference tables</strong> are replicated to every worker (for small lookup tables used in JOINs). <strong>Local tables</strong> live only on the coordinator (for metadata, shard maps, etc.).</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Citus setup — distributed table from regular PostgreSQL</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- On coordinator: install and enable Citus</span>
+CREATE EXTENSION citus;
+
+<span class="cm">-- Register worker nodes</span>
+SELECT citus_add_node('<span class="str">worker-1.internal</span>', 5432);
+SELECT citus_add_node('<span class="str">worker-2.internal</span>', 5432);
+SELECT citus_add_node('<span class="str">worker-3.internal</span>', 5432);
+
+<span class="cm">-- Create table (looks exactly like regular PostgreSQL)</span>
+CREATE TABLE orders (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    BIGINT NOT NULL,
+  status     TEXT,
+  amount     BIGINT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+<span class="cm">-- Distribute it! Citus creates shards across workers.</span>
+SELECT create_distributed_table('orders', 'user_id');
+<span class="cm">-- user_id is the distribution column</span>
+<span class="cm">-- Default: 32 shards per table, distributed across workers</span>
+<span class="cm">-- You can query the table as if it's a single table</span>
+
+<span class="cm">-- Small lookup tables: replicate to every worker for efficient JOINs</span>
+CREATE TABLE products (id BIGINT PRIMARY KEY, name TEXT, price BIGINT);
+SELECT create_reference_table('products');
+<span class="cm">-- Now: SELECT o.*, p.name FROM orders o JOIN products p ON o.product_id = p.id</span>
+<span class="cm">-- Works efficiently because products is on every worker</span>
+
+<span class="cm">-- Check shard placement</span>
+SELECT * FROM citus_shards ORDER BY shard_id;
+
+<span class="cm">-- Co-location: tables sharded by the same column</span>
+<span class="cm">-- store on same physical shard = JOINs don't need cross-shard calls</span>
+CREATE TABLE order_items (
+  order_id BIGINT, user_id BIGINT, product_id BIGINT, quantity INT
+);
+SELECT create_distributed_table('order_items', 'user_id', colocate_with := 'orders');
+<span class="cm">-- Now: SELECT o.*, i.* FROM orders o JOIN order_items i ON o.id = i.order_id AND o.user_id = i.user_id</span>
+<span class="cm">-- Executes on a single shard (both tables have same user_id on same worker)</span>
+
+<span class="cm">-- Monitor shard sizes (detect imbalance)</span>
+SELECT shardid,
+  pg_size_pretty(shard_size) AS size
+FROM citus_shard_sizes()
+ORDER BY shard_size DESC;</pre>
+  </div>
+</div>
+
+<!-- VIZ 7: Citus vs manual sharding -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Citus vs manual sharding — complexity comparison</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showCitusComp('routing')">Query routing</button>
+      <button class="viz-btn" onclick="showCitusComp('joins')">Cross-table JOINs</button>
+      <button class="viz-btn" onclick="showCitusComp('rebalance')">Shard rebalancing</button>
+      <button class="viz-btn" onclick="showCitusComp('monitoring')">Monitoring</button>
+      <button class="viz-btn" onclick="showCitusComp('limits')">Limitations</button>
+    </div>
+    <div id="citus-comp-output" class="mono-out" style="font-size:12px;min-height:120px">Select a dimension to compare.</div>
+  </div>
+</div>
+
+<!-- VIZ 8: When partition vs shard -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Partition vs shard — which to use for your situation</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPartVsShard('small_old')">5M rows, 6 months old</button>
+      <button class="viz-btn" onclick="showPartVsShard('large_time')">500M rows, time-series</button>
+      <button class="viz-btn" onclick="showPartVsShard('write_bound')">Write throughput limit</button>
+      <button class="viz-btn" onclick="showPartVsShard('multi_tenant')">Multi-tenant, 10K tenants</button>
+      <button class="viz-btn" onclick="showPartVsShard('analytics')">Analytics / OLAP</button>
+    </div>
+    <div id="part-vs-shard-output" class="mono-out" style="font-size:12px;min-height:100px">Select a scenario.</div>
+  </div>
+</div>
+
+<!-- S8: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>Resharding is a multi-week project</h3>
+  <p>Adding shards (or changing the shard count) requires moving data between shards. With consistent hashing, adding one shard moves 1/N of the data. With range or hash sharding, resharding may require moving almost all data. This must happen online (the database is serving production traffic) with zero data loss. Tools: Citus automates this. Manual: double-write to old and new shard while backfilling, then cut over — risky and slow.</p>
+
+  <h3>The data gravity problem</h3>
+  <p>Once a tenant's data is large (multi-GB), moving it between shards is slow and risky. Tenant migration tooling must be tested before you need it. At Shopify scale, moving a large merchant from one pod to another is a weekend-long event with a dedicated runbook. Build tenant migration tooling early, even if you don't use it for months.</p>
+
+  <h3>Shard-local transactions only</h3>
+  <p>Any operation that must be atomic should be designed to operate within a single shard. If your checkout process involves inventory, payment, and order creation, and these are on different shards, you have a distributed transaction problem. Redesign: either co-locate these entities (same user_id distribution key means all data for user X is on shard X), or use sagas to handle cross-shard operations.</p>
+
+  <h3>pg_partman for partition automation</h3>
+  <p>Manually creating monthly partitions is error-prone — someone forgets to create next month's partition and inserts fail with "no partition for value." pg_partman automates this: it pre-creates future partitions and archives or drops old ones based on retention policy. Run it in maintenance mode for large tables to avoid locking.</p>
+</div>
+
+<!-- S9: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Partition detach/attach is instant; partition DROP is also instant</h3>
+  <p>Dropping a regular table with 100 million rows takes minutes (must free pages, update free space maps). Dropping a partition of a partitioned table is instant — the files are just deleted. This is one of the biggest operational wins of range partitioning for time-series data: instead of a slow DELETE with replication lag, just DROP the old partition. Takes milliseconds.</p>
+
+  <h3>enable_partition_pruning must be on</h3>
+  <p>PostgreSQL's partition pruning is controlled by <code>enable_partition_pruning</code> (default: on). If this is accidentally turned off, all queries scan all partitions. Verify: <code>SHOW enable_partition_pruning</code>. Also: partition pruning happens at plan time for static values but at execution time for prepared statements with runtime parameters — confirm with EXPLAIN ANALYZE, not just EXPLAIN.</p>
+
+  <h3>Citus reference tables have replication lag</h3>
+  <p>Reference tables are replicated synchronously during writes. A write to a reference table on the coordinator blocks until all workers confirm they've applied it. If you have many workers and a network hiccup, this can cause write latency spikes. Don't use reference tables for high-write tables — only truly read-heavy, rarely-changed lookup data.</p>
+
+  <h3>Foreign keys work within a shard but not across shards in Citus</h3>
+  <p>Citus supports foreign keys between distributed tables if they're co-located (same distribution column). <code>order_items.user_id</code> can reference <code>orders.user_id</code> if both are distributed by user_id. But <code>orders.product_id</code> cannot be a FK to a distributed <code>products</code> table — make products a reference table instead, then FKs work.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>You need to scale data storage — choose in this order</h2>
+  <p class="ds-sub">Work through this before committing to sharding. The earlier exit points save weeks of work.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Identify the actual bottleneck — not the symptom</div>
+        <div class="ds-detail">"The database is slow" is a symptom. Use EXPLAIN ANALYZE, pg_stat_statements, and pg_stat_activity to identify exactly what's slow and why. Is it missing indexes? Lock contention? Connection exhaustion? Slow queries? These have targeted fixes. Sharding doesn't fix a missing index.
+          <br><span class="ds-tag ds-tag-info">slow query log + pg_stat_statements first. always.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Try partitioning — same server, dramatic improvement for time-series</div>
+        <div class="ds-detail">If your large table is time-series (orders, events, logs), range partition by month or week. Queries with date filters get 10-100× faster through partition pruning. Old partitions can be dropped instantly. No application changes required for most queries. This alone may solve your problem with a single <code>CREATE TABLE ... PARTITION BY RANGE</code>.
+          <br><span class="ds-tag ds-tag-ok">partitioning = sharding benefit without sharding complexity</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Add read replicas before distributing writes</div>
+        <div class="ds-detail">If reads are the bottleneck: add replicas and route read traffic appropriately (Day 10 covers this). If write throughput is fine but reads are slow, sharding is the wrong tool. Read replicas are operationally simpler and don't require any application changes beyond connection routing.
+          <br><span class="ds-tag ds-tag-ok">read bottleneck = replicas, not sharding</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">If you must shard: choose the key before everything else</div>
+        <div class="ds-detail">The shard key is permanent. Before writing a single line of sharding infrastructure, answer: what column do most queries filter by? Is that column high-cardinality? Is it uniformly distributed? Will there be whale values? A weekend's thought on this is worth months of future operational pain. Write down the top-5 query patterns and verify they all work efficiently with the chosen key.
+          <br><span class="ds-tag ds-tag-stop">wrong shard key = can't be fixed without full resharding</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Use Citus if you want to stay in PostgreSQL</div>
+        <div class="ds-detail">Citus handles shard routing, rebalancing, and cross-shard query execution automatically. Your application still talks to a single PostgreSQL endpoint. Co-locate related tables by the same distribution key to keep JOINs local. Use reference tables for small lookup tables. This is the pragmatic choice for 95% of teams that reach for sharding.
+          <br><span class="ds-tag ds-tag-info">Citus = sharding with PostgreSQL semantics</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Build tenant migration tooling before you need it</div>
+        <div class="ds-detail">In a sharded system, moving data between shards is inevitable — a shard fills up, a whale tenant needs their own shard, rebalancing becomes necessary. Build and test the migration tooling before any shard becomes a problem. The pattern: double-write to old and new shard, backfill historical data, verify consistency, cut over reads, stop writing to old shard. Test this with a non-critical small tenant first.
+          <br><span class="ds-tag ds-tag-warn">no migration tooling = shards fill up and you're stuck</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">The wrong shard key — user_id vs tenant_id in a multi-tenant SaaS</div>
+    <div style="font-size:13px;color:var(--text2)">Whale tenant hotspot · resharding pain · directory shard mapping</div>
+  </div>
+  <a href="/day12/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">pg_partman automation, Citus full setup, consistent hashing in code</div>
+    <div style="font-size:13px;color:var(--text2)">Automated partition management · Citus coordinator + workers · ring-based routing</div>
+  </div>
+  <a href="/day12/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Sharding & partitioning checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">PRT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Partition first</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Try partitioning before sharding. Range partitioning + partition pruning + pg_partman solves most time-series scale problems.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">KEY</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Shard key is forever</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Validate with top-5 query patterns. High cardinality. Uniform distribution. No whale values. Write it down before coding.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">COL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Co-location</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Related tables (orders + order_items) must share the same shard key so JOINs stay local to one shard.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">PRU</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Prune verification</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">EXPLAIN ANALYZE all key queries. Verify partition pruning is happening. Partitions scanned should be minimal.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">MIG</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Migration tooling</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Build and test tenant/shard migration before any shard fills up. Double-write pattern + verification + cutover runbook.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">HOT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Hotspot detection</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Monitor shard sizes and QPS distribution weekly. Alert when one shard is 2× the average. Act before it becomes a crisis.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, { passive: true });
+
+// ── VIZ 1: Shard decision ──
+var SHARD_DECISIONS = {
+  read_heavy: {
+    answer: 'DO NOT SHARD — add read replicas',
+    detail: 'Read-heavy bottlenecks scale horizontally with read replicas (Day 10).\nReplicas add read capacity without any application-level complexity.\n\nChecklist before sharding for reads:\n1. Are you using PgBouncer to reduce connection overhead?\n2. Do read replicas receive all read traffic (not just some)?\n3. Are slow reads caused by missing indexes (check EXPLAIN ANALYZE)?\n4. Is your caching layer (Redis) handling cacheable reads?\n\nIf all of these are optimised and reads are still saturated → then consider sharding.',
+    color: 'var(--green)',
+  },
+  write_heavy: {
+    answer: 'SHARDING MAY BE WARRANTED',
+    detail: 'Write throughput is the one thing replicas cannot help with.\nAll writes go to the primary; replicas can\'t share write load.\n\nBefore sharding, verify:\n1. Have you checked pg_stat_statements for write-heavy queries?\n   Can they be batched instead of individual rows?\n2. Is write_wal_buffers / synchronous_commit tuned?\n3. Are you using COPY instead of INSERT for bulk loads?\n4. Is it write THROUGHPUT (rows/s) or write LATENCY that\'s the problem?\n   Latency can often be solved with index optimization, not sharding.\n\nIf true write throughput is the ceiling → sharding is the right tool.',
+    color: 'var(--orange)',
+  },
+  storage: {
+    answer: 'PARTITION FIRST — sharding may not be needed',
+    detail: 'Large data volume is the most common reason teams reach for sharding prematurely.\n\nFirst: try range partitioning by date. Old partitions can be:\n- Detached and moved to cheaper storage (tablespaces)\n- Compressed (pg_compression)\n- Dropped instantly when past retention (DROP TABLE takes milliseconds)\n\nIf data volume genuinely exceeds one machine\'s disk capacity:\n- AWS RDS supports 64TB storage\n- Can you archive old data to S3/Glacier? Is all data hot?\n\nTrue storage sharding need: data that must be hot, frequently accessed,\nand exceeds one machine\'s practical storage limit.',
+    color: 'var(--green)',
+  },
+  slow_queries: {
+    answer: 'DO NOT SHARD — fix queries first',
+    detail: 'Slow queries are almost never fixed by sharding.\nSharding a table with slow queries gives you slow queries on multiple shards.\n\nDiagnosis first:\n  SELECT query, calls, total_exec_time/calls AS avg_ms\n  FROM pg_stat_statements ORDER BY avg_ms DESC LIMIT 20;\n\nAlmost always one of:\n- Missing index → CREATE INDEX CONCURRENTLY\n- N+1 query problem → JOIN or batch fetch in application\n- Lock contention → check pg_stat_activity wait_event\n- Stale statistics → ANALYZE\n- Large table full scan → add index or partition pruning\n\nNone of these are fixed by sharding.',
+    color: 'var(--red)',
+  },
+  connections: {
+    answer: 'DO NOT SHARD — use PgBouncer',
+    detail: 'Connection limits are solved by connection pooling, not sharding.\n\n"Too many connections" or connection exhaustion are PgBouncer problems.\nSharding would give you N smaller databases, each with the same connection limit —\nyou\'d need N PgBouncers and N sets of credentials.\n\nFix first:\n  SHOW max_connections;\n  SELECT count(*) FROM pg_stat_activity WHERE state = \'idle\';\n\nIf idle connections dominate: PgBouncer in transaction mode\ndrops server connections by 90% with one config change.\n\nReview Day 11 before reaching for sharding.',
+    color: 'var(--green)',
+  },
+  multi_tenant: {
+    answer: 'CONSIDER SHARDING — but choose key carefully',
+    detail: 'Multi-tenant SaaS at scale is one of the few legitimate sharding use cases.\n\nShard key options:\n1. tenant_id → all tenant data co-located (best for per-tenant queries)\n   Risk: whale tenant overwhelms its shard\n   Mitigation: directory sharding, assign large tenants to dedicated shards\n\n2. user_id → finer granularity, but cross-user tenant queries become cross-shard\n   Better if users are the primary query dimension, not tenants\n\n3. hash(tenant_id) → uniform distribution, but no tenant locality\n   Cross-tenant queries still all shards\n\nRecommendation: tenant_id with directory sharding (lookup table in Redis).\nAllows manual rebalancing of whale tenants without resharding everything.',
+    color: 'var(--orange)',
+  },
+};
+function shardDecision(key) {
+  var d = SHARD_DECISIONS[key];
+  document.getElementById('shard-decision-output').innerHTML =
+    '<span style="color:' + d.color + ';font-weight:700">' + d.answer + '</span>\n\n' + d.detail;
+}
+
+// ── VIZ 2: Partition pruning ──
+var PARTITIONS = ['Jan 2023','Feb 2023','Mar 2023','Apr 2023','May 2023','Jun 2023','Jul 2023','Aug 2023','Sep 2023','Oct 2023','Nov 2023','Dec 2023','Jan 2024','Feb 2024','Mar 2024','Apr 2024','May 2024','Jun 2024'];
+var PRUNING_CONFIGS = {
+  range_current: { touched: [16,17], label: '2 of 18 partitions scanned', pruning: true },
+  range_year:    { touched: [12,13,14,15,16,17], label: '6 of 18 partitions scanned', pruning: true },
+  no_key:        { touched: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17], label: 'ALL 18 partitions scanned — no pruning!', pruning: false },
+  full_scan:     { touched: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17], label: 'ALL 18 partitions scanned', pruning: false },
+  exact:         { touched: [15], label: '1 of 18 partitions scanned', pruning: true },
+};
+var PRUNING_TEXT = {
+  range_current: 'WHERE created_at > now() - interval \'7 days\'\n\nPartitions touched: May 2024, Jun 2024 (2 of 18)\nPlanner knows: current date is Jun 2024. Only partitions that could contain rows from the last 7 days.\n\n✓ Partition pruning: active. 89% of partitions skipped.',
+  range_year:    'WHERE created_at > \'2024-01-01\'\n\nPartitions touched: Jan 2024 → Jun 2024 (6 of 18)\nAll 2024 partitions touched. 2023 partitions skipped entirely.\n\n✓ Partition pruning: active. 67% of partitions skipped.',
+  no_key:        'WHERE user_id = 123\n\nPartitions touched: ALL 18\nuser_id is not the partition key. The planner cannot prune.\nEvery partition could contain rows where user_id = 123.\n\n✗ Partition pruning: DISABLED. Query scans every partition.\nIf this is a frequent query pattern, consider a composite key or secondary index.',
+  full_scan:     'SELECT * FROM orders\n\nPartitions touched: ALL 18\nNo WHERE clause → must scan everything.\n\n✗ Partition pruning: DISABLED. Expected — no predicate to prune on.',
+  exact:         'WHERE created_at = \'2024-06-15\'\n\nPartitions touched: Jun 2024 only (1 of 18)\nExact date → planner knows exactly which partition.\n\n✓ Partition pruning: maximum. 94% of partitions skipped.',
+};
+
+function showPruning(key) {
+  var cfg = PRUNING_CONFIGS[key];
+  var grid = document.getElementById('partition-grid');
+  grid.innerHTML = PARTITIONS.map(function(p, i) {
+    var touched = cfg.touched.includes(i);
+    var style = touched
+      ? 'background:rgba(240,96,96,.12);border:1px solid rgba(240,96,96,.4);'
+      : 'background:var(--bg3);border:1px solid var(--border);opacity:.35;';
+    return '<div style="' + style + 'border-radius:5px;padding:6px 4px;text-align:center;font-family:JetBrains Mono,monospace;font-size:9px;color:' + (touched ? 'var(--red)' : 'var(--text3)') + ';transition:all .3s">' +
+      p.replace(' ', '\n') + '</div>';
+  }).join('');
+  var col = cfg.pruning ? 'var(--green)' : 'var(--red)';
+  document.getElementById('pruning-output').innerHTML =
+    '<span style="color:' + col + '">' + cfg.label + '</span>\n\n' + PRUNING_TEXT[key];
+}
+
+// ── VIZ 3: Shard key simulator ──
+var SHARD_KEY_DATA = {
+  user_id:    { loads: [22, 28, 24, 26], labels: ['Shard 0\n(uid 0-2.5M)', 'Shard 1\n(uid 2.5-5M)', 'Shard 2\n(uid 5-7.5M)', 'Shard 3\n(uid 7.5-10M)'], desc: 'user_id (range or hash)\n\nDistribution: GOOD — assuming users are equally active across ID ranges.\nQuery locality: EXCELLENT — all data for one user on one shard.\n\nCommon queries:\n  SELECT * FROM orders WHERE user_id = $1 → single shard hit ✓\n  SELECT * FROM notifications WHERE user_id = $1 → single shard hit ✓\n\nPotential issue: if older users (lower IDs) are less active,\nlower shards may have less traffic than expected.\nSolution: hash(user_id) instead of range to mix old/new users.' },
+  city:       { loads: [78, 8, 6, 8], labels: ['Mumbai\n(hotspot!)', 'Delhi', 'Bangalore', 'Other'], desc: 'city (skewed distribution)\n\nDistribution: POOR — Mumbai has ~78% of traffic.\nShard 0 is overwhelmed. Shards 1-3 are mostly idle.\n\nThis is the shard key hotspot problem:\nOne value in the key dominates the data distribution.\n\nSymptoms:\n  - Shard 0 at 95% CPU, shards 1-3 at 5%\n  - Adding shards doesn\'t help (all new Mumbai rows still go to shard 0)\n  - Mumbai users experience degraded performance\n\nFix: never use a categorical key with known skew.\nUse hash(user_id) instead — Mumbai users spread across all shards.' },
+  hash_id:    { loads: [25, 26, 24, 25], labels: ['Shard 0', 'Shard 1', 'Shard 2', 'Shard 3'], desc: 'hash(order_id) — uniform distribution\n\nDistribution: EXCELLENT — hash functions spread rows evenly.\nQuery locality: POOR — per-user queries hit all shards.\n\nThis is the fundamental tradeoff:\nUniform distribution vs query locality.\n\nGood for:\n  - Write-heavy tables where locality doesn\'t matter\n  - Tables that are only accessed by primary key\n\nBad for:\n  SELECT * FROM orders WHERE user_id = $1 → hits ALL shards\n  (user\'s orders are spread across shard 0, 1, 2, 3)\n  → scatter-gather query every time' },
+  sequential: { loads: [2, 3, 5, 90], labels: ['Shard 0\n(1-25%)', 'Shard 1\n(25-50%)', 'Shard 2\n(50-75%)', 'Shard 3\n(75-100%)'], desc: 'auto_increment / sequential ID — worst possible shard key\n\nDistribution: TERRIBLE — all new rows go to the last shard.\nShard 3 is perpetually hot. Shards 0-2 are historical and cold.\n\nThis is the sequential write hotspot:\nEvery INSERT has the highest ID, so it always routes to the highest shard.\nThe "current" shard absorbs 100% of writes until it\'s full.\n\nNever use a sequential key as a shard key.\nUse hash(id) if you want ID-based sharding:\n  shard = murmurhash(id) % num_shards\nThis distributes new rows evenly without sequential write concentration.' },
+  region:     { loads: [45, 30, 15, 10], labels: ['Asia-Pacific', 'Europe', 'Americas', 'ROW'], desc: 'geographic region — good for compliance, uneven for traffic\n\nDistribution: UNEVEN — APAC dominates, but by design.\nQuery locality: EXCELLENT — data sovereignty enforced at shard level.\n\nUse when:\n  - Data residency regulations require EU data in EU (GDPR)\n  - Latency requirements dictate proximity to users\n  - Users/tenants are clearly tied to a region\n\nOperational implication:\n  Cross-region queries are explicitly forbidden or very expensive.\n  Analytics that span all regions requires federation.\n  User authentication must route to the correct region\'s shard.\n\nAcceptable for compliance-driven systems even with imbalance.' },
+};
+
+function setShardKey(key, btn) {
+  document.querySelectorAll('#sk-uid,#sk-city,#sk-hash,#sk-seq,#sk-region').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  var d = SHARD_KEY_DATA[key];
+  var grid = document.getElementById('shard-key-grid');
+  grid.innerHTML = d.loads.map(function(load, i) {
+    var col = load > 60 ? 'var(--red)' : load > 40 ? 'var(--orange)' : 'var(--green)';
+    return '<div class="shard-node ' + (load > 60 ? 'hot' : load < 5 ? 'empty' : 'normal') + '">' +
+      '<div class="shard-label">' + d.labels[i] + '</div>' +
+      '<div class="shard-bar"><div class="shard-bar-fill" style="width:' + load + '%;background:' + col + '"></div></div>' +
+      '<div class="shard-value" style="color:' + col + '">' + load + '% load</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('shard-key-output').textContent = d.desc;
+}
+
+// ── VIZ 4: Sharding strategies ──
+var STRATEGIES = {
+  range: 'Range sharding\n\nMechanism: shard = first shard where shard_max >= key_value\n  user_id 1-1M        → Shard 0\n  user_id 1M-2M       → Shard 1\n  user_id 2M-3M       → Shard 2\n\nAdvantages:\n  + Simple to understand and implement\n  + Range queries stay on one shard (WHERE user_id BETWEEN 1M AND 1.5M)\n  + Easy to archive old shards\n\nDisadvantages:\n  - Sequential writes always hot on the highest shard\n  - Rebalancing requires moving large ranges of data\n  - Uneven distribution if active users cluster in specific ranges\n\nBest for: time-series, where newest data is hottest and you accept the last-shard hot write.',
+  hash: 'Hash sharding\n\nMechanism: shard = hash(key) % num_shards\n  user_id 123  → hash(123) % 4 = 3 → Shard 3\n  user_id 124  → hash(124) % 4 = 1 → Shard 1\n  user_id 125  → hash(125) % 4 = 0 → Shard 0\n\nAdvantages:\n  + Excellent write distribution — no sequential hotspot\n  + Easy to implement\n\nDisadvantages:\n  - Adding shards invalidates ALL existing assignments (hash(key) % 5 ≠ hash(key) % 4)\n  - Resharding requires moving ~all data when shard count changes\n  - Range queries are cross-shard scatter-gather\n\nBest for: fixed shard count, uniform key space, no range queries.',
+  consistent_hash: 'Consistent hashing\n\nMechanism: keys and shards placed on a virtual ring (0..2^32)\n  hash(key) → position on ring → clockwise to nearest shard\n\n  Ring: Shard0 at 10, Shard1 at 85, Shard2 at 180, Shard3 at 270\n  key→hash=50  → clockwise to Shard1 (at 85)\n  key→hash=200 → clockwise to Shard3 (at 270)\n\nAdvantages:\n  + Adding 1 shard only moves ~1/N of keys (not all keys like simple hash)\n  + Nodes added/removed gracefully\n  + No full resharding needed for scaling\n\nDisadvantages:\n  - More complex to implement correctly\n  - Virtual nodes (vnodes) needed to prevent uneven ring segments\n\nBest for: systems that need to add/remove shards without full resharding.\nUsed by: Cassandra, DynamoDB, Redis Cluster.',
+  directory: 'Directory (lookup table) sharding\n\nMechanism:\n  central_lookup_db: {tenant_id → shard_id}\n  tenant_id=bigcorp → shard_cluster_5 (dedicated, extra capacity)\n  tenant_id=smallco → shard_2\n\nQuery flow:\n  1. Application looks up shard for key in Redis (cached lookup, ~0.5ms)\n  2. Queries the mapped shard directly\n\nAdvantages:\n  + Complete flexibility in assignment — whales get dedicated shards\n  + Move tenants between shards by updating lookup (no data migration needed immediately)\n  + Can balance by tenant tier, region, size\n\nDisadvantages:\n  - Lookup table is a critical dependency (must be highly available)\n  - Extra network hop per query (mitigated by caching)\n  - Must keep lookup consistent with actual data placement\n\nBest for: multi-tenant SaaS, where tenant size varies wildly.\nUsed by: Shopify (pod architecture), Stripe.',
+};
+function showStrategy(key) {
+  document.getElementById('strategy-output').textContent = STRATEGIES[key];
+}
+
+// ── VIZ 5: Hotspot ──
+var HOTSPOT_DATA = {
+  balanced:   { loads: [24, 27, 23, 26], labels: ['Shard 0', 'Shard 1', 'Shard 2', 'Shard 3'], msg: '✓ Balanced distribution — hash-based shard key working correctly.\nAll shards receiving roughly equal traffic.\nNo hotspots. System scales linearly.' },
+  city_skew:  { loads: [74, 10, 9, 7], labels: ['Mumbai\n(hot!)', 'Delhi', 'Bangalore', 'Other'], msg: '⚠ City skew hotspot\nMumbai shard at 74% capacity. Will be first to fail.\nOther shards at ~9% — wasted capacity.\n\nFix: do NOT shard by city. Use hash(user_id) — Mumbai users\nare spread evenly across all shards.' },
+  viral:      { loads: [20, 91, 19, 20], labels: ['Shard 0', 'Shard 1\n(viral!)', 'Shard 2', 'Shard 3'], msg: '⚠ Viral event hotspot\nA celebrity\'s content (all on Shard 1) is going viral.\nShard 1 at 91% — approaching failure threshold.\n\nShort-term mitigation: cache aggressively in Redis.\nLong-term: content distribution should have been hashed, not ranged.' },
+  sequential: { loads: [5, 8, 12, 95], labels: ['Shard 0\n(oldest)', 'Shard 1', 'Shard 2', 'Shard 3\n(all new writes!)'], msg: '⚠ Sequential insert hotspot\nAll new rows go to Shard 3 (highest ID range).\nShards 0-2 are cold history. Shard 3 absorbs 100% of writes.\n\nThis is the most common sharding mistake.\nFix: hash(id) instead of range(id) as the shard key.' },
+  whale:      { loads: [89, 3, 4, 4], labels: ['BigCorp\n(whale!)', 'Shard 1', 'Shard 2', 'Shard 3'], msg: '⚠ Whale tenant hotspot\nBigCorp (tenant_id=1) has 89% of the data/traffic.\nTheir shard is overwhelmed. All other tenants share remaining 3 shards.\n\nFix: directory sharding — assign BigCorp to a dedicated shard cluster.\nThe lookup table maps bigcorp → shard_cluster_dedicated_5\nOther tenants share normal shard pool.' },
+};
+function setHotspot(key) {
+  var d = HOTSPOT_DATA[key];
+  var grid = document.getElementById('hotspot-grid');
+  grid.innerHTML = d.loads.map(function(load, i) {
+    var col = load > 60 ? 'var(--red)' : load > 40 ? 'var(--orange)' : 'var(--green)';
+    return '<div class="shard-node ' + (load > 60 ? 'hot' : load < 10 ? 'empty' : 'normal') + '">' +
+      '<div class="shard-label">' + d.labels[i] + '</div>' +
+      '<div class="shard-bar"><div class="shard-bar-fill" style="width:' + load + '%;background:' + col + '"></div></div>' +
+      '<div class="shard-value" style="color:' + col + '">' + load + '%</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('hotspot-output').textContent = d.msg;
+}
+
+// ── VIZ 6: Cross-shard cost ──
+function calcCrossQuery() {
+  var ns = parseInt(document.getElementById('num-shards').value);
+  var qt = parseInt(document.getElementById('shard-qt').value);
+  document.getElementById('ns-val').textContent = ns;
+  document.getElementById('sq-val').textContent = qt + 'ms';
+
+  var singleShardTime = qt;
+  var scatterTime = qt + Math.round(Math.log2(ns) * 2); // merge overhead
+  var rowsPerShard = 100;
+  var totalRowsFetched = rowsPerShard * ns;
+  var rowsDiscarded = totalRowsFetched - rowsPerShard;
+
+  document.getElementById('cross-query-output').innerHTML = [
+    'Configuration: ' + ns + ' shards, ' + qt + 'ms per shard',
+    '',
+    'Single-shard query (by shard key):',
+    '  Latency: <span style="color:var(--green)">' + singleShardTime + 'ms</span>  (hits 1 of ' + ns + ' shards)',
+    '  Rows fetched: exactly what you need',
+    '',
+    'Cross-shard scatter-gather (no shard key filter):',
+    '  Latency: <span style="color:' + (scatterTime > 200 ? 'var(--red)' : 'var(--orange)') + '">' + scatterTime + 'ms</span>  (max of parallel shard queries + merge)',
+    '  Shards queried: ALL ' + ns,
+    '  Rows fetched: ' + totalRowsFetched + ' (to find global top-' + rowsPerShard + ')',
+    '  Rows discarded: ' + rowsDiscarded + ' (' + Math.round(rowsDiscarded/totalRowsFetched*100) + '% wasted)',
+    '',
+    ns > 16
+      ? '<span style="color:var(--red)">⚠ At ' + ns + ' shards, scatter-gather queries are significant overhead.\n  Minimise cross-shard queries in your access patterns.\n  Consider a query cache or pre-aggregated summary tables.</span>'
+      : '<span style="color:var(--orange)">Cross-shard queries are ' + Math.round(scatterTime/singleShardTime*10)/10 + '× slower than single-shard.\n  Acceptable if rare. Eliminate if in hot path.</span>',
+  ].join('\n');
+}
+
+// ── VIZ 7: Citus comparison ──
+var CITUS_COMP = {
+  routing: 'Query routing\n\nManual sharding:\n  - Application must determine correct shard for every query\n  - Shard key logic duplicated in every service that touches the DB\n  - Cross-shard queries require custom fan-out code per query type\n  - Single-shard queries need awareness of routing logic\n\nCitus:\n  - Application connects to coordinator as a single PostgreSQL endpoint\n  - Coordinator rewrites queries and routes automatically\n  - Standard SQL — no awareness of shards in application code\n  - Cross-shard queries work, just slower (coordinator handles fan-out)\n  - Application can ignore sharding exists for most queries',
+  joins: 'Cross-table JOINs\n\nManual sharding:\n  - JOINs across shards must be done in application code\n  - Fetch from shard A, fetch from shard B, JOIN in memory\n  - Impractical for large result sets\n  - Forces denormalization to avoid cross-shard JOINs\n\nCitus:\n  - Co-located tables: JOIN runs entirely within one shard (single worker)\n    Requires same distribution column on both tables\n  - Reference tables: replicated to every worker, JOINs always local\n    Used for: currencies, countries, product categories\n  - Non-co-located: coordinator fetches from both shards, joins in memory\n    Works but slower — minimize these in schema design',
+  rebalance: 'Shard rebalancing\n\nManual sharding:\n  - Resharding requires application-level double-write\n  - Must quiesce writes during final cutover\n  - Multi-day operation for large datasets\n  - Very high risk — data integrity verification complex\n\nCitus:\n  SELECT citus_rebalance_start();\n  SELECT * FROM citus_rebalance_status();\n  -- Automatically moves shards between workers online\n  -- Background operation, no application downtime\n  -- Verifies data before removing from old worker\n  -- Progress visible via citus_rebalance_status()\n\nSignificant operational advantage of Citus over manual sharding.',
+  monitoring: 'Monitoring\n\nManual sharding:\n  - Monitor N individual databases separately\n  - Aggregate metrics in application / monitoring layer\n  - Schema changes must be applied to N databases separately\n  - pg_stat_statements per shard, not aggregate\n\nCitus:\n  -- Aggregate stats across all shards from coordinator:\n  SELECT * FROM citus_stat_statements;\n  SELECT * FROM citus_shard_sizes();\n  SELECT shardid, shard_name, citus_table_type FROM citus_shards;\n  \n  -- Schema changes propagate to all shards automatically:\n  ALTER TABLE orders ADD COLUMN metadata JSONB;\n  -- Applied to all shard tables on all workers in one command',
+  limits: 'Citus limitations\n\nNOT suitable for:\n  - Queries with no distribution column filter (scatter-gathers all shards)\n  - Complex aggregations that Citus can\'t parallelize efficiently\n  - Tables without a natural distribution column\n  - Extremely low-latency requirements (coordinator hop adds ~1ms)\n\nRequires:\n  - wal_level = logical on all workers\n  - Careful schema design (co-location planning upfront)\n  - PG version compatibility (Citus releases follow PG versions)\n\nGolden rule:\n  Every frequently-accessed table should either:\n  A) Be distributed by the same key as the tables it\'s JOINed with\n  B) Be a reference table (replicated, small, rarely written)\n  C) Be accessed only by primary key (routing is automatic)',
+};
+function showCitusComp(key) {
+  document.getElementById('citus-comp-output').textContent = CITUS_COMP[key];
+}
+
+// ── VIZ 8: Partition vs shard ──
+var PVS = {
+  small_old: 'Situation: 5M rows, table is 6 months old\n\nRecommendation: NEITHER — optimize first\n\n5M rows is small by modern database standards.\nA well-indexed table of this size should handle thousands of queries/second.\n\nBefore any structural change:\n1. EXPLAIN ANALYZE your slowest queries\n2. Add any missing indexes\n3. Check for N+1 query patterns in the application\n\nPartitioning at this scale adds overhead (partition routing) without meaningful benefit.\nSharding at this scale is premature by years.',
+  large_time: 'Situation: 500M rows, time-series data\n\nRecommendation: PARTITION (not shard)\n\nClassic time-series partitioning use case:\n  PARTITION BY RANGE (created_at) — monthly partitions\n\nBenefits:\n  - Queries for "last 7 days" touch 1-2 partitions (not 500M rows)\n  - Old partitions (> 1 year) can be archived/dropped instantly\n  - No application changes needed for time-filtered queries\n  - Single database, no distributed system complexity\n\nNext step if this isn\'t enough:\n  Partition pruning + read replicas can handle 10B+ rows\n  before sharding becomes necessary.',
+  write_bound: 'Situation: write throughput exceeds what one primary can sustain\n\nRecommendation: SHARD (with care)\n\nThis is the genuine sharding use case.\nReplicas don\'t help — all writes go to primary.\nPartitioning doesn\'t help — still one primary.\n\nAction:\n1. Measure actual write throughput ceiling (pgbench -T 60 -c 50)\n2. Identify the write-heavy tables\n3. Choose shard key: what do most writes include? (user_id, tenant_id)\n4. Start with 2 shards — can always add more\n5. Verify write throughput doubles as expected\n\nIf writes are bursty: consider Citus — it distributes writes across workers\nautomatically without application-level shard routing.',
+  multi_tenant: 'Situation: multi-tenant SaaS, 10K tenants\n\nRecommendation: PARTITION now, SHARD later (if needed)\n\nAt 10K tenants, Postgres handles this well with good indexing.\nIf tenant data is time-series: partition by (tenant_id, month) with hash subpartitioning.\n\nIf you grow to 100K+ tenants with large customers:\n→ Shard by tenant_id with directory mapping\n→ Large tenants get dedicated shards\n→ Small tenants share shard pools\n\nCitus is particularly well-suited here:\n  SELECT create_distributed_table(\'orders\', \'tenant_id\');\n  Large tenants can be isolated to specific workers via shard placement.',
+  analytics: 'Situation: analytics / OLAP workload\n\nRecommendation: PARTITION (but consider a dedicated analytics DB)\n\nAnalytics workloads have different characteristics:\n  - Large full-scans are expected and OK\n  - Queries often aggregate across all tenants/users\n  - Result latency of seconds is acceptable\n\nPartitioning wins here:\n  - Drop old partitions to manage data volume\n  - Parallel query across partitions (PostgreSQL can parallelize within partitions)\n  - Partition elimination for time-bounded reports\n\nBetter option: dedicated analytics replica or data warehouse (Redshift, BigQuery).\nOLAP queries on the same database as OLTP writes creates resource contention.\nThe write-side DB should be optimized for OLTP; analytics should move to a separate system.',
+};
+function showPartVsShard(key) {
+  document.getElementById('part-vs-shard-output').textContent = PVS[key];
+}
+
+// Init
+shardDecision('read_heavy');
+showPruning('range_current');
+setShardKey('user_id', document.getElementById('sk-uid'));
+showStrategy('range');
+setHotspot('balanced');
+calcCrossQuery();
+showCitusComp('routing');
+showPartVsShard('large_time');
+</script>
+</body>
+</html>

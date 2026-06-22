@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 12 Deep Dive: pg_partman, Citus Setup, Consistent Hashing</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}.ty{color:#e06c75}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day12" class="back-link">&#8592; Day 12: Sharding &amp; Partitioning</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 12 · Sharding &amp; Partitioning · Deep Dive</div>
+  <h1>pg_partman automation,<br>Citus full setup,<br>&amp; <em>consistent hashing in code</em></h1>
+  <p>The main lesson covered when to partition vs shard, how to choose a shard key, and sharding strategies. This page covers the implementation: automated partition management with pg_partman, a complete Citus coordinator+worker deployment, and a from-scratch consistent hashing implementation in TypeScript.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">pg_partman — automated partition management</span><span class="deep-topic-sub">— setup, scheduling, retention, maintenance</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Citus full deployment</span><span class="deep-topic-sub">— coordinator + workers, distributed tables, rebalancing</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Consistent hashing implementation</span><span class="deep-topic-sub">— virtual nodes, ring-based routing, adding shards</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>pg_partman:<br><em>automated partition lifecycle</em></h2>
+  <p class="lead">pg_partman automates the three things that make partitioning painful in production: creating future partitions before they're needed, maintaining indexes on new partitions, and dropping or archiving old partitions past their retention period. Without it, you manually create partitions monthly and eventually forget — and PostgreSQL returns "no partition for value" errors on insert.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">pg_partman — complete setup and configuration</span><span class="code-block-lang">SQL + BASH</span></div>
+    <pre><span class="cm">-- ── Install pg_partman ─────────────────────────────────────────</span>
+<span class="cm">-- On Ubuntu/Debian:</span>
+<span class="cm">-- apt install postgresql-16-partman</span>
+<span class="cm">-- On RDS: enable in parameter group: shared_preload_libraries = 'pg_partman_bgw'</span>
+
+CREATE SCHEMA partman;
+CREATE EXTENSION pg_partman SCHEMA partman;
+
+<span class="cm">-- ── Create the parent partitioned table ─────────────────────────</span>
+CREATE TABLE events (
+  id         BIGSERIAL,
+  tenant_id  BIGINT NOT NULL,
+  event_type TEXT NOT NULL,
+  payload    JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+) PARTITION BY RANGE (created_at);
+
+<span class="cm">-- ── Hand off to pg_partman ──────────────────────────────────────</span>
+SELECT partman.create_parent(
+  p_parent_table   := 'public.events',
+  p_control        := 'created_at',     <span class="cm">-- partition key column</span>
+  p_type           := 'range',           <span class="cm">-- range or list</span>
+  p_interval       := 'monthly',         <span class="cm">-- or: weekly, daily, hourly, '7 days', '4 hours'</span>
+  p_premake        := 4,                 <span class="cm">-- pre-create 4 future partitions</span>
+  p_start_partition := '2024-01-01',     <span class="cm">-- start of partition history</span>
+  p_automatic_maintenance := 'on'        <span class="cm">-- enable background maintenance</span>
+);
+
+<span class="cm">-- ── Create indexes on all partitions (past and future) ──────────</span>
+<span class="cm">-- pg_partman 5.x: use template tables for future partition indexes</span>
+CREATE TABLE public.events_template (LIKE public.events);
+CREATE INDEX ON public.events_template (tenant_id, created_at DESC);
+CREATE INDEX ON public.events_template (event_type, created_at DESC);
+<span class="cm">-- New partitions inherit template's indexes automatically</span>
+
+<span class="cm">-- ── Retention policy (auto-drop old partitions) ─────────────────</span>
+UPDATE partman.part_config
+SET retention = '12 months',           <span class="cm">-- drop partitions older than 12 months</span>
+    retention_keep_table = false,       <span class="cm">-- actually drop (not just detach)</span>
+    retention_keep_index = false        <span class="cm">-- drop indexes with the partition</span>
+WHERE parent_table = 'public.events';
+
+<span class="cm">-- OR: detach rather than drop (keep data accessible as standalone table)</span>
+UPDATE partman.part_config
+SET retention = '12 months',
+    retention_keep_table = true         <span class="cm">-- detach and rename, don't drop</span>
+WHERE parent_table = 'public.events';
+
+<span class="cm">-- ── Schedule maintenance ─────────────────────────────────────────</span>
+<span class="cm">-- Option A: pg_partman background worker (add to postgresql.conf)</span>
+<span class="cm">-- shared_preload_libraries = 'pg_partman_bgw'</span>
+<span class="cm">-- pg_partman_bgw.interval = 3600   -- run every hour</span>
+<span class="cm">-- pg_partman_bgw.role = 'partman'</span>
+
+<span class="cm">-- Option B: pg_cron job (if pg_cron is available)</span>
+SELECT cron.schedule('partition-maintenance', '0 * * * *',
+  'SELECT partman.run_maintenance_proc()');
+
+<span class="cm">-- Option C: external cron job</span>
+<span class="cm">-- */30 * * * * psql -c "SELECT partman.run_maintenance_proc()" >> /var/log/partman.log 2>&1</span>
+
+<span class="cm">-- ── Verify state ─────────────────────────────────────────────────</span>
+SELECT parent_table, partition_interval, retention, premake, last_partition
+FROM partman.part_config;
+
+<span class="cm">-- List all partitions and their sizes</span>
+SELECT
+  child.relname AS partition,
+  pg_size_pretty(pg_relation_size(child.oid)) AS size,
+  pg_get_expr(child.relpartbound, child.oid) AS bounds
+FROM pg_inherits
+JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN pg_class child  ON pg_inherits.inhrelid  = child.oid
+WHERE parent.relname = 'events'
+ORDER BY child.relname;
+
+<span class="cm">-- Run maintenance manually (useful for testing retention/premake)</span>
+SELECT partman.run_maintenance('public.events', p_analyze := true);</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify pg_partman is running correctly</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Future partitions exist: <code>SELECT relname FROM pg_class WHERE relname LIKE 'events_2024%' ORDER BY relname DESC LIMIT 5</code> — should show partitions several months ahead.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Partition pruning works: <code>EXPLAIN SELECT * FROM events WHERE created_at > now()-interval '7 days'</code> — should show 1-2 partitions, not all of them.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Maintenance is running: <code>SELECT last_partition, last_run FROM partman.part_config WHERE parent_table = 'public.events'</code> — last_run should be recent.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Old partitions being dropped: check that partitions older than retention period don't exist.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Citus full deployment:<br><em>coordinator + workers</em></h2>
+  <p class="lead">Citus turns your PostgreSQL cluster into a distributed database. The coordinator routes queries and stores shard metadata; workers store the actual sharded data. This is the minimal viable Citus deployment for a B2B SaaS application.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Citus deployment — docker-compose + full schema setup</span><span class="code-block-lang">YAML + SQL</span></div>
+    <pre><span class="cm"># docker-compose.yml — development Citus cluster</span>
+version: '3.8'
+services:
+  coordinator:
+    image: citusdata/citus:12.1
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      CITUS_HOST: coordinator
+    volumes:
+      - coordinator_data:/var/lib/postgresql/data
+
+  worker-1:
+    image: citusdata/citus:12.1
+    environment:
+      POSTGRES_PASSWORD: password
+    volumes:
+      - worker1_data:/var/lib/postgresql/data
+
+  worker-2:
+    image: citusdata/citus:12.1
+    environment:
+      POSTGRES_PASSWORD: password
+    volumes:
+      - worker2_data:/var/lib/postgresql/data
+
+  worker-3:
+    image: citusdata/citus:12.1
+    environment:
+      POSTGRES_PASSWORD: password
+    volumes:
+      - worker3_data:/var/lib/postgresql/data
+
+volumes:
+  coordinator_data: {}
+  worker1_data: {}
+  worker2_data: {}
+  worker3_data: {}
+
+---
+<span class="cm">-- ── Connect to coordinator and set up cluster ───────────────────</span>
+<span class="cm">-- psql -h localhost -U postgres</span>
+
+CREATE EXTENSION citus;
+
+<span class="cm">-- Register workers</span>
+SELECT citus_add_node('worker-1', 5432);
+SELECT citus_add_node('worker-2', 5432);
+SELECT citus_add_node('worker-3', 5432);
+
+<span class="cm">-- Verify cluster</span>
+SELECT * FROM citus_get_active_worker_nodes();
+
+<span class="cm">-- ── Multi-tenant SaaS schema ─────────────────────────────────────</span>
+
+<span class="cm">-- Reference table: small, replicated to every worker</span>
+CREATE TABLE plans (
+  id       BIGINT PRIMARY KEY,
+  name     TEXT NOT NULL,
+  max_users INT,
+  features JSONB
+);
+SELECT create_reference_table('plans');
+INSERT INTO plans VALUES (1, 'starter', 5, '{"api":true}'), (2, 'pro', 50, '{"api":true,"sso":true}');
+
+<span class="cm">-- Distributed table: sharded by tenant_id</span>
+CREATE TABLE tenants (
+  id         BIGINT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  plan_id    BIGINT REFERENCES plans(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+SELECT create_distributed_table('tenants', 'id');
+
+<span class="cm">-- Co-locate all tables with tenants → JOINs are local to one shard</span>
+CREATE TABLE users (
+  id         BIGSERIAL,
+  tenant_id  BIGINT NOT NULL,
+  email      TEXT NOT NULL,
+  name       TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (id, tenant_id)           <span class="cm">-- partition key must be in PK for Citus</span>
+);
+SELECT create_distributed_table('users', 'tenant_id', colocate_with := 'tenants');
+
+CREATE TABLE orders (
+  id         BIGSERIAL,
+  tenant_id  BIGINT NOT NULL,
+  user_id    BIGINT NOT NULL,
+  amount     BIGINT,
+  status     TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (id, tenant_id)
+);
+SELECT create_distributed_table('orders', 'tenant_id', colocate_with := 'tenants');
+
+<span class="cm">-- This JOIN is shard-local (all co-located by tenant_id):</span>
+SELECT u.name, count(o.id) AS order_count
+FROM users u
+JOIN orders o ON u.id = o.user_id AND u.tenant_id = o.tenant_id
+WHERE u.tenant_id = 42
+GROUP BY u.name
+ORDER BY order_count DESC;
+<span class="cm">-- ↑ Executes entirely on one worker shard — no cross-shard traffic</span>
+
+<span class="cm">-- ── Monitoring shard balance ─────────────────────────────────────</span>
+SELECT
+  nodename,
+  count(*) AS shard_count,
+  pg_size_pretty(sum(shard_size)) AS total_size
+FROM citus_shard_sizes() cs
+JOIN pg_dist_placement p ON cs.shardid = p.shardid
+JOIN pg_dist_node n ON p.groupid = n.groupid
+GROUP BY nodename
+ORDER BY total_size DESC;
+
+<span class="cm">-- ── Rebalance shards (moves shards between workers online) ───────</span>
+SELECT citus_rebalance_start();
+SELECT * FROM citus_rebalance_status();  <span class="cm">-- monitor progress</span>
+<span class="cm">-- Wait for STATUS = 'complete' before considering it done</span>
+
+<span class="cm">-- ── Schema changes propagate to all shards ───────────────────────</span>
+ALTER TABLE orders ADD COLUMN metadata JSONB;
+<span class="cm">-- Citus applies this to all shards on all workers automatically</span>
+<span class="cm">-- No need to run on each worker separately</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Consistent hashing:<br><em>implementation from scratch</em></h2>
+  <p class="lead">Consistent hashing allows adding or removing shards without reassigning most keys. Instead of <code>hash(key) % N</code>, keys and nodes are placed on a virtual ring. Adding a new node only moves the keys between that node and its predecessor — roughly 1/N of all keys.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Consistent hashing — complete TypeScript implementation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> * <span class="kw">as</span> crypto <span class="kw">from</span> <span class="str">'crypto'</span>;
+<span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+
+<span class="kw">class</span> <span class="ty">ConsistentHashRing</span> {
+  <span class="kw">private</span> ring: Map&lt;<span class="ty">number</span>, <span class="ty">string</span>&gt; = <span class="kw">new</span> Map(); <span class="cm">// hash → node name</span>
+  <span class="kw">private</span> sortedHashes: <span class="ty">number</span>[] = [];
+  <span class="kw">private</span> VIRTUAL_NODES = 150; <span class="cm">// virtual nodes per physical shard</span>
+  <span class="cm">// More vnodes = more even distribution but more memory</span>
+
+  <span class="fn">addNode</span>(nodeName: <span class="ty">string</span>): <span class="ty">void</span> {
+    <span class="kw">for</span> (<span class="kw">let</span> i = 0; i &lt; <span class="kw">this</span>.VIRTUAL_NODES; i++) {
+      <span class="kw">const</span> <span class="var">virtualKey</span> = `\${nodeName}:vnode:\${i}`;
+      <span class="kw">const</span> <span class="var">hash</span> = <span class="kw">this</span>.<span class="fn">hash</span>(virtualKey);
+      <span class="kw">this</span>.ring.<span class="fn">set</span>(hash, nodeName);
+    }
+    <span class="cm">// Re-sort after adding node</span>
+    <span class="kw">this</span>.sortedHashes = <span class="fn">Array</span>.from(<span class="kw">this</span>.ring.keys()).<span class="fn">sort</span>((a, b) => a - b);
+  }
+
+  <span class="fn">removeNode</span>(nodeName: <span class="ty">string</span>): <span class="ty">void</span> {
+    <span class="kw">for</span> (<span class="kw">const</span> [hash, name] <span class="kw">of</span> <span class="kw">this</span>.ring) {
+      <span class="kw">if</span> (name === nodeName) <span class="kw">this</span>.ring.<span class="fn">delete</span>(hash);
+    }
+    <span class="kw">this</span>.sortedHashes = <span class="fn">Array</span>.from(<span class="kw">this</span>.ring.keys()).<span class="fn">sort</span>((a, b) => a - b);
+  }
+
+  <span class="fn">getNode</span>(key: <span class="ty">string</span>): <span class="ty">string</span> {
+    <span class="kw">if</span> (<span class="kw">this</span>.ring.size === 0) <span class="kw">throw new</span> <span class="ty">Error</span>(<span class="str">'Ring is empty'</span>);
+    <span class="kw">const</span> <span class="var">keyHash</span> = <span class="kw">this</span>.<span class="fn">hash</span>(key);
+
+    <span class="cm">// Binary search: find first ring position >= keyHash</span>
+    <span class="kw">let</span> lo = 0, hi = <span class="kw">this</span>.sortedHashes.length - 1;
+    <span class="kw">while</span> (lo &lt; hi) {
+      <span class="kw">const</span> <span class="var">mid</span> = Math.<span class="fn">floor</span>((lo + hi) / 2);
+      <span class="kw">if</span> (<span class="kw">this</span>.sortedHashes[mid] &lt; keyHash) lo = mid + 1;
+      <span class="kw">else</span> hi = mid;
+    }
+
+    <span class="cm">// Wrap around (key > all nodes → use first node)</span>
+    <span class="kw">const</span> <span class="var">idx</span> = <span class="kw">this</span>.sortedHashes[lo] &gt;= keyHash ? lo : 0;
+    <span class="kw">return</span> <span class="kw">this</span>.ring.<span class="fn">get</span>(<span class="kw">this</span>.sortedHashes[idx])!;
+  }
+
+  <span class="kw">private</span> <span class="fn">hash</span>(key: <span class="ty">string</span>): <span class="ty">number</span> {
+    <span class="kw">const</span> <span class="var">buf</span> = crypto.<span class="fn">createHash</span>(<span class="str">'md5'</span>).<span class="fn">update</span>(key).<span class="fn">digest</span>();
+    <span class="cm">// Take first 4 bytes as unsigned 32-bit int</span>
+    <span class="kw">return</span> buf.<span class="fn">readUInt32BE</span>(0);
+  }
+
+  <span class="fn">getDistribution</span>(): Map&lt;<span class="ty">string</span>, <span class="ty">number</span>&gt; {
+    <span class="kw">const</span> <span class="var">counts</span> = <span class="kw">new</span> Map&lt;<span class="ty">string</span>, <span class="ty">number</span>&gt;();
+    <span class="kw">for</span> (<span class="kw">const</span> node <span class="kw">of</span> <span class="kw">this</span>.ring.values()) {
+      counts.<span class="fn">set</span>(node, (counts.<span class="fn">get</span>(node) || 0) + 1);
+    }
+    <span class="kw">return</span> counts;
+  }
+}
+
+<span class="cm">// ── Usage: Database shard router ────────────────────────────────</span>
+<span class="kw">class</span> <span class="ty">ShardRouter</span> {
+  <span class="kw">private</span> ring = <span class="kw">new</span> <span class="ty">ConsistentHashRing</span>();
+  <span class="kw">private</span> pools = <span class="kw">new</span> Map&lt;<span class="ty">string</span>, <span class="ty">Pool</span>&gt;();
+
+  <span class="fn">constructor</span>(shards: { name: <span class="ty">string</span>; connString: <span class="ty">string</span> }[]) {
+    <span class="kw">for</span> (<span class="kw">const</span> shard <span class="kw">of</span> shards) {
+      <span class="kw">this</span>.ring.<span class="fn">addNode</span>(shard.name);
+      <span class="kw">this</span>.pools.<span class="fn">set</span>(shard.name, <span class="kw">new</span> <span class="ty">Pool</span>({ connectionString: shard.connString }));
+    }
+  }
+
+  <span class="fn">getPool</span>(shardKey: <span class="ty">string</span>): <span class="ty">Pool</span> {
+    <span class="kw">const</span> <span class="var">nodeName</span> = <span class="kw">this</span>.ring.<span class="fn">getNode</span>(shardKey);
+    <span class="kw">return</span> <span class="kw">this</span>.pools.<span class="fn">get</span>(nodeName)!;
+  }
+
+  <span class="kw">async</span> <span class="fn">addShard</span>(name: <span class="ty">string</span>, connString: <span class="ty">string</span>): <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt; {
+    <span class="cm">// 1. Add shard to ring — now some keys route here</span>
+    <span class="kw">this</span>.ring.<span class="fn">addNode</span>(name);
+    <span class="kw">this</span>.pools.<span class="fn">set</span>(name, <span class="kw">new</span> <span class="ty">Pool</span>({ connectionString: connString }));
+    <span class="cm">// 2. ~1/N of existing keys now route to new shard</span>
+    <span class="cm">// 3. Must migrate those rows from old shards to new shard</span>
+    <span class="cm">// 4. This is the "resharding" work: backfill → verify → update ring</span>
+  }
+
+  <span class="fn">getDistribution</span>() {
+    <span class="kw">return</span> <span class="kw">this</span>.ring.<span class="fn">getDistribution</span>();
+  }
+}
+
+<span class="cm">// Demo: adding a 4th shard only moves 25% of keys</span>
+<span class="kw">const</span> <span class="var">router</span> = <span class="kw">new</span> <span class="ty">ShardRouter</span>([
+  { name: <span class="str">'shard-0'</span>, connString: <span class="str">'postgresql://shard0...'</span> },
+  { name: <span class="str">'shard-1'</span>, connString: <span class="str">'postgresql://shard1...'</span> },
+  { name: <span class="str">'shard-2'</span>, connString: <span class="str">'postgresql://shard2...'</span> },
+]);
+<span class="cm">// Before: keys distributed across 3 shards (~33% each)</span>
+<span class="cm">// After addShard('shard-3'):</span>
+<span class="cm">//   shard-0: ~25%, shard-1: ~25%, shard-2: ~25%, shard-3: ~25%</span>
+<span class="cm">//   Only ~8% of keys actually MOVED (from each old shard to new)</span>
+<span class="cm">//   vs hash(key) % N: adding one shard reassigns ~75% of all keys</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify consistent hashing is working correctly</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Distribution is even: call <code>router.getDistribution()</code> and verify no shard has more than 1.5× the keys of the smallest shard.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Same key always routes to the same shard: <code>router.getPool('user:123') === router.getPool('user:123')</code> must be true across process restarts.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Adding a shard moves ~1/N of keys: before adding: note which shard <code>getPool('user:500')</code> returns. After adding: most keys still return the same shard.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Virtual node count ≥ 100: fewer vnodes causes uneven distribution. Test with 10 vnodes vs 150 and compare the spread.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
