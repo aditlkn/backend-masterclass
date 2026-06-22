@@ -129,6 +129,18 @@
     {
       "source": "/day09/deep",
       "destination": "/day09/deep.html"
+    },
+    {
+      "source": "/day10",
+      "destination": "/day10/index.html"
+    },
+    {
+      "source": "/day10/lab",
+      "destination": "/day10/lab.html"
+    },
+    {
+      "source": "/day10/deep",
+      "destination": "/day10/deep.html"
     }
   ]
 }

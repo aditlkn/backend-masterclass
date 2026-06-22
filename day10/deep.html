@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 10 Deep Dive: Patroni Config, pg_rewind, Logical Replication</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day10" class="back-link">&#8592; Day 10: Database Replication</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 10 · Database Replication · Deep Dive</div>
+  <h1>Patroni config,<br>pg_rewind,<br>&amp; <em>logical replication pub/sub</em></h1>
+  <p>The main lesson explained how replication works and what to do during failover. This page covers the implementation: a complete Patroni configuration file with every parameter annotated, the pg_rewind walkthrough for repairing a failed primary, and a full logical replication pub/sub setup with CDC using wal2json.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Full Patroni configuration</span><span class="deep-topic-sub">— patroni.yml with every setting explained, etcd DCS, callbacks</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">pg_rewind — repairing a failed primary</span><span class="deep-topic-sub">— when to use it, the full procedure, what can go wrong</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Logical replication pub/sub + CDC</span><span class="deep-topic-sub">— publication, subscription, wal2json, Debezium integration</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: PATRONI -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Full Patroni configuration:<br><em>every parameter explained</em></h2>
+  <p class="lead">Patroni is the most widely used PostgreSQL HA framework. Its YAML configuration is dense and its parameters interact in non-obvious ways. Here's a complete production configuration with every setting annotated.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete patroni.yml — production-ready, fully annotated</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># /etc/patroni/patroni.yml</span>
+<span class="cm"># Run on EVERY node in the cluster (primary + all replicas)</span>
+<span class="cm"># Each node has its own file with its own name/address</span>
+
+scope: my-postgres-cluster     <span class="cm"># cluster name — must be same on all nodes</span>
+namespace: /db/                <span class="cm"># etcd key prefix for this cluster's data</span>
+name: postgres-node-1          <span class="cm"># THIS node's name — unique per node</span>
+
+<span class="cm"># ── Distributed Configuration Store (DCS) ──────────────────────</span>
+etcd3:                         <span class="cm"># or: etcd, consul, zookeeper</span>
+  hosts:
+    - etcd1.internal:2379
+    - etcd2.internal:2379
+    - etcd3.internal:2379      <span class="cm"># 3-node etcd for quorum. Never use 1 node.</span>
+  ttl: 30                      <span class="cm"># leader key TTL in seconds</span>
+                               <span class="cm"># if primary misses heartbeat for 30s, key expires</span>
+  loop_wait: 10                <span class="cm"># heartbeat interval (must be < ttl)</span>
+  retry_timeout: 10            <span class="cm"># timeout for DCS operations</span>
+
+<span class="cm"># ── REST API (for patronictl and monitoring) ────────────────────</span>
+restapi:
+  listen: 0.0.0.0:8008         <span class="cm"># Patroni REST API port</span>
+  connect_address: 10.0.0.1:8008  <span class="cm"># THIS node's address for the REST API</span>
+  authentication:
+    username: patroni
+    password: ${PATRONI_API_PASSWORD}
+
+<span class="cm"># ── Bootstrap (first-time cluster initialization) ──────────────</span>
+bootstrap:
+  dcs:                         <span class="cm"># DCS-stored cluster config (shared, not per-node)</span>
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  <span class="cm"># 1MB: don't promote replica lagging more than this</span>
+    postgresql:
+      use_pg_rewind: true      <span class="cm"># use pg_rewind to repair old primary on rejoin</span>
+      use_slots: true          <span class="cm"># use replication slots (ensures no WAL loss)</span>
+      parameters:
+        wal_level: replica
+        hot_standby: "on"
+        wal_keep_size: 1024    <span class="cm"># 1GB fallback WAL retention</span>
+        max_wal_senders: 10
+        max_replication_slots: 10
+        wal_log_hints: "on"    <span class="cm"># required for pg_rewind</span>
+        synchronous_commit: "on"
+        synchronous_standby_names: "ANY 1 (postgres-node-2, postgres-node-3)"
+
+  initdb:                      <span class="cm"># only used for first-time cluster init</span>
+    - encoding: UTF8
+    - data-checksums           <span class="cm"># required for pg_rewind. Always enable.</span>
+
+  pg_hba:                      <span class="cm"># access control — applied to all nodes</span>
+    - host replication replicator 10.0.0.0/24 scram-sha-256
+    - host all all 10.0.0.0/24 scram-sha-256
+
+<span class="cm"># ── PostgreSQL settings (per-node) ─────────────────────────────</span>
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 10.0.0.1:5432  <span class="cm"># THIS node's address for replication</span>
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/16/bin
+  pgpass: /tmp/pgpass            <span class="cm"># credentials file for replication</span>
+
+  authentication:
+    replication:
+      username: replicator
+      password: ${REPLICATION_PASSWORD}
+    superuser:
+      username: postgres
+      password: ${POSTGRES_PASSWORD}
+
+  parameters:
+    max_connections: 200
+    shared_buffers: 4GB
+    work_mem: 16MB
+    log_min_duration_statement: 1000  <span class="cm"># log queries > 1s</span>
+    log_connections: "on"
+    log_disconnections: "on"
+
+  callbacks:                   <span class="cm"># shell scripts called on role changes</span>
+    on_start:    /etc/patroni/callbacks/on_start.sh
+    on_stop:     /etc/patroni/callbacks/on_stop.sh
+    on_restart:  /etc/patroni/callbacks/on_restart.sh
+    on_role_change: /etc/patroni/callbacks/on_role_change.sh
+    <span class="cm"># on_role_change gets called with "master" or "replica" argument</span>
+    <span class="cm"># Use to: update DNS, send alerts, reconfigure connection pooler</span>
+
+<span class="cm"># ── Tags (for read traffic routing) ────────────────────────────</span>
+tags:
+  nofailover: false            <span class="cm"># set true to exclude from failover candidates</span>
+  noloadbalance: false         <span class="cm"># set true for analytics replica (don't route user traffic)</span>
+  clonefrom: false             <span class="cm"># prefer this node as source for new replica</span>
+  nosync: false                <span class="cm"># exclude from synchronous standby list</span></pre>
+  </div>
+
+  <h3>Key Patroni commands</h3>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">patronictl — daily operations</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># View cluster state</span>
+patronictl -c /etc/patroni/patroni.yml list
+<span class="cm"># + Cluster: my-postgres-cluster (7234567890) --+----+-----------+</span>
+<span class="cm"># | Member          | Host        | Role    | State   | TL | Lag in MB |</span>
+<span class="cm"># +-----------------+-------------+---------+---------+----+-----------+</span>
+<span class="cm"># | postgres-node-1 | 10.0.0.1:5432 | Leader | running |  1 |           |</span>
+<span class="cm"># | postgres-node-2 | 10.0.0.2:5432 | Replica| running |  1 |         0 |</span>
+<span class="cm"># | postgres-node-3 | 10.0.0.3:5432 | Replica| running |  1 |         0 |</span>
+
+<span class="cm"># Planned switchover (primary → replica, no downtime)</span>
+patronictl -c /etc/patroni/patroni.yml switchover \
+  --master postgres-node-1 \
+  --candidate postgres-node-2 \
+  --scheduled now
+
+<span class="cm"># Reinitialise a replica from scratch</span>
+patronictl -c /etc/patroni/patroni.yml reinit my-postgres-cluster postgres-node-3
+
+<span class="cm"># Edit cluster DCS configuration (changes apply to all nodes)</span>
+patronictl -c /etc/patroni/patroni.yml edit-config
+
+<span class="cm"># Pause automatic failover (for maintenance)</span>
+patronictl -c /etc/patroni/patroni.yml pause --wait
+<span class="cm"># Resume:</span>
+patronictl -c /etc/patroni/patroni.yml resume --wait
+
+<span class="cm"># Restart PostgreSQL on a node (Patroni-managed)</span>
+patronictl -c /etc/patroni/patroni.yml restart my-postgres-cluster postgres-node-1</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify Patroni is working correctly</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>patronictl list</code> shows all nodes as "running" with "Lag in MB: 0" on replicas. Any positive lag persisting for minutes needs investigation.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">REST API health check returns 200 for leader, 503 for replicas (by design): <code>curl -s http://10.0.0.1:8008/leader</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Test failover quarterly: <code>patronictl switchover</code> and verify traffic routes correctly, then <code>patronictl switchover</code> back.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>data-checksums</code> enabled: <code>psql -c "SHOW data_checksums"</code> should return "on" — required for pg_rewind.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: PG_REWIND -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>pg_rewind: repairing a failed primary<br><em>without a full backup</em></h2>
+  <p class="lead">After a failover, the old primary has WAL that diverges from the new primary's timeline. pg_rewind efficiently repairs this by finding the divergence point and syncing only the changed files. For a 1TB database, this takes minutes instead of hours (pg_basebackup time).</p>
+
+  <h3>When pg_rewind is needed</h3>
+  <p>After any unplanned failover: the old primary ran ahead of the new timeline and accumulated some writes that aren't on the new primary. It cannot simply be added back as a replica — PostgreSQL will refuse to follow a timeline it has diverged from. pg_rewind identifies the last common WAL position, rolls back the old primary to that point, and prepares it to stream from the new primary.</p>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li><code>wal_log_hints = on</code> in postgresql.conf, or data checksums enabled. Without one of these, pg_rewind cannot determine which blocks have changed.</li>
+    <li>A replication-capable user with <code>REPLICATION</code> privilege (or superuser).</li>
+    <li>The new primary must still have WAL from the divergence point (not yet recycled).</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">pg_rewind — complete procedure after failover</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm"># Situation: postgres-node-1 was primary, crashed.</span>
+<span class="cm"># postgres-node-2 was promoted. postgres-node-1 is now back online.</span>
+<span class="cm"># postgres-node-1 has diverged from postgres-node-2's timeline.</span>
+
+<span class="cm"># Step 1: Stop PostgreSQL on the old primary (node-1)</span>
+pg_ctl stop -D /var/lib/postgresql/data -m fast
+<span class="cm"># Must be stopped. pg_rewind cannot run on a live server.</span>
+
+<span class="cm"># Step 2: Run pg_rewind (pointing at new primary as source)</span>
+pg_rewind \
+  --target-pgdata=/var/lib/postgresql/data \
+  --source-server="host=10.0.0.2 port=5432 user=replicator dbname=postgres" \
+  --progress \
+  --no-sync
+<span class="cm"># --progress: shows which files are being synced</span>
+<span class="cm"># --no-sync: skip fsync (faster for initial rewind; do a sync yourself)</span>
+<span class="cm"># --dry-run: preview what would be changed without doing it</span>
+
+<span class="cm"># What pg_rewind does internally:</span>
+<span class="cm"># 1. Reads WAL on target (old primary) to find divergence LSN</span>
+<span class="cm"># 2. Connects to source (new primary) to get block-level diff</span>
+<span class="cm"># 3. Copies only the blocks that differ (much less than full backup)</span>
+<span class="cm"># 4. Copies WAL from source from divergence point forward</span>
+
+<span class="cm"># Step 3: Configure as replica of new primary</span>
+cat >> /var/lib/postgresql/data/postgresql.conf << 'EOF'
+primary_conninfo = 'host=10.0.0.2 port=5432 user=replicator'
+recovery_target_timeline = 'latest'
+EOF
+
+<span class="cm"># Create standby.signal to enter recovery mode</span>
+touch /var/lib/postgresql/data/standby.signal
+
+<span class="cm"># Step 4: Start PostgreSQL — it will stream from new primary</span>
+pg_ctl start -D /var/lib/postgresql/data
+<span class="cm"># Check it's streaming:</span>
+psql -c "SELECT status, sender_host FROM pg_stat_wal_receiver"
+<span class="cm"># → streaming | 10.0.0.2</span>
+
+<span class="cm"># Step 5: Verify replication lag on new primary</span>
+psql -h 10.0.0.2 -c "SELECT application_name, replay_lag FROM pg_stat_replication"
+<span class="cm"># lag should reach 0 after catch-up</span>
+
+<span class="cm"># ── If pg_rewind fails: fallback to pg_basebackup ──────────────</span>
+<span class="cm"># This happens when new primary has recycled WAL from divergence point</span>
+rm -rf /var/lib/postgresql/data/*
+pg_basebackup \
+  -h 10.0.0.2 -U replicator \
+  -D /var/lib/postgresql/data \
+  -P -Xs -R
+<span class="cm"># -R: write recovery config automatically (standby.signal + primary_conninfo)</span>
+<span class="cm"># Slower (copies entire DB) but always works</span></pre>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>pg_rewind cannot recover from timeline gap without WAL archives</strong>
+      <p>pg_rewind needs WAL from the divergence point through the promotion on the new primary. If the new primary has already recycled those WAL segments (and you have no WAL archive), pg_rewind fails. This is why <code>wal_keep_size</code> and/or WAL archiving are important — they give pg_rewind enough WAL to work with. If pg_rewind fails, pg_basebackup is your fallback.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: LOGICAL REPLICATION -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Logical replication pub/sub<br>&amp; <em>CDC with wal2json</em></h2>
+  <p class="lead">Logical replication uses a publication/subscription model to replicate specific tables at the row level. This section covers the full setup — publisher to subscriber — plus the wal2json plugin for Change Data Capture, which streams change events to external consumers (Kafka, Elasticsearch, etc.).</p>
+
+  <h3>Built-in logical replication (PostgreSQL → PostgreSQL)</h3>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Publication and subscription setup — full procedure</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- ── PUBLISHER (source database) ────────────────────────────────</span>
+<span class="cm">-- Requires: wal_level = logical (higher than replica)</span>
+ALTER SYSTEM SET wal_level = logical;
+SELECT pg_reload_conf();
+
+<span class="cm">-- Create a publication for specific tables</span>
+CREATE PUBLICATION orders_pub
+FOR TABLE orders, order_items, payments;
+<span class="cm">-- Replicates: INSERT, UPDATE, DELETE on these tables</span>
+<span class="cm">-- Does NOT replicate: DDL (ALTER TABLE, CREATE INDEX, etc.)</span>
+
+<span class="cm">-- Or: publish all tables in the database</span>
+CREATE PUBLICATION all_tables_pub FOR ALL TABLES;
+
+<span class="cm">-- Or: publish with row filtering (PG 15+)</span>
+CREATE PUBLICATION active_orders_pub
+FOR TABLE orders (id, user_id, status, amount)
+WHERE (status != 'archived');
+<span class="cm">-- Only replicate non-archived orders, and only these columns</span>
+
+<span class="cm">-- View publications</span>
+SELECT * FROM pg_publication;
+SELECT * FROM pg_publication_tables;
+
+<span class="cm">-- Create replication user for subscriber to connect as</span>
+CREATE USER logical_repl WITH REPLICATION PASSWORD 'password';
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO logical_repl;
+
+<span class="cm">-- ── SUBSCRIBER (destination database) ──────────────────────────</span>
+<span class="cm">-- Target tables must exist with matching schema</span>
+<span class="cm">-- (schema not replicated — must create tables manually)</span>
+
+CREATE SUBSCRIPTION orders_sub
+CONNECTION 'host=source-db.internal dbname=app user=logical_repl password=...'
+PUBLICATION orders_pub;
+<span class="cm">-- PostgreSQL automatically:</span>
+<span class="cm">-- 1. Takes initial snapshot (copies existing data)</span>
+<span class="cm">-- 2. Switches to streaming new changes</span>
+
+<span class="cm">-- Monitor subscription lag</span>
+SELECT
+  subname,
+  received_lsn,
+  latest_end_lsn,
+  pg_wal_lsn_diff(latest_end_lsn, received_lsn) AS lag_bytes
+FROM pg_stat_subscription;
+
+<span class="cm">-- Operations on subscriptions</span>
+ALTER SUBSCRIPTION orders_sub DISABLE;    <span class="cm">-- pause</span>
+ALTER SUBSCRIPTION orders_sub ENABLE;     <span class="cm">-- resume</span>
+ALTER SUBSCRIPTION orders_sub REFRESH PUBLICATION;  <span class="cm">-- pick up new tables added to publication</span>
+DROP SUBSCRIPTION orders_sub;            <span class="cm">-- removes slot on publisher too</span>
+
+<span class="cm">-- !! Schema changes must be applied manually to subscriber</span>
+<span class="cm">-- If you ALTER TABLE orders ADD COLUMN on publisher:</span>
+<span class="cm">-- 1. Apply same ALTER TABLE on subscriber</span>
+<span class="cm">-- 2. ALTER SUBSCRIPTION orders_sub REFRESH PUBLICATION</span></pre>
+  </div>
+
+  <h3>CDC with wal2json — streaming to external systems</h3>
+  <p>wal2json is a PostgreSQL logical decoding plugin that converts WAL records to JSON change events. It's the foundation for Debezium, which wraps it with Kafka integration, schema registry support, and offset management.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">wal2json — direct CDC without Debezium</span><span class="code-block-lang">BASH + SQL</span></div>
+    <pre><span class="cm"># ── Setup (requires wal2json extension installed) ───────────────</span>
+<span class="cm"># wal_level = logical required</span>
+
+<span class="cm"># Create a logical replication slot with wal2json output</span>
+psql -c "SELECT pg_create_logical_replication_slot('cdc_slot', 'wal2json')"
+
+<span class="cm"># Peek at changes (non-destructive — doesn't advance the slot)</span>
+psql -c "SELECT * FROM pg_logical_slot_peek_changes('cdc_slot', NULL, NULL,
+  'pretty-print', '1',
+  'include-timestamp', '1',
+  'include-lsn', '1')"
+
+<span class="cm"># Sample wal2json output:</span>
+<span class="cm"># {</span>
+<span class="cm">#   "lsn": "0/3A2F1C0",</span>
+<span class="cm">#   "timestamp": "2024-01-15 03:14:22.847392+05:30",</span>
+<span class="cm">#   "change": [{</span>
+<span class="cm">#     "kind":      "update",</span>
+<span class="cm">#     "schema":    "public",</span>
+<span class="cm">#     "table":     "orders",</span>
+<span class="cm">#     "columnnames": ["id","status","updated_at"],</span>
+<span class="cm">#     "columnvalues": [123, "shipped", "2024-01-15T03:14:22"],</span>
+<span class="cm">#     "oldkeys": {"keynames": ["id"], "keyvalues": [123]}</span>
+<span class="cm">#   }]</span>
+<span class="cm"># }</span>
+
+<span class="cm"># Consume and advance the slot (destructive — marks WAL as consumed)</span>
+psql -c "SELECT * FROM pg_logical_slot_get_changes('cdc_slot', NULL, NULL)"
+
+<span class="cm"># ── Node.js CDC consumer (streams changes to Kafka) ─────────────</span>
+<span class="kw">import</span> { Client } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { Kafka } <span class="kw">from</span> <span class="str">'kafkajs'</span>;
+
+<span class="kw">const</span> <span class="var">pg</span>    = <span class="kw">new</span> <span class="fn">Client</span>({ connectionString: process.env.DATABASE_URL });
+<span class="kw">const</span> <span class="var">kafka</span> = <span class="kw">new</span> <span class="fn">Kafka</span>({ brokers: [<span class="str">'kafka:9092'</span>] });
+<span class="kw">const</span> <span class="var">producer</span> = kafka.<span class="fn">producer</span>();
+
+<span class="kw">async function</span> <span class="fn">streamChanges</span>() {
+  <span class="kw">await</span> pg.<span class="fn">connect</span>();
+  <span class="kw">await</span> producer.<span class="fn">connect</span>();
+
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> { rows } = <span class="kw">await</span> pg.<span class="fn">query</span>(<span class="str">`
+      SELECT lsn, data FROM pg_logical_slot_get_changes(
+        'cdc_slot', NULL, 100,  -- batch 100 changes at a time
+        'include-timestamp', '1'
+      )`</span>);
+
+    <span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> rows) {
+      <span class="kw">const</span> change = <span class="fn">JSON.parse</span>(row.data);
+      <span class="kw">await</span> producer.<span class="fn">send</span>({
+        topic: <span class="str">`db.changes.\${change.change[0]?.table || 'unknown'}`</span>,
+        messages: [{ key: row.lsn, value: row.data }],
+      });
+    }
+
+    <span class="kw">if</span> (rows.length === 0) <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>(r => <span class="fn">setTimeout</span>(r, <span class="num">100</span>));
+  }
+}
+<span class="cm">// Always: monitor slot retained bytes, drop slot on consumer decommission</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify logical replication health</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Subscription lag is near-zero: <code>SELECT subname, latest_end_lsn - received_lsn AS lag FROM pg_stat_subscription</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">All expected tables are included: <code>SELECT * FROM pg_publication_tables WHERE pubname = 'orders_pub'</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">CDC slot retained bytes alerting: <code>SELECT slot_name, pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) FROM pg_replication_slots WHERE slot_type='logical'</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Schema changes handled: after any DDL on publisher, verify schema matches on subscriber and refresh subscription if new tables added.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Replica identity set for UPDATE/DELETE tracking: <code>ALTER TABLE orders REPLICA IDENTITY FULL</code> — without this, UPDATEs may not include old column values in CDC events.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
