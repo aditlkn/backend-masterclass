@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 11: Connection Pooling & PgBouncer — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--purple);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* connection visualiser */
+.conn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px;margin:12px 0;}
+.conn-cell{height:36px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;transition:all .3s;}
+.conn-cell.active{border-color:var(--green);background:rgba(62,207,142,.1);color:var(--green);}
+.conn-cell.queued{border-color:var(--orange);background:rgba(245,166,35,.1);color:var(--orange);animation:pulse .8s infinite;}
+.conn-cell.idle{border-color:var(--accent);background:rgba(91,143,255,.07);color:var(--accent);}
+.conn-cell.rejected{border-color:var(--red);background:rgba(240,96,96,.08);color:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;gap:0;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--purple);color:var(--purple);background:rgba(168,127,255,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 11 / 30</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-cost">Connection Cost</a>
+  <a href="#s-pooler">What PgBouncer Does</a>
+  <a href="#s-modes">Pooling Modes</a>
+  <a href="#s-sizing">Pool Sizing Math</a>
+  <a href="#s-config">PgBouncer Config</a>
+  <a href="#s-pgcat">PgCat & Alternatives</a>
+  <a href="#s-apppool">Application-side Pooling</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day11/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day11/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 2 · Day 11 · Databases &amp; Storage</div>
+  <h1>500 app servers.<br>PostgreSQL supports <em>~200 connections</em>.</h1>
+  <p class="hero-sub">Every PostgreSQL connection is a forked OS process consuming 5-10MB of RAM. A database with 500 connections hasn't scaled — it's struggling to stay alive under the memory pressure. Connection pooling is the layer that makes the math work.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactive visuals</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>PgBouncer in depth</div>
+  </div>
+</div>
+
+<!-- S1: CONNECTION COST -->
+<div class="section" id="s-cost">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why PostgreSQL connections are expensive</h2>
+
+  <p>Unlike MySQL's thread-per-connection model, PostgreSQL uses a process-per-connection model. Every client connection spawns a new OS process via <code>fork()</code>. This process stays alive for the duration of the connection, consuming RAM, OS file descriptors, and shared memory segments regardless of whether it's actively serving a query or sitting idle.</p>
+
+  <h3>The memory math</h3>
+  <p>Each PostgreSQL backend process uses approximately:</p>
+  <ul>
+    <li><strong>Base RSS:</strong> 5-10MB per connection (shared libraries, stack, per-process memory)</li>
+    <li><strong>work_mem:</strong> Up to <code>work_mem</code> per sort/hash operation within a query. With <code>work_mem = 16MB</code> and a complex query with 3 sort nodes, that's 48MB per active connection</li>
+    <li><strong>Shared buffers:</strong> Shared across all connections (not per-connection), but each connection holds locks on buffer pages it's using</li>
+  </ul>
+  <p>At 500 connections with <code>work_mem = 16MB</code> each running a moderately complex query: 500 × (8MB base + 32MB work_mem) = 20GB of RAM consumed by PostgreSQL processes alone. For a server with 32GB RAM and PostgreSQL itself needing shared_buffers, this leaves very little room.</p>
+
+  <h3>The hidden connection establishment cost</h3>
+  <p>Opening a new connection isn't free at query time either. Each new connection requires: fork() system call, authentication handshake (password verification, SSL handshake), session parameter initialisation (search_path, time zone, etc.), and shared memory attachment. This adds 5-30ms to the first query on any new connection — invisible in testing, painful at high connection churn rates.</p>
+
+  <h3>The max_connections ceiling</h3>
+  <p>PostgreSQL's <code>max_connections</code> defaults to 100. Setting it to 1000 doesn't scale linearly — above about 200 concurrent connections, PostgreSQL's lock management overhead (which uses shared memory structures that require locking) begins to degrade throughput even when queries are fast. The actual ceiling varies by workload, but the practical limit for OLTP is typically 200-400 connections before performance degrades.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Measuring connection overhead in production</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Current connection count and state breakdown</span>
+SELECT state, count(*) FROM pg_stat_activity GROUP BY state ORDER BY count DESC;
+<span class="cm">-- active: running a query right now</span>
+<span class="cm">-- idle: connected but doing nothing (the waste)</span>
+<span class="cm">-- idle in transaction: open transaction, not running query (dangerous)</span>
+<span class="cm">-- idle in transaction (aborted): error in transaction, not cleaned up</span>
+
+<span class="cm">-- Memory per connection (approximate)</span>
+SELECT pid, rss/1024 AS rss_mb, query
+FROM pg_stat_activity
+JOIN (
+  SELECT pid, CAST(split_part(split_part(pg_read_file('/proc/' || pid || '/status'),
+    E'VmRSS:\t', 2), E'\n', 1) AS integer) AS rss
+  FROM pg_stat_activity WHERE pid != pg_backend_pid()
+) mem USING (pid)
+ORDER BY rss_mb DESC LIMIT 10;
+
+<span class="cm">-- How long have idle connections been open?</span>
+SELECT pid, usename, application_name, state,
+  now() - state_change AS time_in_state,
+  now() - backend_start AS conn_age
+FROM pg_stat_activity
+WHERE state = 'idle'
+ORDER BY time_in_state DESC;
+<span class="cm">-- Connections idle for hours are almost certainly from a misconfigured pool</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 1: Connection cost calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Connection cost — RAM and overhead calculator</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Total connections: <span id="conn-cnt-val" style="color:var(--accent)">100</span></label>
+        <input type="range" class="viz-slider" id="conn-cnt" min="10" max="1000" value="100" oninput="updateConnCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">work_mem (MB): <span id="work-mem-val" style="color:var(--accent)">16</span></label>
+        <input type="range" class="viz-slider" id="work-mem" min="4" max="256" value="16" oninput="updateConnCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Active query % (using work_mem): <span id="active-pct-val" style="color:var(--accent)">20%</span></label>
+        <input type="range" class="viz-slider" id="active-pct" min="5" max="100" value="20" oninput="updateConnCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Server RAM (GB): <span id="server-ram-val" style="color:var(--accent)">32</span></label>
+        <input type="range" class="viz-slider" id="server-ram" min="8" max="256" value="32" oninput="updateConnCost()">
+      </div>
+    </div>
+    <div id="conn-cost-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S2: WHAT PGBOUNCER DOES -->
+<div class="section" id="s-pooler">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>What PgBouncer does and how it works</h2>
+
+  <p>PgBouncer sits between your application and PostgreSQL. Applications connect to PgBouncer (which appears to be a normal PostgreSQL server). PgBouncer maintains a small pool of real connections to PostgreSQL. When an application wants to run a query, PgBouncer assigns it one of the pooled connections for the duration of the transaction (or query), then returns the connection to the pool.</p>
+
+  <h3>The fundamental multiplexing</h3>
+  <p>1,000 application connections → PgBouncer → 50 PostgreSQL connections. The 1,000 application connections are "virtual" — they're TCP connections to PgBouncer, which is a single lightweight process. PgBouncer can handle thousands of client connections with very low overhead (it's single-threaded event-driven, not process-per-connection). The 50 real PostgreSQL connections are what the database actually sees.</p>
+
+  <p>At any moment, only the connections actively executing a transaction are using a real PostgreSQL connection. If your 1,000 application connections are 95% idle (waiting for the next request), only 50 are ever in use simultaneously — which fits in 50 real connections with room to spare.</p>
+
+  <h3>The authentication layer</h3>
+  <p>PgBouncer handles authentication from clients using its own user database (<code>userlist.txt</code> or HBA-style config). It connects to PostgreSQL with a fixed set of credentials. This means client passwords are verified by PgBouncer, not PostgreSQL directly. PgBouncer supports scram-sha-256, md5, and pass-through authentication (where it forwards the client's credentials to PostgreSQL unchanged).</p>
+
+  <p>The operational implication: changing a user's password in PostgreSQL requires also updating PgBouncer's userlist.txt. If they fall out of sync, PgBouncer will still authenticate the old password.</p>
+</div>
+
+<!-- VIZ 2: PgBouncer multiplexing -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">PgBouncer multiplexing — client connections vs server connections</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="setPoolViz('no_pool',this)">No pooler (direct)</button>
+      <button class="viz-btn" onclick="setPoolViz('session',this)">Session mode</button>
+      <button class="viz-btn" onclick="setPoolViz('transaction',this)">Transaction mode</button>
+      <button class="viz-btn" onclick="setPoolViz('statement',this)">Statement mode</button>
+    </div>
+    <div id="pool-viz-area" style="margin-bottom:12px"></div>
+    <div id="pool-viz-output" class="mono-out" style="font-size:12px;min-height:80px"></div>
+  </div>
+</div>
+
+<!-- S3: POOLING MODES -->
+<div class="section" id="s-modes">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Pooling modes: session, transaction, statement</h2>
+
+  <p>This is the most important decision you make with PgBouncer. The mode determines when a server connection is returned to the pool. Getting it wrong either negates the pooling benefit or breaks your application.</p>
+
+  <h3>Session mode</h3>
+  <p>A server connection is assigned to a client for the entire duration of the client connection. The client gets the same server connection from connect to disconnect. This is functionally identical to connecting directly to PostgreSQL — the only benefit is that PgBouncer manages the connection lifecycle and can reconnect if the server restarts. No multiplexing benefit.</p>
+  <p>When to use: when you can't use transaction mode (see below), as a migration step toward transaction mode, or when you need per-session state to persist (SET commands, prepared statements, advisory locks).</p>
+
+  <h3>Transaction mode (the goal)</h3>
+  <p>A server connection is assigned to a client only for the duration of a single transaction. Between transactions, the connection returns to the pool. This is the mode that enables 1000→50 multiplexing. A client that runs one query per second and each query takes 10ms is using a server connection for 10ms out of every 1000ms — the other 990ms the connection is available for other clients.</p>
+  <p>The catch: server-side state doesn't persist between transactions. <code>SET search_path</code>, prepared statements, advisory locks, and <code>LISTEN/NOTIFY</code> subscriptions are tied to a server connection and don't survive being returned to the pool. Applications that use these features need modification to work with transaction mode.</p>
+
+  <h3>Statement mode</h3>
+  <p>A server connection is assigned for the duration of a single SQL statement. Even more aggressive than transaction mode. The consequence: multi-statement transactions are impossible — each statement gets a different server connection, so <code>BEGIN ... COMMIT</code> wraps three statements that execute on three different connections. Effectively no transactions. Only use for simple, single-statement, non-transactional workloads (read-heavy analytics, simple lookups).</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mode</th><th>Connection held for</th><th>Multiplexing</th><th>Transactions</th><th>Server state</th><th>Prepared statements</th></tr></thead>
+      <tbody>
+        <tr><td>session</td><td>Client lifetime</td><td style="color:var(--red)">None</td><td style="color:var(--green)">✓ Full</td><td style="color:var(--green)">✓ Persists</td><td style="color:var(--green)">✓ Works</td></tr>
+        <tr><td>transaction</td><td>Transaction</td><td style="color:var(--green)">✓ High</td><td style="color:var(--green)">✓ Full</td><td style="color:var(--red)">✗ Lost</td><td style="color:var(--red)">✗ Broken</td></tr>
+        <tr><td>statement</td><td>Statement</td><td style="color:var(--green)">✓ Maximum</td><td style="color:var(--red)">✗ None</td><td style="color:var(--red)">✗ Lost</td><td style="color:var(--red)">✗ Broken</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Prepared statements break in transaction mode</strong>
+      <p>ORMs like Django, Rails, and many PostgreSQL drivers use server-side prepared statements by default for performance. In transaction mode, a PREPARE on one connection is unavailable on a different connection — the next query in the "same session" may land on a different server connection. This causes <code>prepared statement "s1" does not exist</code> errors. Fix: disable server-side prepared statements in your ORM/driver, or use PgBouncer's <code>max_prepared_statements</code> feature (PgBouncer 1.21+ tracks and rewrites prepared statement traffic). The safest immediate fix: set <code>prepared_statements=false</code> in your connection URL.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 3: Mode comparison -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Pooling mode — transaction lifecycle per mode</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Click a mode to see when the server connection is held vs returned:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showMode('session')">Session mode</button>
+      <button class="viz-btn" onclick="showMode('transaction')">Transaction mode</button>
+      <button class="viz-btn" onclick="showMode('statement')">Statement mode</button>
+    </div>
+    <div id="mode-timeline" style="margin-bottom:10px"></div>
+    <div id="mode-output" class="mono-out" style="font-size:12px;min-height:80px">Select a mode above.</div>
+  </div>
+</div>
+
+<!-- S4: SIZING MATH -->
+<div class="section" id="s-sizing">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Pool sizing: the math that actually matters</h2>
+
+  <p>The most common mistake with PgBouncer is setting pool_size too large. The goal is not to maximise pool_size — it's to have just enough server connections to keep all app threads busy without starving PostgreSQL of resources.</p>
+
+  <h3>The formula</h3>
+  <p>Start with PostgreSQL's practical ceiling. For most OLTP workloads: <code>optimal_server_conns ≈ 2 × CPU_cores + 1</code>. For a 16-core database server: ~33 connections. This sounds low, but if queries are CPU-bound, adding more connections beyond this doesn't increase throughput — it just adds scheduling overhead.</p>
+  <p>For I/O-bound workloads (lots of disk reads): you can go higher, maybe <code>4 × CPU_cores</code>, because connections spend time waiting for I/O and can be interleaved. But even here, diminishing returns set in quickly above ~100 connections.</p>
+  <p>Total pool_size = <code>connections_per_database × number_of_databases</code>. PgBouncer's <code>pool_size</code> is per database-user combination, so with 3 application databases and pool_size=25: 75 total server connections.</p>
+
+  <h3>The client_side math</h3>
+  <p>How many client connections can PgBouncer handle? Client connections are cheap in PgBouncer (single-threaded event loop, no fork). <code>max_client_conn</code> can be set to 5,000-10,000 without stress. The question is whether your application's connection overhead at the OS level (TCP sockets) is acceptable.</p>
+  <p>With 10 application servers each running 50 threads: 500 potential simultaneous queries. With pool_size=50 and 500ms average query time: a queue builds if more than 50 queries are in-flight simultaneously. The average in-flight count = 500 threads × 50ms active query / 1000ms = 25 connections needed on average. Pool_size=50 gives 2× headroom. This is correct sizing.</p>
+</div>
+
+<!-- VIZ 4: Pool sizing calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Pool sizing calculator</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">DB server CPU cores: <span id="cpu-val" style="color:var(--accent)">16</span></label>
+        <input type="range" class="viz-slider" id="cpu-cores" min="2" max="128" value="16" oninput="calcPoolSize()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">App servers × threads: <span id="threads-val" style="color:var(--accent)">500 threads</span></label>
+        <input type="range" class="viz-slider" id="app-threads" min="10" max="5000" value="500" oninput="calcPoolSize()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Avg query time (ms): <span id="qt-val" style="color:var(--accent)">50ms</span></label>
+        <input type="range" class="viz-slider" id="query-time" min="1" max="2000" value="50" oninput="calcPoolSize()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Workload type:</label>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <div class="viz-btn active" id="wl-oltp" onclick="setWorkload('oltp',this)" style="padding:4px 10px">OLTP</div>
+          <div class="viz-btn" id="wl-io" onclick="setWorkload('io',this)" style="padding:4px 10px">I/O heavy</div>
+          <div class="viz-btn" id="wl-mixed" onclick="setWorkload('mixed',this)" style="padding:4px 10px">Mixed</div>
+        </div>
+      </div>
+    </div>
+    <div id="pool-size-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S5: PGBOUNCER CONFIG -->
+<div class="section" id="s-config">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>PgBouncer configuration: the full reference</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">pgbouncer.ini — production configuration with annotations</span><span class="code-block-lang">INI</span></div>
+    <pre><span class="cm"># /etc/pgbouncer/pgbouncer.ini</span>
+
+[databases]
+<span class="cm"># Format: alias = host=... dbname=... port=... user=... password=...</span>
+myapp = host=primary.db.internal dbname=myapp port=5432
+myapp_ro = host=replica.db.internal dbname=myapp port=5432
+<span class="cm"># Clients connect to: psql -h pgbouncer_host -d myapp</span>
+<span class="cm"># * wildcard routes any DB name to primary: * = host=primary.db.internal</span>
+
+[pgbouncer]
+<span class="cm">## ── Network ───────────────────────────────────────────────────</span>
+listen_addr = 0.0.0.0
+listen_port = 5432              <span class="cm"># same port as PostgreSQL — apps need no change</span>
+unix_socket_dir = /var/run/postgresql
+
+<span class="cm">## ── Authentication ────────────────────────────────────────────</span>
+auth_type = scram-sha-256       <span class="cm"># or: md5, trust, hba</span>
+auth_file = /etc/pgbouncer/userlist.txt
+<span class="cm"># userlist.txt format: "username" "scram-sha-256$..." (hashed password)</span>
+<span class="cm"># Generate hash: psql -c "SELECT concat('\"', usename, '\" \"', passwd, '\"') FROM pg_shadow WHERE usename='myapp'"</span>
+auth_query = SELECT usename, passwd FROM pg_shadow WHERE usename=$1
+<span class="cm"># auth_query: PgBouncer queries PostgreSQL to validate passwords at login</span>
+<span class="cm"># Eliminates the need to maintain userlist.txt manually</span>
+
+<span class="cm">## ── Pooling ───────────────────────────────────────────────────</span>
+pool_mode = transaction         <span class="cm"># session | transaction | statement</span>
+max_client_conn = 5000          <span class="cm"># max simultaneous client connections</span>
+default_pool_size = 25          <span class="cm"># server connections per (db, user) pair</span>
+min_pool_size = 5               <span class="cm"># keep at least 5 connections warm</span>
+reserve_pool_size = 5           <span class="cm"># extra connections for traffic bursts</span>
+reserve_pool_timeout = 5.0      <span class="cm"># wait 5s before using reserve pool</span>
+max_db_connections = 100        <span class="cm"># global cap across all pools for one db</span>
+max_user_connections = 50       <span class="cm"># global cap per user across all dbs</span>
+
+<span class="cm">## ── Timeouts ──────────────────────────────────────────────────</span>
+server_connect_timeout = 15     <span class="cm"># timeout connecting to PostgreSQL</span>
+server_login_retry = 15         <span class="cm"># retry interval after failed server connect</span>
+client_login_timeout = 60       <span class="cm"># client must authenticate within 60s</span>
+query_timeout = 0               <span class="cm"># 0 = disabled. Set in app, not here.</span>
+query_wait_timeout = 120        <span class="cm"># cancel if client waits >120s for a connection</span>
+idle_transaction_timeout = 30   <span class="cm"># close connections idle in transaction >30s</span>
+<span class="cm"># idle_transaction_timeout prevents "idle in transaction" accumulation</span>
+
+server_idle_timeout = 600       <span class="cm"># recycle idle server connections after 10min</span>
+server_lifetime = 3600          <span class="cm"># recycle server connections after 1 hour max</span>
+<span class="cm"># server_lifetime prevents issues with very long-lived connections</span>
+
+<span class="cm">## ── TLS (terminating at PgBouncer, re-encrypting to PostgreSQL) </span>
+client_tls_sslmode = require
+client_tls_cert_file = /etc/pgbouncer/server.crt
+client_tls_key_file  = /etc/pgbouncer/server.key
+server_tls_sslmode = require    <span class="cm"># PgBouncer→PostgreSQL also encrypted</span>
+
+<span class="cm">## ── Operations ────────────────────────────────────────────────</span>
+logfile  = /var/log/pgbouncer/pgbouncer.log
+pidfile  = /var/run/pgbouncer/pgbouncer.pid
+log_connections = 0             <span class="cm"># 0=quiet (high traffic), 1=log all connects</span>
+log_disconnections = 0
+log_pooler_errors = 1           <span class="cm"># always log pool errors</span>
+stats_period = 60               <span class="cm"># emit stats every 60s to log</span>
+
+admin_users = pgbouncer_admin   <span class="cm"># can connect to pgbouncer virtual DB for stats</span>
+stats_users = monitoring        <span class="cm"># read-only stats access</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 5: Live config builder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">PgBouncer config builder — interactive settings</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:4px">pool_mode:</label>
+        <select id="cfg-mode" onchange="buildConfig()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;width:100%">
+          <option value="transaction">transaction (recommended)</option>
+          <option value="session">session</option>
+          <option value="statement">statement</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:4px">default_pool_size: <span id="cfg-pool-val" style="color:var(--accent)">25</span></label>
+        <input type="range" class="viz-slider" id="cfg-pool" min="5" max="200" value="25" oninput="buildConfig()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:4px">max_client_conn: <span id="cfg-max-val" style="color:var(--accent)">1000</span></label>
+        <input type="range" class="viz-slider" id="cfg-max" min="100" max="10000" value="1000" oninput="buildConfig()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:4px">idle_transaction_timeout: <span id="cfg-idt-val" style="color:var(--accent)">30s</span></label>
+        <input type="range" class="viz-slider" id="cfg-idt" min="0" max="300" value="30" oninput="buildConfig()">
+      </div>
+    </div>
+    <div id="config-output" class="mono-out" style="font-size:11.5px"></div>
+  </div>
+</div>
+
+<!-- S6: PGCAT -->
+<div class="section" id="s-pgcat">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>PgCat and alternatives: beyond PgBouncer</h2>
+
+  <p>PgBouncer is single-threaded. At very high connection rates, it can become a CPU bottleneck — not because pooling is slow, but because a single thread handles all client communication. PgCat is the multi-threaded successor that addresses this.</p>
+
+  <h3>PgCat (Supabase's pooler)</h3>
+  <p>PgCat is written in Rust, multi-threaded, and includes features PgBouncer lacks: native load balancing across primary and replicas, query-based routing (read queries automatically to replicas), prepared statement support in transaction mode (via query rewriting), and health checks with automatic replica failover. For high-throughput deployments (&gt;50,000 connections/second), PgCat is worth evaluating.</p>
+
+  <h3>pgpool-II</h3>
+  <p>pgpool-II is an older, more feature-rich alternative that combines connection pooling, query routing, and even query caching. It's more complex to operate than PgBouncer and has its own quirks. Most teams that use it are using it for its query routing capabilities, not just pooling.</p>
+
+  <h3>Application-side pools (pg, knex, Sequelize)</h3>
+  <p>Every Node.js PostgreSQL driver has a built-in connection pool. These pools are per-process — in a single-process Node.js app, this is fine. In a multi-process deployment (PM2 clusters, Kubernetes pods), each process has its own pool, multiplying connection count. 10 Kubernetes pods × 20 connections per pool = 200 server connections from one service. Without PgBouncer, scaling to 50 pods means 1,000 connections.</p>
+</div>
+
+<!-- VIZ 6: Without vs with pooler -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Connection count: direct vs PgBouncer at scale</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">App pods: <span id="pods-val" style="color:var(--accent)">20</span></label>
+        <input type="range" class="viz-slider" id="app-pods" min="1" max="200" value="20" oninput="updateScale()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Conns per pod pool: <span id="pod-pool-val" style="color:var(--accent)">10</span></label>
+        <input type="range" class="viz-slider" id="pod-pool" min="2" max="100" value="10" oninput="updateScale()">
+      </div>
+    </div>
+    <div id="scale-output" class="mono-out" style="font-size:12px"></div>
+    <div id="scale-bar" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- S7: APPLICATION POOLING -->
+<div class="section" id="s-apppool">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Application-side pools: sizing and monitoring</h2>
+
+  <p>Even with PgBouncer in front of PostgreSQL, your application still needs its own connection pool to PgBouncer. This is the pool from your application process to the pooler. The sizing rules are different: PgBouncer connections are cheap (they're connections to a fast proxy, not to PostgreSQL itself), so you can size these more aggressively.</p>
+
+  <h3>The correct sizing formula</h3>
+  <p><code>app_pool_size = max_concurrent_requests × avg_db_time_fraction</code></p>
+  <p>If your Node.js service handles 1,000 concurrent requests and each request spends 5% of its time waiting for database responses: you need at most 50 simultaneous PgBouncer connections. A pool of 50 with a small buffer (60-70) is correct. Setting the pool to 500 "just in case" means 500 connections to PgBouncer, which wastes OS resources and confuses monitoring.</p>
+
+  <h3>What to monitor in the application pool</h3>
+  <ul>
+    <li><strong>Pool size (active + idle):</strong> Should be stable. Growing pool = load increase or connection leak.</li>
+    <li><strong>Pending (queued) requests:</strong> Requests waiting for a free connection. Non-zero sustained = pool undersized or DB slow.</li>
+    <li><strong>Connection creation rate:</strong> High rate = pool is cycling (not reusing). Usually means pool size is too small or connections are being closed too aggressively.</li>
+    <li><strong>Checkout time P99:</strong> Time to get a connection from the pool. Should be <1ms. If it's >10ms: pool is undersized or DB is slow.</li>
+  </ul>
+</div>
+
+<!-- VIZ 7: Pool health dashboard -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Pool health — live simulation</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="setPoolHealth('healthy')">Healthy pool</button>
+      <button class="viz-btn" onclick="setPoolHealth('undersized')">Undersized pool</button>
+      <button class="viz-btn" onclick="setPoolHealth('slow_db')">Slow DB queries</button>
+      <button class="viz-btn" onclick="setPoolHealth('leak')">Connection leak</button>
+      <button class="viz-btn" onclick="setPoolHealth('oversized')">Oversized (wasteful)</button>
+    </div>
+    <div id="health-grid" style="margin-bottom:12px"></div>
+    <div id="health-output" class="mono-out" style="font-size:12px;min-height:80px"></div>
+  </div>
+</div>
+
+<!-- S8: MONITORING -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>The pgbouncer admin console</h3>
+  <p>PgBouncer exposes a virtual database called <code>pgbouncer</code> where you can run SQL-like commands to inspect pool state. Connect with: <code>psql -h pgbouncer_host -U pgbouncer_admin -d pgbouncer</code>. The most useful commands:</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">PgBouncer admin console — monitoring commands</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Connect to admin console</span>
+<span class="cm">-- psql -h pgbouncer -U pgbouncer_admin -d pgbouncer -p 5432</span>
+
+<span class="cm">-- Pool statistics (most useful command)</span>
+SHOW POOLS;
+<span class="cm">-- database | user | cl_active | cl_waiting | sv_active | sv_idle | sv_used | sv_tested | sv_login | maxwait</span>
+<span class="cm">-- cl_active:  client connections currently assigned a server connection</span>
+<span class="cm">-- cl_waiting: clients waiting for a free server connection ← alert if > 0 sustained</span>
+<span class="cm">-- sv_active:  server connections currently in use</span>
+<span class="cm">-- sv_idle:    server connections idle in pool</span>
+<span class="cm">-- maxwait:    longest wait time in seconds ← alert if > 1s</span>
+
+<span class="cm">-- Throughput and latency statistics</span>
+SHOW STATS;
+<span class="cm">-- total_query_count, total_query_time, avg_query_time per database</span>
+<span class="cm">-- Use to calculate actual QPS and average query duration through the pooler</span>
+
+SHOW STATS_AVERAGES;  <span class="cm">-- rolling averages, easier to read</span>
+
+<span class="cm">-- Client connections</span>
+SHOW CLIENTS;
+<span class="cm">-- Shows each client connection, its state, and how long it's been waiting</span>
+
+<span class="cm">-- Server connections (to PostgreSQL)</span>
+SHOW SERVERS;
+<span class="cm">-- Shows each server connection, its state, and the client it's serving</span>
+
+<span class="cm">-- Configuration (can be changed without restart)</span>
+SHOW CONFIG;
+SET default_pool_size = 30;   <span class="cm">-- live config change, takes effect immediately</span>
+RELOAD;                        <span class="cm">-- reload pgbouncer.ini without full restart</span>
+
+<span class="cm">-- Graceful maintenance</span>
+PAUSE myapp;    <span class="cm">-- pause one database (waits for active txn to finish)</span>
+RESUME myapp;   <span class="cm">-- resume</span>
+SUSPEND;        <span class="cm">-- suspend ALL databases (for maintenance)</span>
+RESUME;
+
+<span class="cm">-- Kill a stuck connection</span>
+KILL myapp;     <span class="cm">-- kill all connections to a database immediately</span></pre>
+  </div>
+
+  <h3>The "idle in transaction" killer</h3>
+  <p>Connections stuck in "idle in transaction" hold row locks and prevent VACUUM. PgBouncer's <code>idle_transaction_timeout</code> setting kills these automatically. Set it to 30 seconds. Any legitimate transaction that's open for 30 seconds without making progress is either a bug or should be redesigned.</p>
+
+  <h3>PgBouncer behind a load balancer</h3>
+  <p>In production, run multiple PgBouncer instances for redundancy and horizontal scaling. Put them behind a TCP load balancer (HAProxy, AWS NLB). Applications connect to the load balancer — if one PgBouncer fails, connections are rerouted to the others. Use PgBouncer's health endpoint: a TCP connection that succeeds means PgBouncer is up and can route to PostgreSQL.</p>
+</div>
+
+<!-- VIZ 8: PgBouncer stats dashboard -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">SHOW POOLS output — interpreting the numbers</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Click a row to understand what the numbers mean and what action to take:</p>
+    <div id="pools-table" style="overflow-x:auto;margin-bottom:12px"></div>
+    <div id="pools-detail" class="mono-out" style="font-size:12px;min-height:80px">Click a row in the table above.</div>
+  </div>
+</div>
+
+<!-- S9: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>PgBouncer doesn't show up in pg_stat_activity with the real client info</h3>
+  <p>When queries come through PgBouncer, <code>pg_stat_activity</code> shows PgBouncer's server-side connection as the client — not the application connection that sent the query. All queries from a pool of 25 connections appear to come from "pgbouncer" with the same IP. This makes it much harder to identify which application process is responsible for a slow or misbehaving query. Workaround: use <code>application_name</code> in the connection string (PgBouncer passes this through), or use query comments with the caller's identity (<code>/* caller=api:order-service */</code>).</p>
+
+  <h3>The "too many clients" error is from PgBouncer's max_client_conn</h3>
+  <p>When you see <code>sorry, too many clients already</code>, this error often comes from PgBouncer (when <code>max_client_conn</code> is hit), not PostgreSQL. The error message is the same. Check PgBouncer's log and admin console first before assuming it's PostgreSQL's <code>max_connections</code>.</p>
+
+  <h3>Transaction mode and SET commands</h3>
+  <p><code>SET search_path = myschema</code> executed in transaction mode is lost when the server connection returns to the pool and is reassigned. The next query from that "session" may run on a connection with a different search_path. Fix: either use session mode (loses multiplexing benefit) or set the search_path at the database level (<code>ALTER DATABASE myapp SET search_path = myschema</code>), which persists across all connections.</p>
+
+  <h3>Scram-sha-256 auth requires PgBouncer 1.14+</h3>
+  <p>Older PgBouncer versions only support md5. If your PostgreSQL is configured to require scram-sha-256 (which it should be), you need PgBouncer 1.14 or newer for pass-through auth, or 1.21+ for native scram-sha-256 support. Check your version: <code>pgbouncer --version</code>.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Configuring connection pooling — decide in this order</h2>
+  <p class="ds-sub">Each step eliminates a configuration mistake before you make it.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Does your app use prepared statements, advisory locks, or LISTEN/NOTIFY?</div>
+        <div class="ds-detail">If yes: you need to either disable these features, use session mode (no multiplexing benefit), or use PgBouncer 1.21+ which handles prepared statements in transaction mode. Check your ORM: Django defaults to prepared statements (<code>DISABLE_SERVER_SIDE_CURSORS = True</code> to disable), Rails uses them, TypeORM uses them. Identify before choosing pool_mode.
+          <br><span class="ds-tag ds-tag-warn">prepared statements + transaction mode = broken queries</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Calculate your required server connections (not "as many as possible")</div>
+        <div class="ds-detail">Formula: <code>pool_size = (CPU_cores × 2) + effective_spindle_count</code>. For a 16-core server with SSD (treat as 1 spindle): pool_size = 33. For I/O-heavy workloads: <code>CPU_cores × 4</code>. This determines how many server connections PgBouncer needs. Set <code>default_pool_size</code> to this value, not to "what max_connections allows."
+          <br><span class="ds-tag ds-tag-info">bigger pool_size ≠ more throughput above the CPU ceiling</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Set idle_transaction_timeout — never skip this</div>
+        <div class="ds-detail">Default is 0 (disabled). A connection stuck in "idle in transaction" holds row locks, blocks VACUUM, and prevents pool reuse. Set <code>idle_transaction_timeout = 30</code>. Any transaction open for 30 seconds without making progress is a bug. This setting kills it and forces the client to retry — which surfaces the bug rather than hiding it.
+          <br><span class="ds-tag ds-tag-stop">idle_transaction_timeout = 0 is a production hazard</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Verify with SHOW POOLS — not just config inspection</div>
+        <div class="ds-detail">After deploying, connect to the PgBouncer admin console and run <code>SHOW POOLS</code>. Check: <code>cl_waiting</code> should be 0 (clients not waiting). <code>sv_idle</code> should be &gt;0 (connections available). <code>maxwait</code> should be &lt;0.1s. If <code>cl_waiting</code> &gt; 0 sustained: either pool_size is too small or queries are too slow. Don't assume config = reality.
+          <br><span class="ds-tag ds-tag-ok">SHOW POOLS is your ground truth</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Reduce application pool sizes to match PgBouncer reality</div>
+        <div class="ds-detail">Your application's pool (pg, knex, SQLAlchemy) connects to PgBouncer. With PgBouncer in transaction mode and pool_size=25, there's no point having each application pod with a pool of 50 — most of those connections will sit idle waiting for PgBouncer to assign them a server connection. Reduce application pool size to <code>max_client_conn / number_of_pods</code>. This reduces OS socket overhead and makes monitoring cleaner.
+          <br><span class="ds-tag ds-tag-info">application pool → PgBouncer → PostgreSQL. Size each layer correctly.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Add alerting on cl_waiting and maxwait</div>
+        <div class="ds-detail">Query <code>SHOW STATS</code> from your monitoring system every 30 seconds. Alert on <code>cl_waiting &gt; 0</code> sustained for more than 5 seconds (pool undersized or DB degraded), and <code>maxwait &gt; 1</code> (clients waiting &gt;1 second for a connection — severe degradation). These two metrics are your early warning system for pooling problems before they become user-visible.
+          <br><span class="ds-tag ds-tag-ok">cl_waiting > 0 = pool emergency. page immediately.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Prepared statements silently broken after PgBouncer migration</div>
+    <div style="font-size:13px;color:var(--text2)">Transaction mode · prepared statement errors · Django DISABLE_SERVER_SIDE_CURSORS</div>
+  </div>
+  <a href="/day11/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">PgBouncer HA setup, Prometheus metrics, transaction mode migrations</div>
+    <div style="font-size:13px;color:var(--text2)">HAProxy + dual PgBouncer · pgbouncer_exporter · ORM migration playbook</div>
+  </div>
+  <a href="/day11/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Connection pooling checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">TXN</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Pool mode</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Use transaction mode. Disable server-side prepared statements in ORM. Verify no SET commands persisting across transactions.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">SZE</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Pool sizing</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">pool_size = 2×CPU+1 for OLTP. Not "max_connections ÷ apps". Verify with SHOW POOLS, not just config.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">IDT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Idle timeout</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Set idle_transaction_timeout=30. Kills "idle in transaction" connections that hold locks and prevent VACUUM.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">MON</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Monitoring</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Alert on cl_waiting&gt;0 and maxwait&gt;1s from SHOW STATS. Export via pgbouncer_exporter to Prometheus.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">HA</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">High availability</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Run 2+ PgBouncer instances behind HAProxy/NLB. A single PgBouncer is a single point of failure in the connection path.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">VER</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Version</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">PgBouncer 1.21+ for prepared statement support in transaction mode. 1.14+ for scram-sha-256. Check: pgbouncer --version.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+// TOC scroll tracking
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, { passive: true });
+
+// ── VIZ 1: Connection cost ──
+function updateConnCost() {
+  var conns      = parseInt(document.getElementById('conn-cnt').value);
+  var workMem    = parseInt(document.getElementById('work-mem').value);
+  var activePct  = parseInt(document.getElementById('active-pct').value);
+  var serverRam  = parseInt(document.getElementById('server-ram').value);
+  document.getElementById('conn-cnt-val').textContent  = conns;
+  document.getElementById('work-mem-val').textContent  = workMem;
+  document.getElementById('active-pct-val').textContent= activePct + '%';
+  document.getElementById('server-ram-val').textContent= serverRam;
+
+  var baseMem = conns * 8; // 8MB per connection
+  var workMemTotal = Math.round(conns * activePct / 100) * workMem;
+  var totalMem = (baseMem + workMemTotal) / 1024; // GB
+  var sharedBuffers = Math.round(serverRam * 0.25);
+  var available = serverRam - sharedBuffers - totalMem;
+  var danger = available < 2;
+
+  var col = danger ? 'var(--red)' : totalMem > serverRam * 0.5 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('conn-cost-output').innerHTML = [
+    'Connections:          ' + conns,
+    'Base memory:          ' + baseMem + 'MB (' + conns + ' × 8MB per process)',
+    'Active queries:       ' + Math.round(conns * activePct / 100) + ' (' + activePct + '% of ' + conns + ')',
+    'work_mem in use:      ' + workMemTotal + 'MB (' + Math.round(conns * activePct / 100) + ' × ' + workMem + 'MB)',
+    '',
+    'PostgreSQL total RAM: <span style="color:' + col + ';font-weight:700">' + totalMem.toFixed(1) + 'GB</span>',
+    'shared_buffers:       ' + sharedBuffers + 'GB (25% of server)',
+    'RAM for OS + app:     <span style="color:' + (danger ? 'var(--red)' : 'var(--green)') + '">' + available.toFixed(1) + 'GB</span>',
+    '',
+    danger
+      ? '<span style="color:var(--red)">⚠ DANGER: PostgreSQL will exhaust RAM. OOM killer likely. Reduce connections or work_mem.</span>'
+      : available < 4
+        ? '<span style="color:var(--orange)">⚠ WARNING: Very little headroom. Consider connection pooling to reduce server-side connections.</span>'
+        : '<span style="color:var(--green)">✓ Memory acceptable. PgBouncer can reduce server connections further for safety margin.</span>',
+  ].join('\n');
+}
+
+// ── VIZ 2: Pool viz ──
+function setPoolViz(mode, btn) {
+  document.querySelectorAll('.viz-btn').forEach(function(b) { if (b.onclick && b.onclick.toString().includes('setPoolViz')) b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  var area = document.getElementById('pool-viz-area');
+  var output = document.getElementById('pool-viz-output');
+
+  var CLIENT_COUNT = 20;
+  var SERVER_COUNT = { no_pool:20, session:20, transaction:5, statement:3 };
+  var sv = SERVER_COUNT[mode];
+
+  var html = '<div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:8px;align-items:center">';
+  // Clients
+  html += '<div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">' + CLIENT_COUNT + ' App connections</div><div class="conn-grid" style="grid-template-columns:repeat(5,1fr)">';
+  for (var i = 0; i < CLIENT_COUNT; i++) {
+    var cls = i < 3 ? 'active' : i < 6 ? 'idle' : 'idle';
+    html += '<div class="conn-cell ' + cls + '">' + (i < 3 ? 'Q' : '') + '</div>';
+  }
+  html += '</div></div>';
+  // Arrow
+  html += '<div style="text-align:center;font-size:18px;color:var(--text3)">' + (mode === 'no_pool' ? '→' : '↔<br><span style="font-size:10px;font-family:JetBrains Mono,monospace;color:var(--purple)">PgBouncer</span>') + '</div>';
+  // Servers
+  html += '<div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">' + sv + ' Server connections</div><div class="conn-grid" style="grid-template-columns:repeat(5,1fr)">';
+  for (var j = 0; j < sv; j++) {
+    var scls = j < 3 ? 'active' : 'idle';
+    html += '<div class="conn-cell ' + scls + '"></div>';
+  }
+  html += '</div></div>';
+  html += '</div>';
+  area.innerHTML = html;
+
+  var modes = {
+    no_pool:     'Direct connections (no pooler)\n\n20 app connections → 20 server connections\nEach app connection holds a PostgreSQL backend process.\nMemory: 20 × 8MB = 160MB minimum, more if work_mem is in use.\n\nAt 500 app connections: 500 PostgreSQL processes. At 200 connections, locking overhead degrades throughput.',
+    session:     'Session mode\n\n20 app connections → 20 server connections (via PgBouncer)\nSame connection count as direct. No multiplexing.\nBenefit: PgBouncer handles reconnect if PostgreSQL restarts.\nAlso: single auth point, easier credential management.\n\nUse when: migrating to PgBouncer, or when transaction mode breaks features.',
+    transaction: 'Transaction mode ← the goal\n\n20 app connections → 5 server connections\nOnly in-transaction queries hold a server connection.\nBetween transactions: server connection returns to pool.\n\n20 clients, 3 running queries → 3 server connections used, 2 idle.\nAt 1000 clients with 5% concurrency: 50 server connections = 950 idle clients sharing 5 connections.\n\n⚠ SET commands and prepared statements don\'t persist. Fix before enabling.',
+    statement:   'Statement mode\n\n20 app connections → 3 server connections\nMost aggressive multiplexing. Connection released after every statement.\n\nCONSEQUENCE: multi-statement transactions are impossible.\nBEGIN → stmt1 → stmt2 → COMMIT = 4 different server connections.\nEach statement may land on a different connection = no atomicity.\n\nUse only for: read-only workloads, simple lookups, analytics that don\'t need transactions.',
+  };
+  output.textContent = modes[mode];
+}
+
+// ── VIZ 3: Mode timeline ──
+function showMode(mode) {
+  var tl = document.getElementById('mode-timeline');
+  var out = document.getElementById('mode-output');
+  var events = {
+    session: [
+      { t:'client connects', held:true, label:'→ server connection assigned' },
+      { t:'BEGIN', held:true },
+      { t:'query 1', held:true },
+      { t:'COMMIT', held:true },
+      { t:'idle (waiting for next request)', held:true, warn:true },
+      { t:'BEGIN', held:true },
+      { t:'query 2', held:true },
+      { t:'COMMIT', held:true },
+      { t:'client disconnects', held:false, label:'← connection returned to pool' },
+    ],
+    transaction: [
+      { t:'client connects', held:false },
+      { t:'BEGIN', held:true, label:'→ server connection assigned' },
+      { t:'query 1', held:true },
+      { t:'COMMIT', held:false, label:'← connection RETURNED to pool' },
+      { t:'idle (no server connection held)', held:false },
+      { t:'BEGIN', held:true, label:'→ new server connection assigned' },
+      { t:'query 2', held:true },
+      { t:'COMMIT', held:false, label:'← connection RETURNED to pool' },
+      { t:'client disconnects', held:false },
+    ],
+    statement: [
+      { t:'client connects', held:false },
+      { t:'BEGIN (assigned)', held:true, label:'→ brief hold' },
+      { t:'BEGIN committed to server, conn returned', held:false },
+      { t:'query 1 (new conn assigned)', held:true, label:'→ new conn' },
+      { t:'query 1 done, conn returned', held:false, label:'← returned' },
+      { t:'query 2 (new conn assigned)', held:true, label:'→ new conn' },
+      { t:'query 2 done, conn returned', held:false },
+      { t:'COMMIT (new conn assigned)', held:true, label:'→ brief hold' },
+      { t:'COMMIT done, conn returned — BUT: no single conn held all txn!', held:false, warn:true },
+    ],
+  };
+
+  var evs = events[mode];
+  tl.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px">' +
+    evs.map(function(e) {
+      return '<div style="display:flex;gap:8px;align-items:center">' +
+        '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + (e.held ? 'var(--orange)' : 'var(--border2)') + ';border:1px solid ' + (e.warn ? 'var(--red)' : e.held ? 'var(--orange)' : 'var(--border)') + '"></div>' +
+        '<div style="font-family:JetBrains Mono,monospace;font-size:11px;color:' + (e.warn ? 'var(--red)' : e.held ? 'var(--orange)' : 'var(--text3)') + '">' + e.t + '</div>' +
+        (e.label ? '<span style="font-family:JetBrains Mono,monospace;font-size:10px;color:' + (e.held ? 'var(--orange)' : 'var(--green)') + '">' + e.label + '</span>' : '') +
+        '</div>';
+    }).join('') +
+  '</div>';
+
+  var summaries = {
+    session:     'Session mode: server connection held for the entire client connection lifetime.\nBetween transactions (idle periods), the connection is held but unused.\nNo multiplexing — 100 clients = 100 server connections always.\n\nAdvantage: all PostgreSQL features work (prepared statements, SET, advisory locks).\nDisadvantage: no pooling benefit.',
+    transaction: 'Transaction mode: server connection held ONLY during active transactions.\nBetween transactions: connection returned to pool, available for other clients.\n\nIf 1000 clients run one 50ms transaction per second:\n  Average in-flight = 1000 × 0.05 = 50 connections needed.\n  Pool_size = 50 serves 1000 clients comfortably.\n\nDISABLE prepared statements in ORM before enabling this mode.',
+    statement:   'Statement mode: connection held only for a single SQL statement.\nResult: BEGIN, each query, and COMMIT each run on potentially different connections.\n\nNo atomicity: FATAL for most applications.\n\nOnly safe for: read-only queries that never need transactions.\nExample: analytics queries that each read independently.',
+  };
+  out.textContent = summaries[mode];
+}
+
+// ── VIZ 4: Pool sizing ──
+var workloadMultiplier = 2;
+function setWorkload(wl, btn) {
+  document.querySelectorAll('#wl-oltp,#wl-io,#wl-mixed').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  workloadMultiplier = { oltp:2, io:4, mixed:3 }[wl];
+  calcPoolSize();
+}
+function calcPoolSize() {
+  var cores = parseInt(document.getElementById('cpu-cores').value);
+  var threads = parseInt(document.getElementById('app-threads').value);
+  var qt = parseInt(document.getElementById('query-time').value);
+  document.getElementById('cpu-val').textContent = cores;
+  document.getElementById('threads-val').textContent = threads + ' threads';
+  document.getElementById('qt-val').textContent = qt + 'ms';
+
+  var optimalConns = cores * workloadMultiplier + 1;
+  var avgInFlight = Math.round(threads * qt / 1000);
+  var recommended = Math.max(optimalConns, Math.ceil(avgInFlight * 1.5));
+  var maxConns = Math.round(optimalConns * 1.5);
+
+  var col = recommended > maxConns * 2 ? 'var(--red)' : recommended > maxConns ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('pool-size-output').innerHTML = [
+    'PostgreSQL server analysis:',
+    '  CPU cores:            ' + cores,
+    '  Multiplier (workload):' + workloadMultiplier + '× (change workload type above)',
+    '  Optimal server conns: <span style="color:var(--green)">' + optimalConns + '</span> (CPU ceiling)',
+    '',
+    'Application analysis:',
+    '  Total app threads:    ' + threads,
+    '  Avg query time:       ' + qt + 'ms',
+    '  Avg in-flight queries:' + avgInFlight + ' (Little\'s Law: ' + threads + ' × ' + qt + 'ms / 1000ms)',
+    '',
+    'Recommended pool_size: <span style="color:' + col + ';font-weight:700">' + recommended + '</span>',
+    '  (max of CPU ceiling ' + optimalConns + ' and 1.5× in-flight ' + Math.ceil(avgInFlight * 1.5) + ')',
+    '',
+    recommended > 200
+      ? '<span style="color:var(--red)">⚠ High pool_size needed. Consider: split across read replicas, optimize slow queries, add connection pooler per DB.</span>'
+      : '<span style="color:var(--green)">✓ Set default_pool_size = ' + recommended + ' in pgbouncer.ini</span>',
+  ].join('\n');
+}
+
+// ── VIZ 5: Config builder ──
+function buildConfig() {
+  var mode   = document.getElementById('cfg-mode').value;
+  var pool   = parseInt(document.getElementById('cfg-pool').value);
+  var maxc   = parseInt(document.getElementById('cfg-max').value);
+  var idt    = parseInt(document.getElementById('cfg-idt').value);
+  document.getElementById('cfg-pool-val').textContent = pool;
+  document.getElementById('cfg-max-val').textContent  = maxc;
+  document.getElementById('cfg-idt-val').textContent  = idt + 's';
+
+  var warnings = [];
+  if (mode === 'transaction') warnings.push('  ⚠ Disable server-side prepared statements in your ORM');
+  if (mode === 'statement')   warnings.push('  ⚠ Statement mode: no transactions possible');
+  if (idt === 0)              warnings.push('  ⚠ idle_transaction_timeout=0: "idle in transaction" will accumulate');
+  if (pool > 100)             warnings.push('  ⚠ pool_size=' + pool + ' is very high. Verify your DB can handle this many connections.');
+
+  document.getElementById('config-output').textContent =
+    '[pgbouncer]\n' +
+    'pool_mode             = ' + mode + '\n' +
+    'default_pool_size     = ' + pool + '\n' +
+    'max_client_conn       = ' + maxc + '\n' +
+    'idle_transaction_timeout = ' + idt + '\n' +
+    'min_pool_size         = ' + Math.round(pool * 0.2) + '\n' +
+    'reserve_pool_size     = ' + Math.round(pool * 0.2) + '\n' +
+    'query_wait_timeout    = 120\n' +
+    'server_idle_timeout   = 600\n' +
+    'server_lifetime       = 3600\n' +
+    (warnings.length ? '\n# Warnings:\n' + warnings.join('\n') : '\n# Config looks good.');
+}
+
+// ── VIZ 6: Scale comparison ──
+function updateScale() {
+  var pods   = parseInt(document.getElementById('app-pods').value);
+  var ppPool = parseInt(document.getElementById('pod-pool').value);
+  document.getElementById('pods-val').textContent     = pods;
+  document.getElementById('pod-pool-val').textContent = ppPool;
+
+  var direct    = pods * ppPool;
+  var withBouncer = Math.min(direct, 50); // pgbouncer reduces to ~50 server conns
+  var maxPgConns = 200;
+
+  var directColor  = direct > maxPgConns ? 'var(--red)' : 'var(--green)';
+  var bouncerColor = 'var(--green)';
+
+  document.getElementById('scale-output').innerHTML = [
+    'Pods:               ' + pods,
+    'Pool per pod:       ' + ppPool + ' connections',
+    '',
+    'Without PgBouncer:  <span style="color:' + directColor + ';font-weight:700">' + direct + ' server connections</span>',
+    'With PgBouncer:     <span style="color:' + bouncerColor + ';font-weight:700">~' + withBouncer + ' server connections</span>',
+    '',
+    direct > maxPgConns
+      ? '<span style="color:var(--red)">⚠ Direct connections exceed PostgreSQL safe limit (~' + maxPgConns + '). Performance degrades. PgBouncer required.</span>'
+      : '<span style="color:var(--orange)">Direct connections within limits for now. Add PgBouncer before scaling to avoid this constraint.</span>',
+    '',
+    'Reduction: ' + direct + ' → ' + withBouncer + ' server connections (' + Math.round((1 - withBouncer/direct)*100) + '% fewer)',
+  ].join('\n');
+
+  // Visual bar
+  var barHtml = '<div style="display:flex;flex-direction:column;gap:8px">';
+  var maxBar = Math.max(direct, 400);
+  var dPct = Math.min(direct/maxBar*100, 100);
+  var bPct = Math.min(withBouncer/maxBar*100, 100);
+  barHtml += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:4px">Server connections (visual scale)</div>';
+  barHtml += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--text3);min-width:100px">No pooler:</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;overflow:hidden"><div style="width:' + dPct + '%;height:100%;background:' + directColor + ';border-radius:4px;transition:width .3s"></div></div><span style="font-size:11px;font-family:JetBrains Mono,monospace;color:' + directColor + ';min-width:50px">' + direct + '</span></div>';
+  barHtml += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--text3);min-width:100px">PgBouncer:</span><div style="flex:1;background:var(--bg);border-radius:4px;height:16px;overflow:hidden"><div style="width:' + bPct + '%;height:100%;background:var(--green);border-radius:4px;transition:width .3s"></div></div><span style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--green);min-width:50px">~' + withBouncer + '</span></div>';
+  barHtml += '</div>';
+  document.getElementById('scale-bar').innerHTML = barHtml;
+}
+
+// ── VIZ 7: Pool health ──
+var HEALTH_STATES = {
+  healthy: {
+    active:5, idle:15, waiting:0, size:20,
+    text:'Pool health: GOOD\n\nactive: 5    (connections running queries)\nidle:   15   (warm, available)\nwaiting:0    (no clients queued) ✓\n\nThis is ideal: pool is right-sized. Most connections are idle (warm and ready),\na few are active, none are waiting. The idle connections cost very little\n(server connections to PgBouncer are lightweight).\n\nAction: none. Continue monitoring.',
+  },
+  undersized: {
+    active:20, idle:0, waiting:15, size:20,
+    text:'Pool health: UNDERSIZED\n\nactive: 20   (all connections in use)\nidle:   0    (none available)\nwaiting:15   (clients queued, waiting!) ⚠\n\nSustained cl_waiting > 0 = pool is too small OR queries are too slow.\n\nDiagnose:\n1. Check SHOW STATS avg_query_time — if high, fix slow queries first\n2. If queries are fast but pool is full: increase pool_size\n3. Check if "idle in transaction" is eating pool slots: SHOW CLIENTS\n\nAction: increase default_pool_size by 20%, re-observe.',
+  },
+  slow_db: {
+    active:20, idle:0, waiting:8, size:20,
+    text:'Pool health: SLOW DATABASE\n\nactive: 20   (all connections in use)\nidle:   0    (none available)\nwaiting:8    (clients queued) ⚠\n\nSame pattern as undersized, but SHOW STATS shows avg_query_time > 500ms.\nQueries are slow, so connections are held longer, pool fills up.\n\nDiagnose:\n1. SHOW STATS: avg_query_time very high\n2. Check pg_stat_activity: look for slow queries\n3. Check pg_stat_statements: which queries are slow\n\nAction: fix slow queries (missing indexes, N+1, lock contention) BEFORE increasing pool_size.\nIncreasing pool_size here just defers the problem and adds DB load.',
+  },
+  leak: {
+    active:12, idle:0, waiting:3, size:20,
+    text:'Pool health: CONNECTION LEAK\n\nactive: 12   (more than expected)\nidle:   0    (none available)\nwaiting:3    (growing over time) ⚠\n\nOver time, cl_waiting grows while sv_active stays high.\nApplication is not releasing connections after transactions.\n\nCommon causes:\n- ORM not releasing connection after query (missing await/async/finally)\n- Exception thrown before ROLLBACK/COMMIT\n- idle_transaction_timeout = 0 (not killing stuck connections)\n\nAction:\n1. Set idle_transaction_timeout = 30 immediately (kills stuck connections)\n2. Identify which query/endpoint is leaking (check slow query log)\n3. Fix the missing COMMIT/ROLLBACK in application code',
+  },
+  oversized: {
+    active:3, idle:47, waiting:0, size:50,
+    text:'Pool health: OVERSIZED (wasteful)\n\nactive: 3    (very few in use)\nidle:   47   (mostly idle)\nwaiting:0    (no pressure)\n\nPool is larger than needed. Not a production problem, but:\n- Wastes server connections (PostgreSQL allocates memory for each)\n- Inflates metrics and makes genuine issues harder to spot\n- At pg_stat_activity level: makes debugging harder (many idle connections)\n\nAction: reduce pool_size to ~2× observed peak sv_active.\nA pool_size of 10 would serve this workload comfortably.',
+  },
+};
+
+function setPoolHealth(state) {
+  var s = HEALTH_STATES[state];
+  var grid = document.getElementById('health-grid');
+  var cols = Math.max(s.size, s.active + s.idle + s.waiting);
+  grid.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px">' +
+    '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:4px">Pool slots (green=active, blue=idle, orange=client waiting):</div>' +
+    '<div class="conn-grid" style="grid-template-columns:repeat(10,1fr)">' +
+    Array.from({length:s.active}).map(function() { return '<div class="conn-cell active">Q</div>'; }).join('') +
+    Array.from({length:s.idle}).map(function() { return '<div class="conn-cell idle"></div>'; }).join('') +
+    Array.from({length:s.waiting}).map(function() { return '<div class="conn-cell queued">W</div>'; }).join('') +
+    '</div></div>';
+  document.getElementById('health-output').textContent = s.text;
+}
+
+// ── VIZ 8: Pools table ──
+var POOL_ROWS = [
+  { db:'myapp', user:'app', cl_active:45, cl_waiting:0,  sv_active:22, sv_idle:8,  maxwait:0.0, state:'healthy' },
+  { db:'myapp', user:'app', cl_active:50, cl_waiting:12, sv_active:30, sv_idle:0,  maxwait:3.2, state:'critical' },
+  { db:'myapp_ro', user:'reader', cl_active:30, cl_waiting:0, sv_active:15, sv_idle:10, maxwait:0.0, state:'healthy' },
+  { db:'myapp', user:'admin', cl_active:1, cl_waiting:0,  sv_active:1,  sv_idle:4,  maxwait:0.0, state:'ok' },
+];
+var POOL_DETAILS = {
+  healthy: 'Pool: healthy\n\ncl_active=45: 45 clients running queries (normal)\ncl_waiting=0: no clients queued ✓\nsv_active=22: 22 server connections in use\nsv_idle=8:    8 server connections warm and available\nmaxwait=0.0:  no wait time ✓\n\nAction: none. Headroom available (8 idle connections).',
+  critical: 'Pool: CRITICAL — clients waiting!\n\ncl_active=50: all clients in use\ncl_waiting=12: 12 clients queued for a server connection ⚠\nsv_active=30: all 30 server connections busy\nsv_idle=0:    no connections available\nmaxwait=3.2:  clients waiting up to 3.2 seconds!\n\nAction:\n1. Check SHOW STATS avg_query_time — are queries slow?\n2. If slow queries: fix them (indexes, N+1 queries)\n3. If queries are fast: increase default_pool_size\n4. IMMEDIATE: SET default_pool_size = 40; RELOAD; in admin console',
+  ok: 'Pool: healthy (low traffic admin pool)\n\ncl_active=1:  1 admin query running\ncl_waiting=0: no wait ✓\nsv_idle=4:    4 connections warm (oversized for this workload)\nmaxwait=0.0:  no wait ✓\n\nAction: reduce pool_size for admin user to 2-3 to free connections for app user.',
+};
+
+function initPoolsTable() {
+  var table = document.getElementById('pools-table');
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr>';
+  ['database','user','cl_active','cl_waiting','sv_active','sv_idle','maxwait'].forEach(function(h) {
+    html += '<th style="background:var(--bg3);padding:6px 10px;text-align:left;color:var(--text3);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border2)">' + h + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  POOL_ROWS.forEach(function(r, i) {
+    var rowColor = r.state === 'critical' ? 'rgba(240,96,96,.05)' : 'transparent';
+    var waitColor = r.cl_waiting > 0 ? 'color:var(--red);font-weight:700' : 'color:var(--text2)';
+    var maxwaitColor = r.maxwait > 1 ? 'color:var(--red);font-weight:700' : 'color:var(--text2)';
+    html += '<tr onclick="showPoolDetail(' + i + ')" style="cursor:pointer;background:' + rowColor + '" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'' + rowColor + '\'">';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--purple)">' + r.db + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2)">' + r.user + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2)">' + r.cl_active + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);' + waitColor + '">' + r.cl_waiting + (r.cl_waiting > 0 ? ' ⚠' : '') + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2)">' + r.sv_active + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2)">' + r.sv_idle + '</td>';
+    html += '<td style="padding:7px 10px;border-bottom:1px solid var(--border);' + maxwaitColor + '">' + r.maxwait.toFixed(1) + (r.maxwait > 1 ? ' ⚠' : '') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+function showPoolDetail(i) {
+  var r = POOL_ROWS[i];
+  document.getElementById('pools-detail').textContent = POOL_DETAILS[r.state] || 'Row ' + i + ': ' + JSON.stringify(r);
+}
+
+// ── Init ──
+updateConnCost();
+setPoolViz('no_pool', document.querySelector('[onclick*="no_pool"]'));
+showMode('transaction');
+calcPoolSize();
+buildConfig();
+updateScale();
+setPoolHealth('healthy');
+initPoolsTable();
+</script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 11 Deep Dive: PgBouncer HA, Prometheus Metrics, Transaction Mode Migration</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;transition:color .12s;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);letter-spacing:1px;}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:700px){.topbar{padding:0 20px;}.page{padding:40px 20px 80px;}.deep-hero h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day11" class="back-link">&#8592; Day 11: Connection Pooling</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 11 · Connection Pooling · Deep Dive</div>
+  <h1>PgBouncer HA setup,<br>Prometheus metrics,<br>&amp; <em>transaction mode migration</em></h1>
+  <p>The main lesson covered how PgBouncer works and how to size it. This page covers the implementation: a complete HA setup with dual PgBouncer instances behind HAProxy, exporting metrics to Prometheus, and a step-by-step migration playbook for moving an existing application to transaction mode without downtime.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">PgBouncer HA — dual instance with HAProxy</span><span class="deep-topic-sub">— full HAProxy config, health checks, failover behaviour</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Prometheus metrics with pgbouncer_exporter</span><span class="deep-topic-sub">— key metrics, alert rules, Grafana dashboard queries</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Transaction mode migration playbook</span><span class="deep-topic-sub">— compatibility audit, ORM fixes, zero-downtime rollout</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: HA SETUP -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>PgBouncer HA:<br><em>dual instance with HAProxy</em></h2>
+  <p class="lead">A single PgBouncer instance is a single point of failure. If PgBouncer crashes, all database connections from the application fail — even if PostgreSQL is healthy. Running two PgBouncer instances behind HAProxy provides redundancy: if one fails, HAProxy routes all traffic to the other within seconds.</p>
+
+  <h3>Architecture</h3>
+  <p>Two PgBouncer instances, each with the same configuration, both pointing at the same PostgreSQL primary. HAProxy listens on port 5432 (the standard PostgreSQL port — applications connect here as if talking to PostgreSQL directly). HAProxy health-checks each PgBouncer instance via TCP and routes connections to healthy instances.</p>
+  <p>When one PgBouncer fails: HAProxy marks it down and routes all new connections to the surviving instance. Existing connections through the failed PgBouncer are reset (the application will see connection errors and retry). Recovery: restart the failed PgBouncer, HAProxy detects it's healthy, and begins routing to it again.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">HAProxy config for dual-PgBouncer HA</span><span class="code-block-lang">CONFIG</span></div>
+    <pre><span class="cm"># /etc/haproxy/haproxy.cfg</span>
+
+global
+    log stdout format raw local0 info
+    maxconn 10000
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    tcp                    <span class="cm"># L4 TCP passthrough — don't inspect PostgreSQL protocol</span>
+    timeout connect  5s
+    timeout client   10m           <span class="cm"># idle client connections can stay open for 10 min</span>
+    timeout server   10m
+    timeout tunnel   1h            <span class="cm"># long-lived DB connections</span>
+    option  tcplog
+    option  tcp-check              <span class="cm"># TCP health check</span>
+
+<span class="cm"># ── Frontend: what applications connect to ─────────────────────</span>
+frontend postgres_frontend
+    bind *:5432
+    default_backend pgbouncer_pool
+
+<span class="cm"># ── Backend: PgBouncer instances ───────────────────────────────</span>
+backend pgbouncer_pool
+    balance leastconn              <span class="cm"># distribute to instance with fewest connections</span>
+    option tcp-check
+    
+    <span class="cm"># Health check: TCP connect to PgBouncer port</span>
+    <span class="cm"># PgBouncer answers TCP connections even when paused/draining</span>
+    <span class="cm"># For deeper check, use pgbouncer's admin console via check-send/check-expect</span>
+    tcp-check connect port 5432
+    
+    server pgbouncer-1 10.0.1.1:5432 check inter 5s rise 2 fall 3
+    server pgbouncer-2 10.0.1.2:5432 check inter 5s rise 2 fall 3
+    <span class="cm">#</span>
+    <span class="cm"># inter 5s:  health check every 5 seconds</span>
+    <span class="cm"># rise 2:    need 2 consecutive successes to mark UP after failure</span>
+    <span class="cm"># fall 3:    3 consecutive failures to mark DOWN</span>
+    <span class="cm"># Failover time: 3 failures × 5s = 15 seconds max to detect failure</span>
+
+<span class="cm"># ── Stats page (internal only) ─────────────────────────────────</span>
+frontend stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats auth admin:${HAPROXY_STATS_PASSWORD}
+
+<span class="cm"># ── Admin socket (for haproxy CLI) ─────────────────────────────</span>
+<span class="cm"># Allows: echo "show servers state" | socat stdio /var/run/haproxy.sock</span>
+<span class="cm"># global: stats socket /var/run/haproxy.sock mode 660 level admin</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Systemd service — ensure PgBouncer restarts automatically</span><span class="code-block-lang">SYSTEMD</span></div>
+    <pre><span class="cm"># /etc/systemd/system/pgbouncer.service</span>
+[Unit]
+Description=PgBouncer connection pooler
+After=network.target
+Wants=network.target
+
+[Service]
+Type=forking
+User=postgres
+ExecStart=/usr/sbin/pgbouncer -d /etc/pgbouncer/pgbouncer.ini
+ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/var/run/pgbouncer/pgbouncer.pid
+Restart=always                  <span class="cm"># restart if crashed</span>
+RestartSec=5                    <span class="cm"># wait 5s before restarting</span>
+StartLimitIntervalSec=60
+StartLimitBurst=5               <span class="cm"># don't restart more than 5 times per minute</span>
+
+[Install]
+WantedBy=multi-user-target
+
+<span class="cm"># Apply:</span>
+<span class="cm">systemctl daemon-reload</span>
+<span class="cm">systemctl enable pgbouncer</span>
+<span class="cm">systemctl start pgbouncer</span>
+<span class="cm">systemctl status pgbouncer</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify HA setup</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Both PgBouncer instances show in HAProxy stats: <code>curl http://haproxy:8404/stats | grep pgbouncer</code> — both should show UP.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Failover test: stop one PgBouncer, verify connections route to the other within 15 seconds. Restart it, verify it rejoins.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Both instances have identical config: <code>diff /etc/pgbouncer/pgbouncer.ini node1: node2:</code> — only <code>listen_addr</code> should differ.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Systemd restarts on crash: <code>kill -9 $(pgrep pgbouncer)</code> — verify it restarts within 5 seconds.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: PROMETHEUS -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Prometheus metrics:<br><em>what to alert on and why</em></h2>
+  <p class="lead">pgbouncer_exporter scrapes PgBouncer's SHOW STATS, SHOW POOLS, and SHOW CLIENTS output and exports them as Prometheus metrics. Here are the metrics that matter, the alert rules that catch real problems, and the Grafana queries to build a useful dashboard.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">pgbouncer_exporter setup + key Prometheus alert rules</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># docker-compose.yml — run pgbouncer_exporter as a sidecar</span>
+services:
+  pgbouncer:
+    image: pgbouncer/pgbouncer:1.21.0
+    # ...
+
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:v0.8.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://pgbouncer_admin:password@pgbouncer:5432/pgbouncer?sslmode=disable"
+    ports:
+      - "9127:9127"          <span class="cm"># Prometheus scrapes :9127/metrics</span>
+    depends_on:
+      - pgbouncer
+
+---
+<span class="cm"># prometheus.yml scrape config</span>
+scrape_configs:
+  - job_name: pgbouncer
+    static_configs:
+      - targets: ['pgbouncer-1:9127', 'pgbouncer-2:9127']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+---
+<span class="cm"># prometheus-alerts.yml — the rules that matter</span>
+groups:
+  - name: pgbouncer
+    rules:
+
+    <span class="cm"># CRITICAL: clients waiting for a server connection</span>
+    - alert: PgBouncerClientsWaiting
+      expr: pgbouncer_pools_client_waiting_connections > 0
+      for: 10s                 <span class="cm"># wait 10s to avoid flapping on brief spikes</span>
+      labels:
+        severity: critical
+      annotations:
+        summary: "PgBouncer clients waiting for connections"
+        description: "{{ $value }} clients are queued waiting for a server connection in pool {{ $labels.database }}/{{ $labels.user }}. Pool may be undersized or DB is slow."
+
+    <span class="cm"># WARNING: maximum wait time too high</span>
+    - alert: PgBouncerMaxWaitHigh
+      expr: pgbouncer_pools_max_wait_seconds > 1
+      for: 30s
+      labels:
+        severity: warning
+      annotations:
+        description: "Clients waiting up to {{ $value }}s for a connection. SLA impact likely."
+
+    <span class="cm"># WARNING: pool near capacity</span>
+    - alert: PgBouncerPoolNearCapacity
+      expr: >
+        pgbouncer_pools_server_active_connections /
+        (pgbouncer_pools_server_active_connections + pgbouncer_pools_server_idle_connections) > 0.9
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        description: "Pool {{ $labels.database }} is {{ $value | humanizePercentage }} full. Consider increasing pool_size."
+
+    <span class="cm"># CRITICAL: PgBouncer down</span>
+    - alert: PgBouncerDown
+      expr: up{job="pgbouncer"} == 0
+      for: 30s
+      labels:
+        severity: critical
+
+    <span class="cm"># WARNING: high avg query time (potential slow queries)</span>
+    - alert: PgBouncerHighQueryTime
+      expr: >
+        rate(pgbouncer_stats_total_query_duration_microseconds[5m]) /
+        rate(pgbouncer_stats_total_query_count[5m]) / 1e6 > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        description: "Average query time through PgBouncer is {{ $value | humanizeDuration }}. Check for slow queries."
+
+---
+<span class="cm"># Key Grafana dashboard queries</span>
+
+<span class="cm"># QPS through PgBouncer</span>
+<span class="cm">rate(pgbouncer_stats_total_query_count[1m])</span>
+
+<span class="cm"># Active server connections (how full is the pool?)</span>
+<span class="cm">pgbouncer_pools_server_active_connections</span>
+
+<span class="cm"># Client wait count (the critical metric)</span>
+<span class="cm">pgbouncer_pools_client_waiting_connections</span>
+
+<span class="cm"># Average query latency through PgBouncer (microseconds)</span>
+<span class="cm">rate(pgbouncer_stats_total_query_duration_microseconds[5m]) /</span>
+<span class="cm">rate(pgbouncer_stats_total_query_count[5m])</span>
+
+<span class="cm"># Connection reuse rate (how often is a free connection found vs new one created)</span>
+<span class="cm">rate(pgbouncer_stats_total_server_assignment_count[5m]) -</span>
+<span class="cm">rate(pgbouncer_stats_total_server_connect_count[5m])</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3: MIGRATION PLAYBOOK -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Transaction mode migration:<br><em>zero-downtime playbook</em></h2>
+  <p class="lead">Migrating from direct connections (or PgBouncer session mode) to transaction mode is the highest-value change you can make to your database architecture. Done wrong, it takes down production in minutes (the prepared statement incident). Done right, it's invisible to users and drops server connection count by 90%. Here's the exact sequence.</p>
+
+  <h3>Step 1: Audit your codebase for transaction-mode incompatible features</h3>
+  <p>Before touching any infrastructure, identify everything that will break. The list to check:</p>
+  <ul>
+    <li><code>PREPARE / EXECUTE</code> — explicit prepared statements in SQL files</li>
+    <li>ORM-level prepared statements — Django, Rails, TypeORM all use them by default</li>
+    <li><code>SET search_path</code>, <code>SET work_mem</code>, or any <code>SET</code> in session scope</li>
+    <li><code>LISTEN / NOTIFY</code> — subscriptions tied to a connection</li>
+    <li><code>pg_advisory_lock()</code> — session-level advisory locks (transaction-level works)</li>
+    <li><code>DECLARE cursor FOR SELECT ...</code> — server-side cursors</li>
+    <li><code>CREATE TEMP TABLE</code> — temp tables are connection-scoped</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Complete migration playbook — 6 steps to transaction mode</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm">## ── STEP 1: Audit (run before any config change) ──────────────</span>
+
+<span class="cm"># Find all SET commands in your codebase</span>
+grep -r "SET search_path\|SET work_mem\|SET session\|pg_advisory_lock\|LISTEN\|PREPARE\|TEMP TABLE" \
+  ./app --include="*.py" --include="*.rb" --include="*.ts" --include="*.js"
+
+<span class="cm"># Check if ORM uses prepared statements</span>
+<span class="cm"># Django: check if DISABLE_SERVER_SIDE_CURSORS is absent (default = prepared statements on)</span>
+<span class="cm"># Rails: check config/database.yml for prepared_statements: false</span>
+<span class="cm"># node-postgres: check if options.prepare is set</span>
+
+<span class="cm"># Enable pg_stat_statements to find actual prepared statement usage</span>
+psql -c "SELECT calls, query FROM pg_stat_statements WHERE query LIKE '%PREPARE%' ORDER BY calls DESC LIMIT 20"
+
+<span class="cm">## ── STEP 2: Fix ORM prepared statements ───────────────────────</span>
+
+<span class="cm"># Django</span>
+<span class="cm">DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True</span>
+
+<span class="cm"># Rails</span>
+<span class="cm">production: { prepared_statements: false }</span>
+
+<span class="cm"># TypeORM</span>
+<span class="cm">extra: { statement_timeout: 30000 }  # and set pgbouncer=true in URL</span>
+
+<span class="cm"># Prisma</span>
+<span class="cm">DATABASE_URL="...?pgbouncer=true"</span>
+
+<span class="cm"># node-postgres (pg)</span>
+<span class="cm">new Pool({ ... })  # pg doesn't use prepared statements by default ✓</span>
+
+<span class="cm">## ── STEP 3: Fix SET commands ───────────────────────────────────</span>
+
+<span class="cm"># Option A: move SET to database/role defaults (persists across connections)</span>
+psql -c "ALTER DATABASE myapp SET search_path = myschema, public"
+psql -c "ALTER ROLE myapp_user SET work_mem = '64MB'"
+<span class="cm"># These settings apply to every new connection automatically</span>
+
+<span class="cm"># Option B: move SET into the transaction (only needs this for the duration)</span>
+<span class="cm">BEGIN;</span>
+<span class="cm">SET LOCAL work_mem = '256MB';  -- SET LOCAL: only lives for this transaction</span>
+<span class="cm">... expensive query ...</span>
+<span class="cm">COMMIT;  -- SET LOCAL is released here</span>
+<span class="cm"># SET LOCAL is safe in transaction mode -- it's scoped to the transaction</span>
+
+<span class="cm">## ── STEP 4: Deploy PgBouncer in SESSION mode first ────────────</span>
+
+<span class="cm"># Start with session mode — same as direct connection, no multiplexing</span>
+<span class="cm"># but validates that applications can connect through the pooler</span>
+pool_mode = session
+
+<span class="cm">## ── STEP 5: Shadow traffic test in staging ────────────────────</span>
+
+<span class="cm"># Change to transaction mode in staging</span>
+pool_mode = transaction
+
+<span class="cm"># Run your full integration test suite against staging</span>
+<span class="cm"># Monitor for "prepared statement does not exist" errors</span>
+<span class="cm"># Run load test: 100 concurrent users for 5 minutes</span>
+<span class="cm"># Verify: error rate = 0, latency normal</span>
+
+<span class="cm">## ── STEP 6: Canary deploy to production ───────────────────────</span>
+
+<span class="cm"># Deploy ONE pod pointing at PgBouncer (transaction mode)</span>
+<span class="cm"># Route 5% of production traffic to this pod</span>
+<span class="cm"># Monitor for 10 minutes:</span>
+<span class="cm">#   - Application error rate (should be 0)</span>
+<span class="cm">#   - SHOW POOLS cl_waiting (should be 0)</span>
+<span class="cm">#   - pg_stat_activity connection count (should start dropping)</span>
+
+<span class="cm"># If all clear: roll out to 25%, then 50%, then 100%</span>
+<span class="cm"># Each increment: monitor for 5 minutes before proceeding</span>
+
+<span class="cm"># Post-rollout: verify connection count dropped as expected</span>
+psql -c "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'myapp'"
+<span class="cm"># Should be ~pool_size, not number_of_pods × connections_per_pod</span></pre>
+  </div>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>LISTEN/NOTIFY needs a dedicated long-lived connection</strong>
+      <p>Applications that use <code>LISTEN</code> for real-time notifications (webhooks, pub/sub) cannot go through PgBouncer's transaction mode — LISTEN requires a persistent connection to receive notifications. The solution: create a separate connection pool (or single connection) specifically for LISTEN/NOTIFY, bypassing PgBouncer for that purpose. Everything else goes through PgBouncer. This keeps 99% of your connections in the efficient transaction mode pool while maintaining LISTEN functionality on a single dedicated connection per subscriber.</p>
+    </div>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify transaction mode migration is successful</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Zero "prepared statement does not exist" errors in application logs after rollout.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">pg_stat_activity connection count dropped to approximately pool_size × number_of_pgbouncer_instances.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">SHOW POOLS shows cl_waiting = 0 under normal load — if non-zero, pool_size needs adjustment.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">All SET commands either moved to ALTER DATABASE/ROLE defaults or converted to SET LOCAL within transactions.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Application response time P99 unchanged or improved after migration (pooling should reduce latency slightly by eliminating connection establishment overhead).</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
