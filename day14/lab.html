@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 14 Lab: The 16MB MongoDB Document</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;--mongo:#00ed64;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:56px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--orange));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.incident-eyebrow::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+.incident p{color:var(--text2);font-size:15px;line-height:1.85;margin-bottom:16px;}
+.incident p strong{color:var(--text);}
+.incident-timeline{margin:24px 0;border-left:2px solid var(--border2);padding-left:20px;}
+.tl-item{margin-bottom:18px;position:relative;}
+.tl-item::before{content:'';position:absolute;left:-26px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);}
+.tl-item.bad::before{border-color:var(--red);background:rgba(240,96,96,.2);}
+.tl-item.ok::before{border-color:var(--green);background:rgba(62,207,142,.2);}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px;}
+.tl-event{font-size:14px;color:var(--text2);line-height:1.6;}
+.tl-event strong{color:var(--text);}
+.incident-reveal{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);border-radius:8px;padding:18px 20px;margin-top:24px;}
+.incident-reveal-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.incident-reveal p{color:var(--text2);font-size:14px;margin-bottom:0;line-height:1.7;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:16px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;align-items:flex-end;}
+.ctrl-group{display:flex;flex-direction:column;gap:4px;}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.ctrl-select{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;cursor:pointer;}
+.fire-btn{font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 18px;border-radius:6px;border:1px solid var(--accent);background:rgba(91,143,255,.1);color:var(--accent);cursor:pointer;transition:all .15s;}
+.fire-btn:hover{background:rgba(91,143,255,.2);}
+.runtime{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.runtime-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.doc-view{padding:16px 20px;}
+.doc-bar-wrap{background:var(--bg);border:1px solid var(--border);border-radius:6px;height:28px;overflow:hidden;position:relative;margin-bottom:10px;}
+.doc-bar-fill{height:100%;transition:width .5s,background .5s;border-radius:6px;}
+.doc-bar-label{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;}
+.stats-row{display:flex;gap:20px;padding:10px 20px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.stat-val{font-size:18px;font-weight:700;display:block;}
+.log{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 18px;height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;margin-bottom:24px;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.log-line{animation:fadeIn .2s ease;}
+.log-ok{color:var(--green)}.log-err{color:var(--red)}.log-warn{color:var(--orange)}.log-info{color:var(--text3)}.log-accent{color:var(--mongo)}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.cm{color:#5c6370;font-style:italic}.str{color:#98c379}.kw{color:#c678dd}.fn{color:#61afef}.num{color:#d19a66}
+.hl{background:rgba(240,96,96,.1);border-left:2px solid var(--red);display:block;margin:0 -20px;padding:0 20px;}
+.hl-fix{background:rgba(62,207,142,.07);border-left:2px solid var(--green);display:block;margin:0 -20px;padding:0 20px;}
+.learned{background:var(--bg2);border:1px solid rgba(91,143,255,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}
+.learned-text strong{color:var(--text);}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day14" class="back-link">&#8592; Day 14: NoSQL Data Modeling</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">Production Incident &nbsp;·&nbsp; MongoDB &nbsp;·&nbsp; Document Size Limit</div>
+  <h2>Post document hit 16MB — writes failed for the most popular content</h2>
+  <div class="incident-meta">Saturday 11:30 IST &nbsp;·&nbsp; Discovered via user reports &nbsp;·&nbsp; Severity: P1 &nbsp;·&nbsp; All comments broken on viral posts</div>
+
+  <p>The platform launched with a clean MongoDB schema: a <code>posts</code> collection where each post document contained a <code>comments</code> array. Early in the product's life, this worked perfectly — most posts had fewer than 100 comments, documents stayed small, and the embedded approach made reading posts fast.</p>
+
+  <p>Eight months later, a founder posted a thread that went viral. It accumulated 24,000 comments over 48 hours. At some point overnight, the post document crossed 16,777,216 bytes — MongoDB's hard document size limit. When the 24,001st comment tried to push to the array, MongoDB returned: <code>MongoServerError: Document failed validation: document too large</code>. Every subsequent comment attempt failed. The post was frozen in time, unable to accept new comments.</p>
+
+  <div class="incident-timeline">
+    <div class="tl-item bad">
+      <div class="tl-time">Launch (8 months ago)</div>
+      <div class="tl-event">Schema design: comments embedded in post document. Works perfectly. Average post has 12 comments.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">Friday 09:00 IST</div>
+      <div class="tl-event">Viral post appears. Comments flood in. Document growing: <strong>2MB → 5MB → 10MB</strong> over 24 hours.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">Saturday 02:47 IST</div>
+      <div class="tl-event">Post document reaches <strong>16MB</strong>. MongoDB hard limit hit. All further comment writes return error.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">Saturday 11:30 IST</div>
+      <div class="tl-event">Users report "can't post comment." Error logged: <code>document too large</code>. On-call investigates.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">Saturday 12:00 IST</div>
+      <div class="tl-event">Team discovers 3 other posts approaching 12MB. <strong>Not just one incident — a systemic design flaw.</strong></div>
+    </div>
+    <div class="tl-item ok">
+      <div class="tl-time">Saturday 14:30 IST</div>
+      <div class="tl-event">Emergency migration: extract comments from all posts into a separate <code>comments</code> collection. <code>posts</code> document keeps only first 5 comments embedded. Fix deployed. Writes resume.</div>
+    </div>
+  </div>
+
+  <div class="incident-reveal">
+    <div class="incident-reveal-label">Root cause</div>
+    <p>Comments were embedded in the post document as an unbounded array. MongoDB's 16MB document size limit is a hard ceiling — when hit, all writes to the document fail. The design was correct for typical posts (bounded comment counts) but broke under viral conditions. The fix: separate <code>comments</code> collection with a <code>post_id</code> reference, and only embed the most recent 5 comments in the post document for display performance.</p>
+  </div>
+</div>
+
+<h3>Lab: watch the document grow — embed vs separate collection</h3>
+<p>Simulate comments arriving on a viral post. Toggle between embedded (incident state) and separate collection (fix). Watch document size approach and hit the 16MB limit.</p>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">Schema strategy</div>
+    <select class="ctrl-select" id="schema-strategy" onchange="resetSim()">
+      <option value="embedded">Embedded array (incident state)</option>
+      <option value="reference">Separate collection (fix)</option>
+      <option value="hybrid">Hybrid: embed top 5, reference rest</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Comment size (bytes avg)</div>
+    <select class="ctrl-select" id="comment-size">
+      <option value="300">300B (short)</option>
+      <option value="600" selected>600B (typical)</option>
+      <option value="1200">1200B (long with metadata)</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Simulate</div>
+    <button class="fire-btn" onclick="addBatch(100)">+100 comments</button>
+    <button class="fire-btn" onclick="addBatch(1000)" style="border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.1);margin-top:4px">+1000 (viral)</button>
+    <button class="fire-btn" onclick="resetSim()" style="border-color:var(--text3);color:var(--text3);background:var(--bg3);margin-top:4px">&#8635; Reset</button>
+  </div>
+</div>
+
+<div class="runtime">
+  <div class="runtime-header">Document size monitor — <span id="strategy-label">embedded array</span></div>
+  <div class="doc-view">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:6px">Post document size (16MB limit):</div>
+    <div class="doc-bar-wrap">
+      <div class="doc-bar-fill" id="doc-bar" style="width:1%;background:var(--green)"></div>
+      <div class="doc-bar-label" id="doc-bar-label">~1KB</div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:6px;margin-top:12px">Comments collection size (separate collection — no limit per document):</div>
+    <div class="doc-bar-wrap">
+      <div class="doc-bar-fill" id="coll-bar" style="width:0%;background:var(--accent)"></div>
+      <div class="doc-bar-label" id="coll-bar-label">0 docs</div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div><span class="stat-val" id="stat-comments" style="color:var(--mongo)">0</span><span>Total comments</span></div>
+    <div><span class="stat-val" id="stat-doc-size" style="color:var(--green)">~1KB</span><span>Post doc size</span></div>
+    <div><span class="stat-val" id="stat-writes" style="color:var(--green)">OK</span><span>Write status</span></div>
+    <div><span class="stat-val" id="stat-read-time" style="color:var(--green)">0.5ms</span><span>Read latency</span></div>
+  </div>
+</div>
+
+<div class="log" id="log">
+  <div class="log-info">// Select "Embedded array" schema and add 1000 comments to reproduce the incident.</div>
+  <div class="log-info">// Then try "Hybrid" to see the best-of-both approach.</div>
+</div>
+
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-title">The fix — hybrid embed + separate collection</span><span class="code-block-lang">JAVASCRIPT</span></div>
+  <pre><span class="cm">❌ Incident: unbounded embedded array</span>
+<span class="hl"><span class="cm">// posts collection</span>
+<span class="hl">{ _id: "post_123", title: "...", body: "...",
+<span class="hl">  comments: [  <span class="cm">// ← unbounded array, WILL hit 16MB on viral posts</span>
+<span class="hl">    { user: "alice", text: "...", created_at: ... },
+<span class="hl">    { user: "bob",   text: "...", created_at: ... },
+<span class="hl">    <span class="cm">// ... 24,000 more ...</span>
+<span class="hl">  ]
+<span class="hl">}
+
+<span class="cm">✅ Fix: hybrid — embed top 5, reference the rest</span>
+<span class="cm">// posts collection — bounded document size</span>
+<span class="hl-fix">{ _id: "post_123", title: "...", body: "...",
+<span class="hl-fix">  comment_count: 24001,
+<span class="hl-fix">  top_comments: [           <span class="cm">// ← latest 5 comments, embedded for speed</span>
+<span class="hl-fix">    { _id: ObjectId("..."), user: "alice", text: "Great post!", created_at: ... },
+<span class="hl-fix">    <span class="cm">// 4 more max</span>
+<span class="hl-fix">  ]
+<span class="hl-fix">}
+
+<span class="cm">// comments collection — unbounded, no problem</span>
+<span class="hl-fix">{ _id: ObjectId("..."), post_id: "post_123",
+<span class="hl-fix">  user_id: "usr_456", user_name: "alice",
+<span class="hl-fix">  text: "Great post!", likes: 42,
+<span class="hl-fix">  created_at: ISODate("...")
+<span class="hl-fix">}
+
+<span class="cm">// Add a comment (Node.js)</span>
+<span class="hl-fix"><span class="kw">async function</span> <span class="fn">addComment</span>(postId, userId, text) {
+<span class="hl-fix">  <span class="cm">// 1. Insert into comments collection (always works, no size limit)</span>
+<span class="hl-fix">  <span class="kw">const</span> comment = <span class="kw">await</span> db.comments.<span class="fn">insertOne</span>({
+<span class="hl-fix">    post_id: postId, user_id: userId, text, created_at: <span class="kw">new</span> <span class="fn">Date</span>()
+<span class="hl-fix">  });
+<span class="hl-fix">  <span class="cm">// 2. Update post: increment count, update top_comments (capped at 5)</span>
+<span class="hl-fix">  <span class="kw">await</span> db.posts.<span class="fn">updateOne</span>({ _id: postId }, {
+<span class="hl-fix">    $inc: { comment_count: <span class="num">1</span> },
+<span class="hl-fix">    $push: { top_comments: { $each: [comment], $slice: -<span class="num">5</span>, $sort: { created_at: -<span class="num">1</span> } } }
+<span class="hl-fix">  });
+<span class="hl-fix">}
+
+<span class="cm">// Index on comments for efficient lookup</span>
+db.comments.createIndex({ post_id: <span class="num">1</span>, created_at: -<span class="num">1</span> })</pre>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Never embed unbounded arrays in MongoDB.</strong> Comments, events, messages, notifications — any array that can grow without bound will eventually hit 16MB. The question isn't "will it happen?" but "when?"</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>The hybrid pattern solves the display performance vs scalability tradeoff.</strong> Embed only the data needed for initial page load (top 5 comments). Store the full collection separately for pagination. One document read gets you the post + preview; subsequent reads paginate from the collection.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Design for the worst case, not the average case.</strong> The average post had 12 comments. The schema was designed for the average. The viral post had 24,000. Always ask: "What happens when this is 1000× larger than expected?"</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Add document size monitoring.</strong> Monitor <code>Object.bsonsize(doc)</code> or use MongoDB Atlas's document size metrics. Alert when any document in a collection exceeds 1MB — it means you're on track to hit the limit.</span></div>
+</div>
+
+</div>
+<script>
+var totalComments = 0;
+var baseDocSize = 1024; // 1KB base post document
+var MAX_DOC = 16 * 1024 * 1024; // 16MB
+var writesFailed = false;
+
+function getStrategy() { return document.getElementById('schema-strategy').value; }
+function getCommentSize() { return parseInt(document.getElementById('comment-size').value); }
+
+function resetSim() {
+  totalComments = 0;
+  writesFailed = false;
+  var strategy = getStrategy();
+  document.getElementById('strategy-label').textContent = { embedded:'embedded array', reference:'separate collection', hybrid:'hybrid (embed top 5, reference rest)' }[strategy];
+  updateDisplay();
+  log('info', '--- Reset. Strategy: ' + strategy + ' ---');
+}
+
+function addBatch(n) {
+  if (writesFailed && getStrategy() === 'embedded') {
+    log('err', 'Cannot add comments — document writes failed (16MB limit hit).');
+    return;
+  }
+  var commentSize = getCommentSize();
+  var strategy = getStrategy();
+  var batchAdded = 0;
+
+  for (var i = 0; i < n; i++) {
+    totalComments++;
+    batchAdded++;
+    if (strategy === 'embedded') {
+      var docSize = getEmbeddedDocSize();
+      if (docSize > MAX_DOC) {
+        writesFailed = true;
+        totalComments--;
+        log('err', 'MongoServerError: Document failed validation: document too large');
+        log('err', 'Post document: ' + formatBytes(docSize) + ' — exceeds 16MB hard limit!');
+        log('err', 'All further writes to this document will fail.');
+        break;
+      }
+    }
+  }
+
+  if (batchAdded > 0) {
+    log('ok', '+' + batchAdded + ' comments added. Total: ' + totalComments.toLocaleString());
+    if (strategy === 'embedded') {
+      var sz = getEmbeddedDocSize();
+      if (sz > MAX_DOC * 0.8) log('warn', 'Document at ' + (sz/MAX_DOC*100).toFixed(0) + '% of 16MB limit!');
+    }
+  }
+  updateDisplay();
+}
+
+function getEmbeddedDocSize() {
+  return baseDocSize + (totalComments * getCommentSize());
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'KB';
+  return (bytes/(1024*1024)).toFixed(2) + 'MB';
+}
+
+function updateDisplay() {
+  var strategy = getStrategy();
+  var commentSize = getCommentSize();
+
+  // Post document size
+  var postDocSize, collectionDocs, readLatency;
+  if (strategy === 'embedded') {
+    postDocSize = baseDocSize + totalComments * commentSize;
+    collectionDocs = 0;
+    readLatency = Math.max(0.5, totalComments * 0.002); // grows with doc size
+  } else if (strategy === 'reference') {
+    postDocSize = baseDocSize; // never grows
+    collectionDocs = totalComments;
+    readLatency = 0.5 + (totalComments > 0 ? 2 : 0); // extra query for comments
+  } else { // hybrid
+    postDocSize = baseDocSize + Math.min(5, totalComments) * commentSize;
+    collectionDocs = Math.max(0, totalComments - 5);
+    readLatency = 0.6; // post + tiny embedded data, fast
+  }
+
+  // Update doc bar
+  var docPct = Math.min(postDocSize / MAX_DOC * 100, 100);
+  var docColor = docPct > 90 ? 'var(--red)' : docPct > 60 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('doc-bar').style.width = docPct + '%';
+  document.getElementById('doc-bar').style.background = docColor;
+  document.getElementById('doc-bar-label').textContent = formatBytes(postDocSize);
+  document.getElementById('doc-bar-label').style.color = docColor;
+
+  // Update collection bar
+  var collPct = Math.min(collectionDocs / 100000 * 100, 100); // scale to 100k
+  document.getElementById('coll-bar').style.width = collPct + '%';
+  document.getElementById('coll-bar-label').textContent = collectionDocs.toLocaleString() + ' docs (no limit)';
+
+  // Stats
+  document.getElementById('stat-comments').textContent = totalComments.toLocaleString();
+  document.getElementById('stat-doc-size').textContent = formatBytes(postDocSize);
+  document.getElementById('stat-doc-size').style.color = docColor;
+
+  var writeEl = document.getElementById('stat-writes');
+  if (writesFailed && strategy === 'embedded') {
+    writeEl.textContent = 'FAILED';
+    writeEl.style.color = 'var(--red)';
+  } else {
+    writeEl.textContent = 'OK';
+    writeEl.style.color = 'var(--green)';
+  }
+
+  var latEl = document.getElementById('stat-read-time');
+  latEl.textContent = readLatency.toFixed(1) + 'ms';
+  latEl.style.color = readLatency > 10 ? 'var(--red)' : readLatency > 3 ? 'var(--orange)' : 'var(--green)';
+}
+
+function log(type, msg) {
+  var el = document.getElementById('log');
+  var line = document.createElement('div');
+  line.className = 'log-line log-' + type;
+  var ts = new Date().toLocaleTimeString('en-IN',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+
+resetSim();
+</script>
+</body>
+</html>

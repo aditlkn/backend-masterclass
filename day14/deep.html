@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 14 Deep Dive: MongoDB Aggregation, Redis Streams, Cassandra Modeling</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;--mongo:#00ed64;--redis:#ff6b6b;--cassandra:#1287b1;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day14" class="back-link">&#8592; Day 14: NoSQL Data Modeling</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 14 · NoSQL Data Modeling · Deep Dive</div>
+  <h1>MongoDB aggregation,<br>Redis Streams,<br>&amp; <em>Cassandra denormalisation</em></h1>
+  <p>The main lesson covered when to use each database and the core modeling rules. This page covers the implementation: MongoDB's aggregation pipeline in depth (stage ordering, performance, $lookup patterns), Redis Streams with consumer groups for reliable message delivery, and a complete Cassandra denormalisation example showing how one domain model maps to multiple tables.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">MongoDB aggregation pipeline</span><span class="deep-topic-sub">— stage ordering, $lookup, $facet, explain output</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Redis Streams with consumer groups</span><span class="deep-topic-sub">— XADD, XREADGROUP, XACK, dead letter handling</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Cassandra denormalisation patterns</span><span class="deep-topic-sub">— one domain, multiple tables, dual writes, consistency</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: MONGO AGGREGATION -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>MongoDB aggregation pipeline:<br><em>stage ordering and performance</em></h2>
+  <p class="lead">The aggregation pipeline processes documents through a sequence of stages. Each stage transforms the document stream. Stage ordering dramatically affects performance — a misplaced $match can cause the entire collection to be loaded before any filtering occurs.</p>
+
+  <h3>The golden rule: $match and $sort early</h3>
+  <p>MongoDB can only use indexes in the first $match and $sort stages of a pipeline. Once any other stage runs, indexes are no longer available. Always put $match first, then $sort (if sorting on an indexed field), before any $group, $lookup, or $project stages.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">MongoDB aggregation — e-commerce order analytics</span><span class="code-block-lang">JAVASCRIPT</span></div>
+    <pre><span class="cm">// ❌ Bad: $match AFTER $group (full collection scan before filtering)</span>
+db.orders.<span class="fn">aggregate</span>([
+  { $group: { _id: <span class="str">"$user_id"</span>, total: { $sum: <span class="str">"$amount"</span> } } },
+  { $match: { total: { $gt: <span class="num">50000</span> } } }  <span class="cm">// ← too late! already grouped everything</span>
+])
+<span class="cm">// Groups ALL orders first, then filters. Processes entire collection.</span>
+
+<span class="cm">// ✅ Good: $match first (uses index), then $group</span>
+db.orders.<span class="fn">aggregate</span>([
+  { $match: {
+    created_at: { $gte: ISODate(<span class="str">"2024-01-01"</span>) },  <span class="cm">// ← uses index</span>
+    status: <span class="str">"completed"</span>                              <span class="cm">// ← filters early</span>
+  }},
+  { $group: {
+    _id: <span class="str">"$user_id"</span>,
+    total_spent: { $sum: <span class="str">"$amount"</span> },
+    order_count: { $sum: <span class="num">1</span> },
+    avg_order:   { $avg: <span class="str">"$amount"</span> },
+    last_order:  { $max: <span class="str">"$created_at"</span> }
+  }},
+  { $match: { total_spent: { $gt: <span class="num">50000</span> } } },  <span class="cm">// second $match is fine — on grouped output</span>
+  { $sort: { total_spent: -<span class="num">1</span> } },
+  { $limit: <span class="num">100</span> },
+  { $lookup: {
+    from: <span class="str">"users"</span>,
+    localField: <span class="str">"_id"</span>,
+    foreignField: <span class="str">"_id"</span>,
+    as: <span class="str">"user"</span>
+  }},
+  { $unwind: <span class="str">"$user"</span> },
+  { $project: {
+    name:        <span class="str">"$user.name"</span>,
+    email:       <span class="str">"$user.email"</span>,
+    total_spent: <span class="num">1</span>,
+    order_count: <span class="num">1</span>,
+    avg_order:   { $round: [<span class="str">"$avg_order"</span>, <span class="num">2</span>] },
+    last_order:  <span class="num">1</span>,
+    tier: { $switch: { branches: [
+      { case: { $gte: [<span class="str">"$total_spent"</span>, <span class="num">500000</span>] }, then: <span class="str">"platinum"</span> },
+      { case: { $gte: [<span class="str">"$total_spent"</span>, <span class="num">100000</span>] }, then: <span class="str">"gold"</span> }
+    ], default: <span class="str">"silver"</span> }}
+  }}
+])
+
+<span class="cm">// Explain the pipeline (check if index is used)</span>
+db.orders.<span class="fn">aggregate</span>(pipeline, { explain: <span class="kw">true</span> })
+<span class="cm">// Look for: "IXSCAN" (good) vs "COLLSCAN" (bad) in first $match</span>
+<span class="cm">// Look for: "nReturned" much smaller than "totalKeysExamined" → bad selectivity</span>
+
+<span class="cm">// $facet: run multiple aggregations in one pass (for search results with facets)</span>
+db.products.<span class="fn">aggregate</span>([
+  { $match: { category: <span class="str">"electronics"</span>, in_stock: <span class="kw">true</span> } },
+  { $facet: {
+    results: [
+      { $sort: { relevance: -<span class="num">1</span> } },
+      { $limit: <span class="num">20</span> },
+      { $project: { name: <span class="num">1</span>, price: <span class="num">1</span>, image: <span class="num">1</span> } }
+    ],
+    price_ranges: [
+      { $bucket: {
+        groupBy: <span class="str">"$price"</span>,
+        boundaries: [<span class="num">0</span>, <span class="num">10000</span>, <span class="num">25000</span>, <span class="num">50000</span>, <span class="num">100000</span>],
+        default: <span class="str">"100000+"</span>,
+        output: { count: { $sum: <span class="num">1</span> } }
+      }}
+    ],
+    brand_counts: [
+      { $group: { _id: <span class="str">"$brand"</span>, count: { $sum: <span class="num">1</span> } } },
+      { $sort: { count: -<span class="num">1</span> } },
+      { $limit: <span class="num">10</span> }
+    ],
+    total: [{ $count: <span class="str">"count"</span> }]
+  }}
+])
+<span class="cm">// Returns results + facets in ONE query — much more efficient than separate queries</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify MongoDB aggregation performance</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">First $match uses an index: <code>db.collection.aggregate(pipeline, {explain:true})</code> should show IXSCAN not COLLSCAN.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">$lookup is after $limit: never $lookup on the full collection — filter/limit first, then enrich with $lookup.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">$project removes unnecessary fields early: large documents flowing through the pipeline waste memory — project to only needed fields before expensive stages.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: REDIS STREAMS -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Redis Streams:<br><em>reliable message delivery with consumer groups</em></h2>
+  <p class="lead">Redis Streams add what Pub/Sub lacks: persistence, consumer groups, and acknowledgment. Unlike LPUSH/BRPOP queues where a message is consumed and gone, Streams keep messages and allow multiple consumer groups to independently read the same stream — each at their own position.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Redis Streams — producer, consumer group, dead letter handling</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// ── Producer: add events to stream ────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">publishEvent</span>(event: { type: <span class="ty">string</span>; payload: <span class="ty">Record</span>&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt; }) {
+  <span class="kw">const</span> id = <span class="kw">await</span> redis.<span class="fn">xadd</span>(
+    <span class="str">'events:orders'</span>,        <span class="cm">// stream key</span>
+    <span class="str">'MAXLEN'</span>, <span class="str">'~'</span>, <span class="num">1000000</span>, <span class="cm">// keep ~1M messages (trims lazily)</span>
+    <span class="str">'*'</span>,                    <span class="cm">// auto-generate ID (timestamp-sequence)</span>
+    <span class="str">'type'</span>, event.type,
+    <span class="str">'payload'</span>, JSON.<span class="fn">stringify</span>(event.payload),
+    <span class="str">'published_at'</span>, Date.<span class="fn">now</span>().<span class="fn">toString</span>()
+  );
+  <span class="kw">return</span> id; <span class="cm">// e.g. "1700000000000-0"</span>
+}
+
+<span class="cm">// ── Create consumer groups (once on startup) ──────────────────</span>
+<span class="kw">async function</span> <span class="fn">initGroups</span>() {
+  <span class="kw">for</span> (<span class="kw">const</span> group <span class="kw">of</span> [<span class="str">'email-service'</span>, <span class="str">'analytics-service'</span>, <span class="str">'inventory-service'</span>]) {
+    <span class="kw">try</span> {
+      <span class="kw">await</span> redis.<span class="fn">xgroup</span>(<span class="str">'CREATE'</span>, <span class="str">'events:orders'</span>, group, <span class="str">'$'</span>, <span class="str">'MKSTREAM'</span>);
+      <span class="cm">// '$' = only new messages from now on</span>
+      <span class="cm">// '0' = all messages from the beginning</span>
+    } <span class="kw">catch</span> (e) {
+      <span class="kw">if</span> (!e.message.<span class="fn">includes</span>(<span class="str">'BUSYGROUP'</span>)) <span class="kw">throw</span> e; <span class="cm">// ignore "already exists"</span>
+    }
+  }
+}
+
+<span class="cm">// ── Consumer: read + process + acknowledge ────────────────────</span>
+<span class="kw">async function</span> <span class="fn">runConsumer</span>(group: <span class="ty">string</span>, consumerId: <span class="ty">string</span>) {
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="cm">// XREADGROUP: read up to 10 new messages, block for 5s if none</span>
+    <span class="kw">const</span> messages = <span class="kw">await</span> redis.<span class="fn">xreadgroup</span>(
+      <span class="str">'GROUP'</span>, group, consumerId,
+      <span class="str">'COUNT'</span>, <span class="num">10</span>,
+      <span class="str">'BLOCK'</span>, <span class="num">5000</span>,
+      <span class="str">'STREAMS'</span>, <span class="str">'events:orders'</span>, <span class="str">'>'</span>
+      <span class="cm">// '>' = new messages not yet delivered to this group</span>
+    );
+
+    <span class="kw">if</span> (!messages) <span class="kw">continue</span>; <span class="cm">// timeout, no messages</span>
+
+    <span class="kw">for</span> (<span class="kw">const</span> [id, fields] <span class="kw">of</span> messages[<span class="num">0</span>][<span class="num">1</span>]) {
+      <span class="kw">try</span> {
+        <span class="kw">await</span> <span class="fn">processMessage</span>(fields);
+        <span class="cm">// ACK: removes from Pending Entry List (PEL)</span>
+        <span class="kw">await</span> redis.<span class="fn">xack</span>(<span class="str">'events:orders'</span>, group, id);
+      } <span class="kw">catch</span> (err) {
+        <span class="cm">// Message stays in PEL — will be redelivered</span>
+        logger.<span class="fn">error</span>({ err, id }, <span class="str">'Failed to process message'</span>);
+        <span class="cm">// After N retries → move to dead letter stream</span>
+        <span class="kw">await</span> <span class="fn">handleFailedMessage</span>(group, id, err);
+      }
+    }
+  }
+}
+
+<span class="cm">// ── Reclaim abandoned messages (consumer crashed without ACK) ──</span>
+<span class="kw">async function</span> <span class="fn">reclaimStuckMessages</span>(group: <span class="ty">string</span>, consumerId: <span class="ty">string</span>) {
+  <span class="kw">const</span> STUCK_AFTER_MS = <span class="num">60000</span>; <span class="cm">// 1 minute</span>
+  <span class="kw">const</span> MAX_RETRIES = <span class="num">3</span>;
+
+  <span class="cm">// XAUTOCLAIM: find messages idle > 60s, reassign to this consumer</span>
+  <span class="kw">const</span> [, claimed] = <span class="kw">await</span> redis.<span class="fn">xautoclaim</span>(
+    <span class="str">'events:orders'</span>, group, consumerId,
+    STUCK_AFTER_MS, <span class="str">'0-0'</span>, <span class="str">'COUNT'</span>, <span class="num">10</span>
+  );
+
+  <span class="kw">for</span> (<span class="kw">const</span> [id, fields] <span class="kw">of</span> claimed) {
+    <span class="kw">const</span> info = <span class="kw">await</span> redis.<span class="fn">xpending</span>(<span class="str">'events:orders'</span>, group, <span class="str">'IDLE'</span>, <span class="num">0</span>, id, id, <span class="num">1</span>);
+    <span class="kw">const</span> deliveryCount = info[<span class="num">0</span>][<span class="num">3</span>];
+
+    <span class="kw">if</span> (deliveryCount >= MAX_RETRIES) {
+      <span class="cm">// Dead letter: move to dead-letter stream + ACK original</span>
+      <span class="kw">await</span> redis.<span class="fn">xadd</span>(<span class="str">'events:orders:dead'</span>, <span class="str">'*'</span>, ...fields, <span class="str">'original_id'</span>, id, <span class="str">'group'</span>, group);
+      <span class="kw">await</span> redis.<span class="fn">xack</span>(<span class="str">'events:orders'</span>, group, id);
+      logger.<span class="fn">error</span>({ id, group }, <span class="str">'Message moved to dead letter queue'</span>);
+    } <span class="kw">else</span> {
+      <span class="kw">await</span> <span class="fn">processMessage</span>(fields).then(() => redis.<span class="fn">xack</span>(<span class="str">'events:orders'</span>, group, id));
+    }
+  }
+}</pre>
+  </div>
+</div>
+
+<!-- SECTION 3: CASSANDRA DENORM -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Cassandra denormalisation:<br><em>one domain, multiple tables</em></h2>
+  <p class="lead">In Cassandra, normalisation is the enemy. You maintain multiple tables storing the same data, each optimised for a different query. The application is responsible for keeping them in sync. This is the fundamental trade Cassandra makes: query performance in exchange for write complexity and data duplication.</p>
+
+  <h3>Domain: e-commerce orders — three query patterns, three tables</h3>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cassandra denormalisation — one domain, three tables</span><span class="code-block-lang">CQL + TYPESCRIPT</span></div>
+    <pre><span class="cm">-- Domain: Orders</span>
+<span class="cm">-- Query 1: "Get order by ID" (for order detail page)</span>
+<span class="cm">-- Query 2: "Get all orders for a user, newest first" (for order history)</span>
+<span class="cm">-- Query 3: "Get all orders with status=pending, sorted by created_at" (for ops dashboard)</span>
+
+<span class="cm">-- Table 1: by order ID (lookup by order)</span>
+CREATE TABLE orders_by_id (
+  order_id     UUID PRIMARY KEY,
+  user_id      UUID,
+  status       TEXT,
+  total        DECIMAL,
+  items        LIST&lt;FROZEN&lt;order_item&gt;&gt;,
+  shipping     FROZEN&lt;address&gt;,
+  created_at   TIMESTAMP,
+  updated_at   TIMESTAMP
+);
+
+<span class="cm">-- Table 2: by user (user's order history)</span>
+CREATE TABLE orders_by_user (
+  user_id      UUID,
+  created_at   TIMESTAMP,
+  order_id     UUID,
+  status       TEXT,
+  total        DECIMAL,
+  item_summary TEXT,           <span class="cm">-- denormalised: "MacBook Pro, USB Hub"</span>
+  PRIMARY KEY (user_id, created_at, order_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, order_id ASC);
+<span class="cm">-- Query: WHERE user_id = ? ORDER BY created_at DESC LIMIT 20</span>
+
+<span class="cm">-- Table 3: by status (ops dashboard)</span>
+CREATE TABLE orders_by_status (
+  status       TEXT,
+  bucket       TEXT,           <span class="cm">-- 'pending:2024-06' (daily bucket)</span>
+  created_at   TIMESTAMP,
+  order_id     UUID,
+  user_id      UUID,
+  total        DECIMAL,
+  PRIMARY KEY ((status, bucket), created_at, order_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, order_id ASC);
+<span class="cm">-- Query: WHERE status = 'pending' AND bucket = 'pending:2024-06'</span>
+
+<span class="cm">-- ── Dual-write: application maintains all tables ──────────────</span>
+<span class="kw">async function</span> <span class="fn">createOrder</span>(order: <span class="ty">Order</span>): <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt; {
+  <span class="kw">const</span> bucket = <span class="str">`\${order.status}:\${order.created_at.toISOString().slice(0,7)}`</span>;
+  <span class="kw">const</span> batch = [
+    <span class="cm">// Write to all three tables atomically (batch within single partition is lightweight)</span>
+    <span class="kw">await</span> cassandra.<span class="fn">execute</span>(<span class="str">`
+      INSERT INTO orders_by_id (order_id, user_id, status, total, items, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)`</span>,
+      [order.id, order.userId, order.status, order.total, order.items, order.createdAt]
+    ),
+    <span class="kw">await</span> cassandra.<span class="fn">execute</span>(<span class="str">`
+      INSERT INTO orders_by_user (user_id, created_at, order_id, status, total, item_summary)
+      VALUES (?, ?, ?, ?, ?, ?)`</span>,
+      [order.userId, order.createdAt, order.id, order.status, order.total, <span class="fn">summarizeItems</span>(order.items)]
+    ),
+    <span class="kw">await</span> cassandra.<span class="fn">execute</span>(<span class="str">`
+      INSERT INTO orders_by_status (status, bucket, created_at, order_id, user_id, total)
+      VALUES (?, ?, ?, ?, ?, ?)`</span>,
+      [order.status, bucket, order.createdAt, order.id, order.userId, order.total]
+    ),
+  ];
+  <span class="kw">await</span> Promise.<span class="fn">all</span>(batch);
+  <span class="cm">// Note: these are 3 separate writes — not a single transaction.</span>
+  <span class="cm">// If one fails: inconsistency. Handle with idempotent retries.</span>
+}
+
+<span class="cm">-- ── Status change: update all tables that store status ────────</span>
+<span class="kw">async function</span> <span class="fn">updateOrderStatus</span>(orderId: <span class="ty">UUID</span>, newStatus: <span class="ty">string</span>) {
+  <span class="cm">// 1. Fetch current order from orders_by_id</span>
+  <span class="kw">const</span> order = <span class="kw">await</span> <span class="fn">getOrderById</span>(orderId);
+  <span class="kw">const</span> oldBucket = <span class="str">`\${order.status}:\${order.createdAt.toISOString().slice(0,7)}`</span>;
+  <span class="kw">const</span> newBucket = <span class="str">`\${newStatus}:\${order.createdAt.toISOString().slice(0,7)}`</span>;
+
+  <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    <span class="cm">// Update orders_by_id</span>
+    cassandra.<span class="fn">execute</span>(<span class="str">'UPDATE orders_by_id SET status=? WHERE order_id=?'</span>, [newStatus, orderId]),
+    <span class="cm">// Update orders_by_user</span>
+    cassandra.<span class="fn">execute</span>(<span class="str">'UPDATE orders_by_user SET status=? WHERE user_id=? AND created_at=? AND order_id=?'</span>,
+      [newStatus, order.userId, order.createdAt, orderId]),
+    <span class="cm">// Remove from old status bucket, add to new (Cassandra: delete + insert)</span>
+    cassandra.<span class="fn">execute</span>(<span class="str">'DELETE FROM orders_by_status WHERE status=? AND bucket=? AND created_at=? AND order_id=?'</span>,
+      [order.status, oldBucket, order.createdAt, orderId]),
+    cassandra.<span class="fn">execute</span>(<span class="str">'INSERT INTO orders_by_status (status, bucket, ...) VALUES (?,...)'</span>,
+      [newStatus, newBucket, order.createdAt, orderId, order.userId, order.total]),
+  ]);
+}
+<span class="cm">// This is why Cassandra modeling is complex: status change touches 3 tables.</span>
+<span class="cm">// Design to minimise these multi-table writes in your access patterns.</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify Cassandra data model health</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No ALLOW FILTERING in any production query: <code>grep -r "ALLOW FILTERING" ./src</code> — any match is a red flag.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Partition sizes in bounds: <code>nodetool tablehistograms keyspace.table</code> — check the partition size histogram. P99 should be under 10MB.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">TTL is set for time-bounded tables: <code>SELECT default_time_to_live FROM system_schema.tables WHERE keyspace_name=?</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Tombstone counts are low: <code>nodetool cfstats keyspace.table | grep Tombstone</code> — high tombstone count means too many deletes; switch to TTL.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

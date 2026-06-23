@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 14: NoSQL Data Modeling — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;--mongo:#00ed64;--redis:#ff6b6b;--cassandra:#1287b1;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--mongo);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-btn.mongo{border-color:rgba(0,237,100,.3);color:var(--mongo);}
+.viz-btn.mongo.active,.viz-btn.mongo:hover{background:rgba(0,237,100,.1);border-color:var(--mongo);}
+.viz-btn.redis-btn{border-color:rgba(255,107,107,.3);color:var(--redis);}
+.viz-btn.redis-btn.active,.viz-btn.redis-btn:hover{background:rgba(255,107,107,.1);border-color:var(--redis);}
+.viz-btn.cass{border-color:rgba(18,135,177,.3);color:var(--cassandra);}
+.viz-btn.cass.active,.viz-btn.cass:hover{background:rgba(18,135,177,.1);border-color:var(--cassandra);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* db badges */
+.db-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-right:6px;letter-spacing:.5px;}
+.db-mongo{background:rgba(0,237,100,.1);color:var(--mongo);border:1px solid rgba(0,237,100,.25);}
+.db-redis{background:rgba(255,107,107,.1);color:var(--redis);border:1px solid rgba(255,107,107,.25);}
+.db-cassandra{background:rgba(18,135,177,.1);color:var(--cassandra);border:1px solid rgba(18,135,177,.25);}
+/* Decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--mongo);color:var(--mongo);background:rgba(0,237,100,.06);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-mongo{background:rgba(0,237,100,.1);color:var(--mongo);border:1px solid rgba(0,237,100,.3);}
+.ds-tag-redis{background:rgba(255,107,107,.1);color:var(--redis);border:1px solid rgba(255,107,107,.3);}
+.ds-tag-cass{background:rgba(18,135,177,.1);color:var(--cassandra);border:1px solid rgba(18,135,177,.3);}
+.ds-tag-pg{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 14 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-nosql-vs-sql">NoSQL vs SQL</a>
+  <a href="#s-mongodb">MongoDB</a>
+  <a href="#s-embed-vs-ref">Embed vs Reference</a>
+  <a href="#s-redis">Redis</a>
+  <a href="#s-redis-patterns">Redis Patterns</a>
+  <a href="#s-cassandra">Cassandra</a>
+  <a href="#s-cassandra-model">Cassandra Modeling</a>
+  <a href="#s-pick">Choosing the Right DB</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day14/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day14/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 14 · NoSQL Data Modeling</div>
+  <h1>The query you need<br>determines the schema<br><em>you must build.</em></h1>
+  <p class="hero-sub">In relational databases, you model the data and write queries to fit it. In NoSQL, you model for the queries — the data structure is determined by the access patterns you need to support. Getting this backwards is how you end up with a MongoDB collection that needs 12 aggregation stages to answer a simple question.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--mongo)"></div>MongoDB · documents</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--redis)"></div>Redis · structures</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--cassandra)"></div>Cassandra · wide rows</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactives</div>
+  </div>
+</div>
+
+<!-- S1: NOSQL VS SQL -->
+<div class="section" id="s-nosql-vs-sql">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why NoSQL exists — and what it actually solves</h2>
+
+  <p>NoSQL databases didn't emerge because SQL was bad. They emerged because specific classes of problems don't map well to the relational model, and trying to force them creates either schema pain or performance pain. Understanding the actual problems each NoSQL database solves prevents the most common mistake: picking a NoSQL database because it sounds modern, then spending months fighting the data model.</p>
+
+  <h3>The four NoSQL categories</h3>
+  <p><strong>Document stores (MongoDB, CouchDB):</strong> Data naturally exists as nested objects. A blog post has tags, comments, and metadata — all logically part of the post, awkward to split across three relational tables with JOINs. Documents store the whole object together, making reads of the complete entity cheap. Poor fit for: anything requiring cross-document queries, strong consistency, or complex multi-entity transactions.</p>
+  <p><strong>Key-value stores (Redis, DynamoDB):</strong> The simplest possible model — a key maps to a value. O(1) lookup. Extremely fast. Poor fit for: anything requiring queries other than by exact key, complex data structures that need to be partially updated.</p>
+  <p><strong>Wide-column stores (Cassandra, HBase):</strong> Data is organised by partition key (determines which node) and clustering columns (determines sort order within the partition). Optimised for time-series, IoT, activity feeds — anything where you always query "all items for entity X, sorted by time." Poor fit for: ad-hoc queries, JOINs, anything without a clear partition key.</p>
+  <p><strong>Graph databases (Neo4j, Neptune):</strong> Data is fundamentally relational — friends of friends, product recommendations based on purchase graph, fraud detection. Poor fit for: non-graph data where the graph model adds complexity without benefit.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>NoSQL ≠ schema-less in practice</strong>
+      <p>MongoDB is called schema-free but your application code enforces a schema anyway — it expects specific fields, validates types, and breaks when documents have unexpected shapes. The schema just moved from the database to your application layer, where it's harder to enforce and easier to let drift. Use schema validation in MongoDB (JSON Schema) or a library like Zod/Joi. "No schema" means no help from the database when you violate your implicit schema.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: NoSQL vs SQL chooser -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Which database for which problem?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Click a use case to see which database fits and why:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showDBChoice('user_sessions')">User sessions</button>
+      <button class="viz-btn" onclick="showDBChoice('product_catalog')">Product catalog</button>
+      <button class="viz-btn" onclick="showDBChoice('timeseries')">IoT / time-series</button>
+      <button class="viz-btn" onclick="showDBChoice('leaderboard')">Real-time leaderboard</button>
+      <button class="viz-btn" onclick="showDBChoice('social_feed')">Activity feed</button>
+      <button class="viz-btn" onclick="showDBChoice('financial')">Financial transactions</button>
+      <button class="viz-btn" onclick="showDBChoice('search')">Full-text search</button>
+      <button class="viz-btn" onclick="showDBChoice('recommendations')">Recommendations</button>
+    </div>
+    <div id="db-choice-output" class="mono-out" style="min-height:100px">Select a use case above.</div>
+  </div>
+</div>
+
+<!-- S2: MONGODB -->
+<div class="section" id="s-mongodb">
+  <div class="section-eyebrow">Section 02</div>
+  <h2><span class="db-tag db-mongo">MongoDB</span> Document modeling</h2>
+
+  <p>MongoDB stores data as BSON documents (Binary JSON) in collections. The fundamental design question is always: what does your application need to read, and what shape does it need that data in? The schema should be the answer to that question — not a normalised representation of an abstract data model.</p>
+
+  <h3>MongoDB's sweet spots</h3>
+  <ul>
+    <li><strong>Variable-shape data:</strong> Products in an e-commerce store have wildly different attributes — a shirt has size/color, a laptop has RAM/storage/CPU. In SQL: EAV tables or JSON columns. In MongoDB: each product document has exactly the fields it needs.</li>
+    <li><strong>Nested entities with co-read patterns:</strong> A blog post with its tags, author info, and first 5 comments. All fetched together, all written together. One document, one read.</li>
+    <li><strong>Rapid iteration:</strong> Schema changes in MongoDB are just application deployments — no ALTER TABLE, no migration locks. Add a field, old documents just don't have it (handle with defaults).</li>
+  </ul>
+
+  <h3>MongoDB's weaknesses</h3>
+  <p><strong>Cross-collection queries:</strong> `$lookup` (MongoDB's JOIN) is expensive and doesn't use indexes effectively. If your access patterns require frequent joins across collections, PostgreSQL is likely a better fit.</p>
+  <p><strong>Transactions:</strong> Multi-document ACID transactions exist in MongoDB 4.0+ but are slower than single-document operations. Document modeling should aim to make most operations single-document.</p>
+  <p><strong>Aggregations at scale:</strong> Complex `$group`, `$unwind`, `$facet` pipelines on large collections can be slow. MongoDB is not an analytics database.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">MongoDB document design — e-commerce product catalog</span><span class="code-block-lang">JAVASCRIPT</span></div>
+    <pre><span class="cm">// ❌ Relational thinking in MongoDB (fights the model)</span>
+<span class="cm">// products collection</span>
+{ _id: ObjectId(<span class="str">"..."</span>), name: <span class="str">"Laptop"</span>, category_id: <span class="str">"cat_001"</span> }
+<span class="cm">// categories collection (separate)</span>
+{ _id: <span class="str">"cat_001"</span>, name: <span class="str">"Electronics"</span> }
+<span class="cm">// attributes collection (separate)</span>
+{ product_id: <span class="str">"..."</span>, key: <span class="str">"ram"</span>, value: <span class="str">"16GB"</span> }
+<span class="cm">// → every product read requires $lookup joins. Slow.</span>
+
+<span class="cm">// ✅ Document thinking (designed for the read)</span>
+{
+  _id: ObjectId(<span class="str">"64a1b2c3d4e5f6789012"</span>),
+  name: <span class="str">"MacBook Pro 14"</span>,
+  slug: <span class="str">"macbook-pro-14-m3"</span>,
+  category: { id: <span class="str">"electronics"</span>, name: <span class="str">"Electronics"</span>, path: [<span class="str">"Electronics"</span>, <span class="str">"Computers"</span>] },
+  price: { amount: <span class="num">199900</span>, currency: <span class="str">"INR"</span> },
+  inventory: { available: <span class="num">47</span>, reserved: <span class="num">3</span>, warehouse: <span class="str">"BLR-01"</span> },
+  <span class="cm">// Variable attributes — each product type has different fields</span>
+  specs: {
+    ram: <span class="str">"16GB"</span>,
+    storage: <span class="str">"512GB SSD"</span>,
+    display: <span class="str">"14.2-inch Liquid Retina"</span>,
+    chip: <span class="str">"Apple M3 Pro"</span>
+  },
+  images: [
+    { url: <span class="str">"https://cdn.example.com/p/mbp14-front.jpg"</span>, alt: <span class="str">"Front view"</span>, primary: <span class="kw">true</span> }
+  ],
+  tags: [<span class="str">"laptop"</span>, <span class="str">"apple"</span>, <span class="str">"m3"</span>, <span class="str">"professional"</span>],
+  ratings: { avg: <span class="num">4.7</span>, count: <span class="num">342</span> },
+  <span class="cm">// Denormalise frequently co-read data</span>
+  created_at: ISODate(<span class="str">"2024-01-15"</span>),
+  updated_at: ISODate(<span class="str">"2024-06-10"</span>)
+}
+
+<span class="cm">// Index strategy for product catalog</span>
+db.products.createIndex({ slug: <span class="num">1</span> }, { unique: <span class="kw">true</span> })
+db.products.createIndex({ <span class="str">"category.id"</span>: <span class="num">1</span>, <span class="str">"price.amount"</span>: <span class="num">1</span> })
+db.products.createIndex({ tags: <span class="num">1</span> })
+db.products.createIndex({ name: <span class="str">"text"</span>, tags: <span class="str">"text"</span> })  <span class="cm">// full-text</span>
+db.products.createIndex({ <span class="str">"inventory.available"</span>: <span class="num">1</span> }, { sparse: <span class="kw">true</span> })</pre>
+  </div>
+</div>
+
+<!-- S3: EMBED VS REFERENCE -->
+<div class="section" id="s-embed-vs-ref">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>MongoDB: embed vs reference</h2>
+
+  <p>Every relationship in MongoDB comes down to one question: should the related data be embedded in the parent document, or stored in a separate collection with a reference? The answer is always determined by access patterns, not by normalisation theory.</p>
+
+  <h3>Embed when:</h3>
+  <ul>
+    <li>The child data is always read with the parent (comments when displaying a post)</li>
+    <li>The child data belongs to exactly one parent (order line items belong to one order)</li>
+    <li>The child data is bounded in size (a user's last 10 notifications — not all-time history)</li>
+    <li>The child data is updated only through the parent (updating a post's tags)</li>
+  </ul>
+
+  <h3>Reference when:</h3>
+  <ul>
+    <li>The child data is read independently (a user's profile is read without needing their orders)</li>
+    <li>The child data belongs to many parents (a product referenced by many orders)</li>
+    <li>The child data is unbounded (all comments ever on a post — could be millions)</li>
+    <li>The child data is updated independently (a user's address changes without touching their orders)</li>
+  </ul>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>The 16MB document size limit</strong>
+      <p>MongoDB documents cannot exceed 16MB. If you embed unbounded arrays — all comments on a viral post, all events in a long-running session, all messages in a chat thread — you will eventually hit this limit. The document can no longer be updated, writes fail. Model unbounded lists as separate collections, not embedded arrays. A common pattern: store the first 5 comments embedded in the post document, reference the rest in a comments collection.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 2: Embed vs reference -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Embed vs reference — MongoDB schema design</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Click a relationship to see whether to embed or reference:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn mongo" onclick="showEmbedRef('order_items')">Order → line items</button>
+      <button class="viz-btn mongo" onclick="showEmbedRef('post_comments')">Post → comments</button>
+      <button class="viz-btn mongo" onclick="showEmbedRef('user_address')">User → address</button>
+      <button class="viz-btn mongo" onclick="showEmbedRef('product_orders')">Product → orders</button>
+      <button class="viz-btn mongo" onclick="showEmbedRef('user_notifications')">User → notifications</button>
+      <button class="viz-btn mongo" onclick="showEmbedRef('post_author')">Post → author</button>
+    </div>
+    <div id="embed-ref-output" class="mono-out" style="min-height:120px">Select a relationship above.</div>
+  </div>
+</div>
+
+<!-- S4: REDIS -->
+<div class="section" id="s-redis">
+  <div class="section-eyebrow">Section 04</div>
+  <h2><span class="db-tag db-redis">Redis</span> Data structures as a service</h2>
+
+  <p>Redis is not a cache with some extra features. It's a data structure server that happens to be extremely fast (operations are in-memory) and optionally persistent. The distinction matters: you can model complex problems correctly using Redis's native data structures — sorted sets, streams, pub/sub — rather than bending its key-value interface to store serialised JSON for everything.</p>
+
+  <h3>Redis data structures and their use cases</h3>
+  <p><strong>String:</strong> The simplest. A key maps to a bytes value (can be a number, JSON blob, image). Use for: cache entries, counters (<code>INCR</code>), session tokens, feature flags, distributed locks (<code>SET key value NX EX 30</code>).</p>
+  <p><strong>Hash:</strong> A key maps to a field-value map. Use for: user session data (each field is a session attribute), object properties you need to update individually (increment login_count without fetching the whole object).</p>
+  <p><strong>List:</strong> Ordered sequence, push/pop from either end. O(1) push/pop, O(N) access by index. Use for: message queues, activity feeds with chronological ordering, job queues (<code>LPUSH</code> / <code>BRPOP</code>).</p>
+  <p><strong>Set:</strong> Unordered unique values. Use for: tracking unique visitors (add user IDs, count the set), tags on posts, mutual friends (intersection of two user sets), deduplication.</p>
+  <p><strong>Sorted Set (ZSet):</strong> Unique values, each with a score. Ordered by score. Use for: leaderboards (score = points, <code>ZRANGE</code> by rank), rate limiting (score = timestamp), expiring data (score = expiry timestamp, <code>ZRANGEBYSCORE</code> to find expired).</p>
+  <p><strong>Stream:</strong> Append-only log with consumer groups. Persistent ordered sequence. Use for: event sourcing, activity logs, replacing simple Kafka use cases, IoT data ingestion.</p>
+  <p><strong>Pub/Sub:</strong> Fire-and-forget messaging. Publishers push to channels, subscribers receive. No persistence — if subscriber is offline, messages are lost. Use for: real-time notifications, live dashboards, cache invalidation signals.</p>
+</div>
+
+<!-- VIZ 3: Redis data structure selector -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Redis data structure — pick the right one for your use case</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn redis-btn" onclick="showRedisDS('string')">String</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('hash')">Hash</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('list')">List</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('set')">Set</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('zset')">Sorted Set</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('stream')">Stream</button>
+      <button class="viz-btn redis-btn" onclick="showRedisDS('pubsub')">Pub/Sub</button>
+    </div>
+    <div id="redis-ds-output" class="mono-out" style="font-size:12px;min-height:140px">Select a data structure above.</div>
+  </div>
+</div>
+
+<!-- S5: REDIS PATTERNS -->
+<div class="section" id="s-redis-patterns">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Redis patterns in production</h2>
+
+  <h3>Cache-aside (lazy loading)</h3>
+  <p>The most common pattern. Application checks Redis first. On miss, reads from the database and writes to Redis with a TTL. Cache is populated lazily — only cached when actually requested. The cold start problem: after a deploy or Redis flush, all reads hit the database until the cache warms up.</p>
+
+  <h3>Write-through</h3>
+  <p>Every database write also writes to Redis. Cache is always warm, never cold. Cost: every write is 2 operations. Use when: read-to-write ratio is high and you can't afford cache misses.</p>
+
+  <h3>Distributed lock with Redlock</h3>
+  <p><code>SET lock:resource_id unique_value NX EX 30</code> — atomic set only if key doesn't exist, with 30-second expiry. Only one process can hold the lock. On expiry, the lock auto-releases even if the holder crashes. Critical: the lock expiry must exceed the maximum expected operation time plus clock drift.</p>
+
+  <h3>Rate limiting with sorted sets</h3>
+  <p>Sliding window rate limiting: each request adds a member to a sorted set with score = timestamp. Remove members older than the window. Count remaining members. If count exceeds limit, reject. Atomic with Lua scripts or Redis transactions.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Redis patterns — production implementations</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// ── Cache-aside pattern ────────────────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">getUser</span>(id: <span class="ty">string</span>): <span class="kw">Promise</span>&lt;<span class="ty">User</span>&gt; {
+  <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(<span class="str">`user:\${id}`</span>);
+  <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id=$1'</span>, [id]);
+  <span class="kw">await</span> redis.<span class="fn">setex</span>(<span class="str">`user:\${id}`</span>, <span class="num">3600</span>, JSON.<span class="fn">stringify</span>(user)); <span class="cm">// 1hr TTL</span>
+  <span class="kw">return</span> user;
+}
+
+<span class="cm">// ── Distributed lock ──────────────────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">withLock</span>&lt;T&gt;(key: <span class="ty">string</span>, ttlSec: <span class="ty">number</span>, fn: () => <span class="kw">Promise</span>&lt;T&gt;): <span class="kw">Promise</span>&lt;T&gt; {
+  <span class="kw">const</span> lockVal = crypto.<span class="fn">randomUUID</span>();
+  <span class="kw">const</span> acquired = <span class="kw">await</span> redis.<span class="fn">set</span>(<span class="str">`lock:\${key}`</span>, lockVal, <span class="str">'NX'</span>, <span class="str">'EX'</span>, ttlSec);
+  <span class="kw">if</span> (!acquired) <span class="kw">throw new</span> <span class="ty">Error</span>(<span class="str">`Failed to acquire lock: \${key}`</span>);
+  <span class="kw">try</span> { <span class="kw">return</span> <span class="kw">await</span> <span class="fn">fn</span>(); }
+  <span class="kw">finally</span> {
+    <span class="cm">// Only release if we still own it (check-and-delete atomically via Lua)</span>
+    <span class="kw">const</span> script = <span class="str">`if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end`</span>;
+    <span class="kw">await</span> redis.<span class="fn">eval</span>(script, <span class="num">1</span>, <span class="str">`lock:\${key}`</span>, lockVal);
+  }
+}
+
+<span class="cm">// ── Sliding window rate limiter ───────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">isRateLimited</span>(userId: <span class="ty">string</span>, limit: <span class="ty">number</span>, windowMs: <span class="ty">number</span>): <span class="kw">Promise</span>&lt;<span class="ty">boolean</span>&gt; {
+  <span class="kw">const</span> key = <span class="str">`ratelimit:\${userId}`</span>;
+  <span class="kw">const</span> now = Date.<span class="fn">now</span>();
+  <span class="kw">const</span> windowStart = now - windowMs;
+  <span class="kw">const</span> pipeline = redis.<span class="fn">pipeline</span>();
+  pipeline.<span class="fn">zremrangebyscore</span>(key, <span class="num">0</span>, windowStart);  <span class="cm">// remove old requests</span>
+  pipeline.<span class="fn">zadd</span>(key, now, <span class="str">`\${now}-\${Math.random()}`</span>);     <span class="cm">// add this request</span>
+  pipeline.<span class="fn">zcard</span>(key);                                      <span class="cm">// count in window</span>
+  pipeline.<span class="fn">pexpire</span>(key, windowMs);                          <span class="cm">// auto-expire the key</span>
+  <span class="kw">const</span> results = <span class="kw">await</span> pipeline.<span class="fn">exec</span>();
+  <span class="kw">const</span> count = results[<span class="num">2</span>][<span class="num">1</span>] <span class="kw">as</span> <span class="ty">number</span>;
+  <span class="kw">return</span> count > limit;
+}
+
+<span class="cm">// ── Leaderboard with sorted set ───────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">addScore</span>(userId: <span class="ty">string</span>, score: <span class="ty">number</span>) {
+  <span class="kw">await</span> redis.<span class="fn">zadd</span>(<span class="str">'leaderboard:global'</span>, score, userId);
+}
+<span class="kw">async function</span> <span class="fn">getTopPlayers</span>(n: <span class="ty">number</span>) {
+  <span class="kw">return</span> redis.<span class="fn">zrevrange</span>(<span class="str">'leaderboard:global'</span>, <span class="num">0</span>, n - <span class="num">1</span>, <span class="str">'WITHSCORES'</span>);
+}
+<span class="kw">async function</span> <span class="fn">getUserRank</span>(userId: <span class="ty">string</span>) {
+  <span class="kw">return</span> redis.<span class="fn">zrevrank</span>(<span class="str">'leaderboard:global'</span>, userId); <span class="cm">// 0-indexed rank</span>
+}</pre>
+  </div>
+</div>
+
+<!-- VIZ 4: Redis pattern selector -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Redis patterns — implementation and failure modes</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('cache_aside')">Cache-aside</button>
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('write_through')">Write-through</button>
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('lock')">Distributed lock</button>
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('rate_limit')">Rate limiting</button>
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('leaderboard')">Leaderboard</button>
+      <button class="viz-btn redis-btn" onclick="showRedisPattern('session')">Session store</button>
+    </div>
+    <div id="redis-pattern-output" class="mono-out" style="font-size:12px;min-height:120px">Select a pattern above.</div>
+  </div>
+</div>
+
+<!-- S6: CASSANDRA -->
+<div class="section" id="s-cassandra">
+  <div class="section-eyebrow">Section 06</div>
+  <h2><span class="db-tag db-cassandra">Cassandra</span> Wide-column and query-driven design</h2>
+
+  <p>Cassandra is built for one thing: massive write throughput at high availability across multiple datacenters, with predictable read latency for specific access patterns. It achieves this by being extremely opinionated about how data is stored and accessed. You don't get flexible queries — you get near-infinite write scale for the queries you designed for.</p>
+
+  <h3>How Cassandra is different</h3>
+  <p>Cassandra is not a relational database with a different storage engine. Its data model, consistency model, and operational characteristics are fundamentally different:</p>
+  <ul>
+    <li><strong>No JOINs:</strong> Ever. Each query must be answered by a single table. You denormalise aggressively, maintaining multiple copies of data optimised for different queries.</li>
+    <li><strong>No secondary indexes (practically):</strong> Cassandra's secondary indexes are local — they don't work well at scale. Every query should go by partition key.</li>
+    <li><strong>Eventual consistency:</strong> By default. You can tune consistency levels per-query (ONE, QUORUM, ALL) trading latency for consistency.</li>
+    <li><strong>No ACID transactions across partitions:</strong> Lightweight transactions (LWT) provide compare-and-set within a single partition, but they're slow. Design around them.</li>
+    <li><strong>Distributed by default:</strong> Every table is automatically sharded across nodes by partition key. No manual sharding configuration.</li>
+  </ul>
+
+  <h3>The partition key and clustering columns</h3>
+  <p>Every Cassandra table has a <strong>partition key</strong> — determines which node stores the data. All data with the same partition key is stored together on the same node, sorted by <strong>clustering columns</strong>. This physical layout is exactly why Cassandra is fast for specific queries: a query by partition key returns all matching rows from a single node, already sorted by the clustering columns.</p>
+  <p>The query you need to run determines the primary key you must design. If you need "all events for device X, ordered by time, newest first" — your primary key is <code>((device_id), timestamp DESC)</code>. Design the table for the query, not the data.</p>
+</div>
+
+<!-- VIZ 5: Cassandra data model -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Cassandra table design — query-driven modeling</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Each scenario shows the query needed and the table design that enables it:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn cass" onclick="showCassModel('iot_events')">IoT device events</button>
+      <button class="viz-btn cass" onclick="showCassModel('user_feed')">User activity feed</button>
+      <button class="viz-btn cass" onclick="showCassModel('messages')">Chat messages</button>
+      <button class="viz-btn cass" onclick="showCassModel('metrics')">Metrics aggregation</button>
+      <button class="viz-btn cass" onclick="showCassModel('bad_design')">Bad design example</button>
+    </div>
+    <div id="cass-model-output" class="mono-out" style="font-size:12px;min-height:160px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- S7: CASSANDRA MODELING -->
+<div class="section" id="s-cassandra-model">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Cassandra modeling rules</h2>
+
+  <p>Cassandra's data modeling has a set of rules that, if violated, lead to performance problems that can't be fixed without redesigning the table. These aren't guidelines — they're constraints imposed by the physical storage model.</p>
+
+  <h3>Rule 1: Model around queries, not entities</h3>
+  <p>Start with the queries you need to support. For each query, design a table that answers it efficiently. You will have multiple tables storing the same data differently. This is correct — it's not duplication, it's optimisation.</p>
+
+  <h3>Rule 2: Partition key determines co-location</h3>
+  <p>All rows with the same partition key are stored on the same node. This means: queries that filter by partition key are fast (single node). Queries that scan across partitions are slow (full cluster scan, <code>ALLOW FILTERING</code>). Never use <code>ALLOW FILTERING</code> in production — it's a cluster-wide scan.</p>
+
+  <h3>Rule 3: Avoid hot partitions</h3>
+  <p>If all your writes go to one partition (e.g. partition key = today's date and you write one event per millisecond), one node gets all the traffic — a Cassandra hot partition. Mitigate by adding a bucket suffix: <code>partition_key = date + '_' + (user_id % 10)</code> distributes load across 10 partitions.</p>
+
+  <h3>Rule 4: Limit partition size</h3>
+  <p>Cassandra partitions have a soft limit of ~100MB and a practical limit in terms of performance around 10MB. An unbounded partition (all events for a device with no date range in the key) grows forever and becomes slow to read and compact. Always include a time bucket in your partition key for time-series data.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cassandra table design — IoT event storage</span><span class="code-block-lang">CQL</span></div>
+    <pre><span class="cm">-- ❌ Bad: unbounded partition</span>
+CREATE TABLE device_events_bad (
+  device_id   UUID,
+  event_time  TIMESTAMP,
+  event_type  TEXT,
+  payload     TEXT,
+  PRIMARY KEY (device_id, event_time)
+) WITH CLUSTERING ORDER BY (event_time DESC);
+<span class="cm">-- Problem: one device active for years → partition grows unboundedly</span>
+<span class="cm">-- A device that generates 1 event/second → 86,400 rows/day → 3.1M rows/year</span>
+<span class="cm">-- Single partition, single node, hot spot</span>
+
+<span class="cm">-- ✅ Good: bucketed partition by month</span>
+CREATE TABLE device_events (
+  device_id   UUID,
+  month       TEXT,          <span class="cm">-- '2024-06'</span>
+  event_time  TIMESTAMP,
+  event_type  TEXT,
+  payload     MAP&lt;TEXT, TEXT&gt;,
+  PRIMARY KEY ((device_id, month), event_time)
+) WITH CLUSTERING ORDER BY (event_time DESC)
+  AND default_time_to_live = 7776000;  <span class="cm">-- 90 days TTL, auto-deletes old data</span>
+
+<span class="cm">-- Queries that work:</span>
+SELECT * FROM device_events
+WHERE device_id = ? AND month = '2024-06'
+ORDER BY event_time DESC LIMIT 100;
+<span class="cm">-- ✓ Hits exactly one partition. Fast.</span>
+
+<span class="cm">-- Queries that need multiple reads (but still designed):</span>
+<span class="cm">-- "Last 30 days" = 1 query per month, merge in application</span>
+<span class="cm">-- months = ['2024-06', '2024-05'] → 2 queries, merge results</span>
+
+<span class="cm">-- ❌ ALLOW FILTERING (never in production)</span>
+SELECT * FROM device_events WHERE event_type = 'temperature' ALLOW FILTERING;
+<span class="cm">-- Scans ALL partitions on ALL nodes. Full cluster scan. Will time out.</span>
+
+<span class="cm">-- ✅ Create a separate table for the query pattern you need</span>
+CREATE TABLE device_events_by_type (
+  device_id   UUID,
+  event_type  TEXT,
+  month       TEXT,
+  event_time  TIMESTAMP,
+  payload     MAP&lt;TEXT, TEXT&gt;,
+  PRIMARY KEY ((device_id, event_type, month), event_time)
+) WITH CLUSTERING ORDER BY (event_time DESC);</pre>
+  </div>
+</div>
+
+<!-- VIZ 6: Cassandra partition sizing -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Cassandra partition sizing — calculate your partition growth</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Events per second: <span id="eps-val" style="color:var(--cassandra)">10</span></label>
+        <input type="range" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;" id="eps-slider" min="1" max="10000" value="10" oninput="calcPartition()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Avg row size (bytes): <span id="row-size-val" style="color:var(--cassandra)">200</span></label>
+        <input type="range" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;" id="row-size-slider" min="50" max="10000" value="200" oninput="calcPartition()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Bucket strategy:</label>
+        <select id="bucket-select" onchange="calcPartition()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;width:100%">
+          <option value="none">No bucketing (just device_id)</option>
+          <option value="day">Daily bucket</option>
+          <option value="week">Weekly bucket</option>
+          <option value="month" selected>Monthly bucket</option>
+        </select>
+      </div>
+    </div>
+    <div id="partition-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S8: PICKING THE RIGHT DB -->
+<div class="section" id="s-pick">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Choosing the right database — the honest framework</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Requirement</th><th>PostgreSQL</th><th>MongoDB</th><th>Redis</th><th>Cassandra</th></tr></thead>
+      <tbody>
+        <tr><td>ACID transactions</td><td style="color:var(--green)">✓ Full</td><td style="color:var(--orange)">Single-doc only</td><td style="color:var(--orange)">Transactions limited</td><td style="color:var(--red)">Partition-local only</td></tr>
+        <tr><td>Complex queries (JOINs)</td><td style="color:var(--green)">✓ Excellent</td><td style="color:var(--orange)">$lookup (slow)</td><td style="color:var(--red)">Not supported</td><td style="color:var(--red)">Not supported</td></tr>
+        <tr><td>Variable schema / nested</td><td style="color:var(--orange)">JSONB column</td><td style="color:var(--green)">✓ Native</td><td style="color:var(--orange)">Hashes only</td><td style="color:var(--orange)">Maps/UDTs</td></tr>
+        <tr><td>Sub-millisecond reads</td><td style="color:var(--orange)">Indexed only</td><td style="color:var(--orange)">Indexed only</td><td style="color:var(--green)">✓ Always</td><td style="color:var(--green)">✓ By partition</td></tr>
+        <tr><td>Massive write throughput</td><td style="color:var(--orange)">Vertical scale</td><td style="color:var(--orange)">Sharding needed</td><td style="color:var(--green)">✓ ~1M ops/s</td><td style="color:var(--green)">✓ Linear scale</td></tr>
+        <tr><td>Time-to-live / expiry</td><td style="color:var(--red)">Manual cleanup</td><td style="color:var(--green)">TTL indexes</td><td style="color:var(--green)">✓ Native EXPIRE</td><td style="color:var(--green)">✓ default_time_to_live</td></tr>
+        <tr><td>Multi-region active-active</td><td style="color:var(--red)">Not supported</td><td style="color:var(--orange)">Atlas only</td><td style="color:var(--orange)">Redis Enterprise</td><td style="color:var(--green)">✓ Built-in</td></tr>
+        <tr><td>Ops complexity</td><td style="color:var(--green)">Low</td><td style="color:var(--green)">Low (Atlas)</td><td style="color:var(--green)">Low (managed)</td><td style="color:var(--red)">High</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIZ 7: DB comparison interactive -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Architecture patterns — which databases work together</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showArch('typical_saas')">Typical SaaS</button>
+      <button class="viz-btn" onclick="showArch('ecommerce')">E-commerce platform</button>
+      <button class="viz-btn" onclick="showArch('gaming')">Gaming backend</button>
+      <button class="viz-btn" onclick="showArch('iot')">IoT / telemetry</button>
+      <button class="viz-btn" onclick="showArch('social')">Social platform</button>
+    </div>
+    <div id="arch-output" class="mono-out" style="font-size:12px;min-height:140px">Select a system type to see the database stack.</div>
+  </div>
+</div>
+
+<!-- S9: PRODUCTION REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+
+  <h3>PostgreSQL can do 80% of what you think you need MongoDB for</h3>
+  <p>JSONB columns in PostgreSQL support full GIN-indexed queries on nested JSON, array operations, and key-exists checks. If you're considering MongoDB for its schema flexibility or nested document support, benchmark PostgreSQL with JSONB first. The operational simplicity of one database is usually worth more than the data-model fit of two.</p>
+
+  <h3>Redis is not durable by default</h3>
+  <p>Redis's default configuration is no persistence — a restart loses all data. Enable AOF (Append Only File) persistence or RDB snapshots for any data you can't afford to lose. Even with persistence, Redis is not a primary database for user data — use it as the accelerator layer in front of a persistent database.</p>
+
+  <h3>Cassandra's tombstone problem</h3>
+  <p>When you delete data in Cassandra, it writes a tombstone — a deletion marker. Tombstones accumulate until compaction clears them. If you do frequent deletes (expired sessions, time-bounded data with application-level cleanup), tombstone accumulation can cause severe read latency. Use TTL (<code>default_time_to_live</code>) instead of application-level deletes — Cassandra handles TTL-based deletion during compaction efficiently.</p>
+
+  <h3>MongoDB's write concern and journaling</h3>
+  <p>By default, MongoDB writes are acknowledged only after writing to the journal (write concern w:1, j:true on 4.0+). But in a replica set, w:1 only waits for the primary — a primary failure immediately after acknowledgment can lose the write if the primary's journal wasn't replicated. For financial data: use w:"majority" which waits for a quorum of replicas to acknowledge.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>MongoDB ObjectId contains a timestamp</h3>
+  <p>The first 4 bytes of a MongoDB ObjectId are a Unix timestamp. <code>new ObjectId().getTimestamp()</code> gives you the creation time. This means: you often don't need a separate <code>created_at</code> field (though having one is still useful for clarity), and you can sort by <code>_id</code> to get chronological order — the default index is already there.</p>
+
+  <h3>Redis KEYS command is O(N) and will block production</h3>
+  <p><code>KEYS pattern*</code> scans all keys in Redis. For a Redis instance with 10 million keys, this blocks the server for seconds. Never use KEYS in production. Use <code>SCAN</code> instead — it iterates in batches without blocking. <code>SCAN 0 MATCH pattern* COUNT 100</code> returns up to 100 matching keys per call without blocking other clients.</p>
+
+  <h3>Cassandra LWTs (lightweight transactions) are slow</h3>
+  <p>Cassandra Lightweight Transactions (<code>INSERT IF NOT EXISTS</code>, <code>UPDATE IF condition</code>) use the Paxos consensus protocol. They're approximately 4× slower than regular writes and reduce throughput significantly. Use them only for true uniqueness constraints (user email, username). If you're using LWTs frequently, reconsider whether Cassandra is the right database for your consistency requirements.</p>
+
+  <h3>MongoDB's aggregation pipeline replaced MapReduce</h3>
+  <p>MongoDB's old MapReduce API is deprecated. The aggregation pipeline (<code>$match → $group → $project → $sort → $limit</code>) is the current standard. But the pipeline can be slow on large collections without proper stage ordering. Always put <code>$match</code> first (uses indexes), then <code>$sort</code> (uses indexes before grouping), then <code>$group</code>, then <code>$project</code>. Moving a <code>$match</code> after a <code>$group</code> means the group runs on all documents before filtering.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Choosing a NoSQL database — work through this</h2>
+  <p class="ds-sub">Most teams should exhaust PostgreSQL before reaching for NoSQL. Start here.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Can PostgreSQL handle this? (It usually can)</div>
+        <div class="ds-detail">PostgreSQL supports JSONB for nested data, arrays, full-text search, and time-series via partitioning. It has ACID transactions, JOINs, and decades of operational experience behind it. The question isn't whether PostgreSQL is theoretically capable — it's whether the specific access pattern is better served by a specialised database. If you're not certain, start with PostgreSQL.
+          <br><span class="ds-tag ds-tag-pg">default answer: PostgreSQL first</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Is the bottleneck sub-millisecond access or cache-layer speed?</div>
+        <div class="ds-detail">Database query returning in 5ms but you need 0.1ms? Redis. Session storage, rate limiting, leaderboards, caches, distributed locks — all Redis. Use it as the fast layer in front of your persistent database, not as a replacement for it. Size your Redis memory budget carefully: Redis is in-memory, cost grows with data size.
+          <br><span class="ds-tag ds-tag-redis">speed layer → Redis</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Is the data highly variable in shape with co-read nested structures?</div>
+        <div class="ds-detail">Products with wildly different attributes, CMS content types, user-generated structures. If each "item" has a different set of fields and you always read the whole item together, MongoDB fits. Key test: do you need to JOIN this data with other collections frequently? If yes, the document model will fight you — stay with PostgreSQL or denormalise heavily.
+          <br><span class="ds-tag ds-tag-mongo">variable nested data → MongoDB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Is this time-series, IoT, or high-volume append-only at massive scale?</div>
+        <div class="ds-detail">Millions of events per second, multi-datacenter active-active writes, predictable latency at any scale. If you're writing 100K+ events/second with no relational requirements and you need multi-region HA, Cassandra. If you're writing 10K events/second to a single region, PostgreSQL with partitioning or TimescaleDB handles it. Cassandra's operational complexity is only worth it at genuine scale.
+          <br><span class="ds-tag ds-tag-cass">massive time-series scale → Cassandra</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Define your access patterns BEFORE choosing the schema</div>
+        <div class="ds-detail">Write down every query the application needs to run. Frequency, latency requirement, data shape. For MongoDB: embed vs reference is answered by this list. For Cassandra: every table primary key is answered by this list. If you design the schema first and derive the queries later, you will fight the data model.
+          <br><span class="ds-tag ds-tag-warn">schema follows queries, not the other way around</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Validate with a prototype before committing</div>
+        <div class="ds-detail">Spend one day building the key access patterns against your chosen database with realistic data volumes. Run EXPLAIN on MongoDB. Run nodetool tablestats on Cassandra. Read latency with cache warm vs cold. A one-day prototype will surface problems that take months to find in production. Changing database choice after launch is a multi-month project.
+          <br><span class="ds-tag ds-tag-warn">prototype with real data before committing the architecture</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">The MongoDB document that hit 16MB and took down writes</div>
+    <div style="font-size:13px;color:var(--text2)">Unbounded array · document size limit · embed vs reference fix</div>
+  </div>
+  <a href="/day14/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">MongoDB aggregation pipeline, Redis Streams, Cassandra data modeling</div>
+    <div style="font-size:13px;color:var(--text2)">$lookup vs embed · XADD/XREAD consumer groups · denormalisation patterns</div>
+  </div>
+  <a href="/day14/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>NoSQL data modeling checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(0,237,100,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--mongo)">QRY</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Queries first</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Write down every query before designing the schema. For Cassandra: one table per query pattern. For MongoDB: embed based on co-read patterns.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(0,237,100,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--mongo)">16M</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Bound arrays</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Never embed unbounded arrays in MongoDB documents. Comments, events, messages — separate collection. The 16MB limit is a production incident waiting to happen.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(255,107,107,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--redis)">TTL</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Expire everything</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every Redis key that isn't permanent data should have a TTL. Memory fills, OOM kills. Set EXPIRE on every cache key. Set maxmemory-policy: allkeys-lru as a safety net.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(255,107,107,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--redis)">AOF</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Redis persistence</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Enable AOF persistence for any Redis data you care about. Default Redis loses all data on restart. appendonly yes in redis.conf.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(18,135,177,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--cassandra)">HOT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Partition size</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Monitor Cassandra partition sizes monthly. &gt;10MB per partition → redesign with time buckets. ALLOW FILTERING in any query is a red flag — create a dedicated table.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(18,135,177,.25);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--cassandra)">TMB</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Use TTL not DELETE</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">In Cassandra, prefer TTL over explicit deletes to avoid tombstone accumulation. Set default_time_to_live on tables with time-bounded data.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, { passive: true });
+
+// ── VIZ 1: DB choice ──
+var DB_CHOICES = {
+  user_sessions: { db:'Redis', color:'var(--redis)', detail:'User sessions need sub-millisecond read, automatic expiry (TTL), and simple key-value access (session_id → user data). Redis Hash is ideal.\n\n  HSET session:abc123 user_id 456 role admin expires_at 1700000000\n  EXPIRE session:abc123 3600\n\nWhy not PostgreSQL: 5-10ms per query adds up for every authenticated request.\nWhy not MongoDB: no native TTL, query overhead, not designed for this access pattern.' },
+  product_catalog: { db:'MongoDB (or PostgreSQL+JSONB)', color:'var(--mongo)', detail:'Product catalogs have wildly variable attributes — a shirt and a laptop have nothing in common. Document model handles this naturally.\n\nMongoDB: each product document has exactly the fields it needs.\nPostgreSQL+JSONB: if you also need complex reporting, transactions, or joins with orders.\n\nKey decision: do you need to run complex analytical queries across products?\n  Yes → PostgreSQL+JSONB\n  No, just read/write individual products → MongoDB\n\nBoth are valid. Choose based on your team\'s operational experience.' },
+  timeseries: { db:'Cassandra (at scale) or TimescaleDB/PostgreSQL', color:'var(--cassandra)', detail:'IoT/time-series: millions of events per device per day, query by device+time range.\n\n<1M events/day total: PostgreSQL with partitioning (pg_partman)\n1M-100M events/day: TimescaleDB (PostgreSQL extension)\n>100M events/day, multi-region: Cassandra\n\nCassandra table:\n  PRIMARY KEY ((device_id, month), timestamp DESC)\n  → one query per device/month, sorted by time, single partition hit\n\nNever start with Cassandra. Its operational complexity only pays off at genuine scale.' },
+  leaderboard: { db:'Redis Sorted Set', color:'var(--redis)', detail:'Real-time leaderboard: update scores, get rank, get top-N. Redis Sorted Set is the canonical solution.\n\n  ZADD leaderboard 4250 "user:123"     # set score\n  ZREVRANK leaderboard "user:123"       # get rank (0-indexed)\n  ZREVRANGE leaderboard 0 9 WITHSCORES  # top 10 with scores\n\nO(log N) for all operations. For a 1M user leaderboard, ZADD is ~20 comparisons.\nNative: no aggregation queries needed, atomic score updates.\n\nDon\'t use PostgreSQL ORDER BY for live leaderboards — re-sorting the whole table per request doesn\'t scale.' },
+  social_feed: { db:'Cassandra or Redis (with fan-out)', color:'var(--cassandra)', detail:'Activity feed: "show me the 20 most recent actions by users I follow."\n\nTwo patterns:\n1. Fan-out on write (push model):\n   When user A posts, write to every follower\'s feed.\n   Redis: LPUSH feed:user_id activity_id (cap list at 1000)\n   Fast reads, expensive writes. Works until you have celebrities with 10M followers.\n\n2. Fan-out on read (pull model):\n   Cassandra: store each user\'s activities, merge at read time.\n   Expensive reads (query N followed users, merge), cheaper writes.\n   Works at scale with caching.\n\nInstagram hybrid: fan-out on write for users <1M followers, pull for celebrities.' },
+  financial: { db:'PostgreSQL', color:'var(--accent)', detail:'Financial transactions need ACID guarantees — atomically debit one account, credit another. No data loss. Audit trail.\n\nPostgreSQL is the correct answer:\n  BEGIN;\n  UPDATE accounts SET balance = balance - 1000 WHERE id = A;\n  UPDATE accounts SET balance = balance + 1000 WHERE id = B;\n  INSERT INTO audit_log (...);\n  COMMIT; -- all or nothing\n\nMongoDB multi-document transactions: exist, but slower than single-doc ops.\nCassandra: eventual consistency by default, LWTs are slow and limited.\nRedis: not a primary store for financial data.\n\nFinancial data → PostgreSQL, full stop.' },
+  search: { db:'Elasticsearch or PostgreSQL full-text', color:'var(--accent)', detail:'Full-text search with relevance ranking, facets, fuzzy matching.\n\nPostgreSQL tsvector/tsquery: good for simple search within your existing data.\n  CREATE INDEX ON products USING GIN(to_tsvector(\'english\', name || \' \' || description));\n  SELECT * FROM products WHERE to_tsvector(\'english\', name) @@ to_tsquery(\'laptop\');\n\nElasticsearch: when you need relevance scoring, complex facets, suggestions, multi-language, near-real-time.\nMongoDB Atlas Search: if you\'re already on MongoDB, it\'s Lucene-based, good option.\n\nDon\'t build a search engine in PostgreSQL when you need Elasticsearch. Don\'t add Elasticsearch when PostgreSQL full-text is sufficient.' },
+  recommendations: { db:'PostgreSQL (with pgvector) or Neo4j', color:'var(--accent)', detail:'"Users who bought X also bought Y" — two approaches:\n\nCollaborative filtering (graph-based):\n  Neo4j: natural for "friends who liked this", "purchase graph"\n  (user)-[:PURCHASED]->(product)<-[:PURCHASED]-(other_user)\n\nVector similarity search:\n  Generate embeddings for products/users via ML model.\n  pgvector extension: store embeddings, query by cosine similarity.\n  SELECT * FROM products ORDER BY embedding <-> $query_embedding LIMIT 10;\n\nSimple popularity-based:\n  PostgreSQL: just a query. SELECT product_id, count(*) FROM orders GROUP BY product_id ORDER BY count DESC\n\nStart with the simplest approach that works. Most teams don\'t need a graph database.' },
+};
+
+function showDBChoice(key) {
+  var d = DB_CHOICES[key];
+  document.getElementById('db-choice-output').innerHTML =
+    'Recommendation: <span style="color:' + d.color + ';font-weight:700">' + d.db + '</span>\n\n' + d.detail;
+}
+
+// ── VIZ 2: Embed vs reference ──
+var EMBED_REF = {
+  order_items: { decision:'EMBED', color:'var(--mongo)', detail:'Order → line items: EMBED\n\nWhy: Line items belong to exactly one order. You always read them together.\nUpdating an order always goes through the order document.\nLine items don\'t exist independently.\nItem count is bounded (an order has 1-100 items, not 100,000).\n\nSchema:\n{\n  _id: ObjectId("..."),\n  user_id: "usr_123",\n  total: 150000,\n  items: [\n    { product_id: "prod_456", name: "MacBook", qty: 1, price: 149900 },\n    { product_id: "prod_789", name: "USB-C Hub", qty: 2, price: 1500 }\n  ],\n  status: "confirmed"\n}' },
+  post_comments: { decision:'HYBRID', color:'var(--orange)', detail:'Post → comments: HYBRID\n\nFirst 3-5 comments: EMBED (displayed on post load, always co-read)\nAll other comments: REFERENCE in separate collection\n\nWhy not all embedded: a viral post gets 100,000 comments.\nEmbedded → document eventually hits 16MB limit → writes fail.\n\nSchema:\n// posts collection\n{ _id: "post_123", title: "...", comment_count: 1247,\n  top_comments: [...first 3 embedded...] }\n\n// comments collection\n{ _id: ObjectId("..."), post_id: "post_123", text: "...",\n  created_at: ISODate("..."), author_id: "usr_456" }\n\nRead post page: fetch post document (has top 3 comments)\nClick "Load all comments": paginate from comments collection' },
+  user_address: { decision:'EMBED', color:'var(--mongo)', detail:'User → address: EMBED\n\nWhy: Address belongs to one user, always read with user profile,\nbounded (1-5 addresses), updated only in context of the user.\n\nSchema:\n{\n  _id: "usr_123",\n  name: "Adnan",\n  email: "adnan@example.com",\n  addresses: [\n    { type: "home", line1: "...", city: "Bangalore",\n      pin: "560001", is_default: true },\n    { type: "work", line1: "...", city: "Bangalore",\n      pin: "560034", is_default: false }\n  ]\n}\n\nException: if address is shared across users (family account, office),\nor if you need to query "all users at address X" → reference.' },
+  product_orders: { decision:'REFERENCE', color:'var(--mongo)', detail:'Product → orders: REFERENCE\n\nWhy: Orders reference products, not the other way around.\nA product is referenced by thousands of orders.\nProducts and orders are read independently (product catalog vs order history).\nEmbedding all orders in a product document would be unbounded + enormous.\n\nSchema:\n// products collection\n{ _id: "prod_456", name: "MacBook", price: 149900, ... }\n\n// orders collection\n{ _id: "ord_789", user_id: "usr_123",\n  items: [{ product_id: "prod_456", qty: 1, price_at_purchase: 149900 }] }\n\nNote: snapshot the price at purchase time (price_at_purchase) — don\'t\njust store product_id. If the product price changes, your order history\nshould still show what the customer actually paid.' },
+  user_notifications: { decision:'REFERENCE (bounded list in separate collection)', color:'var(--orange)', detail:'User → notifications: REFERENCE with bounded display\n\nWhy: A user could have thousands of notifications over time.\nEmbedding all of them → document grows unbounded → 16MB limit.\n\nBest pattern:\nStore notifications in a separate collection.\nFor the notification bell UI: query latest 20 notifications for the user.\nIndex on (user_id, created_at DESC) for efficient access.\n\n// notifications collection\n{ _id: ObjectId("..."), user_id: "usr_123",\n  type: "order_shipped", read: false,\n  payload: { order_id: "ord_789" },\n  created_at: ISODate("2024-06-15") }\n\n// Index\ndb.notifications.createIndex({ user_id: 1, created_at: -1 })\n\nQuery: db.notifications.find({ user_id: "usr_123" }).sort({ created_at: -1 }).limit(20)' },
+  post_author: { decision:'DENORMALISE (partially embed)', color:'var(--mongo)', detail:'Post → author: PARTIAL EMBED (denormalise)\n\nWhy: Author info is read every time the post is displayed.\nUsing a reference ($lookup) means an extra round-trip for every post fetch.\n\nDenormalise the fields you display:\n{\n  _id: "post_123",\n  title: "NoSQL Data Modeling",\n  body: "...",\n  author: {\n    id: "usr_456",\n    name: "Adnan",\n    avatar_url: "https://cdn.example.com/u/456.jpg"\n  }  // ← denormalised copy of display fields only\n}\n\nWhat if author changes their name? Update all their posts.\nUsually acceptable: names rarely change, and eventual consistency\n(some old posts show old name briefly) is fine.\n\nIf exact real-time consistency matters: use $lookup (accept the join cost).' },
+};
+function showEmbedRef(key) {
+  var d = EMBED_REF[key];
+  document.getElementById('embed-ref-output').innerHTML =
+    'Decision: <span style="color:' + d.color + ';font-weight:700">' + d.decision + '</span>\n\n' + d.detail;
+}
+
+// ── VIZ 3: Redis data structures ──
+var REDIS_DS = {
+  string: { ops:'GET, SET, INCR, DECR, APPEND, STRLEN, SETEX, SETNX', complexity:'O(1) for all', detail:'A key maps to a bytes value. Most versatile — store JSON blobs, numbers, strings.\n\nUse for:\n  Cache entries:     SET user:123 "{...json...}" EX 3600\n  Counters:          INCR page:views:home  →  atomic increment\n  Feature flags:     SET feature:dark_mode "true"\n  Session tokens:    SET session:abc123 user_id NX EX 1800  (only set if not exists)\n  Distributed lock:  SET lock:payment_123 uuid NX EX 30\n\nMax value size: 512MB (practical limit: keep under 10KB for cache entries).\nATOMIC operations: INCR, DECR are atomic — safe for concurrent counters.' },
+  hash: { ops:'HSET, HGET, HMGET, HGETALL, HINCRBY, HDEL', complexity:'O(1) per field', detail:'A key maps to a field-value map. Like a lightweight JSON object.\n\nUse for:\n  User sessions:     HSET session:abc user_id 123 role admin cart_count 3\n                     HGET session:abc user_id  →  "123"\n  Object properties: HINCRBY user:123 login_count 1  (atomic field increment)\n  Rate limit state:  HSET ratelimit:user123 count 47 window_start 1700000000\n\nAdvantage over String+JSON: can update individual fields without fetching/re-serialising\nthe whole object.\n\nMemory efficient: for small hashes (<128 fields, <64 bytes per value),\nRedis uses ziplist encoding — much more compact than separate keys.' },
+  list: { ops:'LPUSH, RPUSH, LPOP, RPOP, LRANGE, LLEN, BRPOP', complexity:'O(1) push/pop, O(N) access by index', detail:'Ordered sequence. Push/pop from either end. Doubly-linked list.\n\nUse for:\n  Job queue (simple):  LPUSH jobs:email "{payload}"\n                       BRPOP jobs:email 0  ← blocking pop (waits for item)\n  Activity feed:       LPUSH feed:user123 activity_id\n                       LTRIM feed:user123 0 999  ← keep only last 1000\n  Rate limit window:   LPUSH recent_requests:user123 timestamp\n  Recent items:        LPUSH recent:user123 item_id (+ LTRIM)\n\nBRPOP: blocks until an item is available. Worker pattern:\n  while true: item = BRPOP queue 30  (timeout 30s, then re-check)\n\nNot for: large random access (O(N) by index). Use ZSet for ranked access.' },
+  set: { ops:'SADD, SREM, SISMEMBER, SMEMBERS, SCARD, SINTER, SUNION, SDIFF', complexity:'O(1) for add/check, O(N) for set operations', detail:'Unordered collection of unique strings. Like a Python set.\n\nUse for:\n  Unique visitors:    SADD visitors:page:home user_id\n                      SCARD visitors:page:home  ← unique count\n  Tags:               SADD tags:post:123 "nodejs" "backend" "api"\n  Online users:       SADD online_users user_id  ← presence tracking\n  Mutual friends:     SINTER followers:user_A followers:user_B\n  Deduplication:      SADD processed:job_ids job_id (check before processing)\n\nHyperLogLog: if you need approximate unique count for very large sets\n(millions of items), use PFADD/PFCOUNT — uses fixed 12KB regardless of cardinality.' },
+  zset: { ops:'ZADD, ZRANGE, ZREVRANGE, ZRANK, ZREVRANK, ZINCRBY, ZRANGEBYSCORE, ZCARD', complexity:'O(log N) for most ops', detail:'Sorted set: unique members, each with a float score. Ordered by score.\n\nUse for:\n  Leaderboard:        ZADD leaderboard 4250.0 "user:123"\n                      ZREVRANGE leaderboard 0 9 WITHSCORES  ← top 10\n                      ZREVRANK leaderboard "user:123"  ← user\'s rank\n\n  Rate limiting:      ZADD requests:user123 timestamp request_id\n                      ZRANGEBYSCORE requests:user123 0 (now-window)  ← count recent\n\n  Priority queue:     ZADD jobs 5 "urgent_job" 1 "normal_job"\n                      ZPOPMIN jobs  ← always get highest priority\n\n  Expiring data:      Score = expiry_timestamp\n                      ZRANGEBYSCORE expired_items 0 now  ← find all expired\n\nMemory: O(N) with N members. 1M members ≈ 80MB (strings stored once, score in skiplist).' },
+  stream: { ops:'XADD, XREAD, XREADGROUP, XACK, XLEN, XTRIM', complexity:'O(log N) per add, O(N) per read batch', detail:'Persistent append-only log with consumer groups. Like a mini-Kafka.\n\nUse for:\n  Event log:          XADD events * type "order_placed" order_id "ord_123"\n  Fan-out:            Multiple consumer groups each read the full stream independently\n  Job queue with ACK: Consumer reads, processes, ACKs. If no ACK, message is redelivered.\n\nAdvantage over List: messages are not consumed (multiple readers), persistent,\nconsumer groups for parallel processing.\n\nConsumer group pattern:\n  XREADGROUP GROUP workers consumer-1 COUNT 10 STREAMS events >\n  (process messages)\n  XACK events workers message_id\n\nTrim to bounded size:\n  XADD events MAXLEN ~ 1000000 * ...  ← keep ~1M entries\n\nWhen to use vs Kafka:\n  Small volume (<100K events/day), same Redis infra, simple fan-out → Streams\n  High volume, long retention, complex routing → Kafka' },
+  pubsub: { ops:'PUBLISH, SUBSCRIBE, PSUBSCRIBE, UNSUBSCRIBE', complexity:'O(N) where N = number of subscribers', detail:'Fire-and-forget messaging. Subscribers receive messages published to channels.\n\nCRITICAL: No persistence. If subscriber is offline, messages are LOST.\nIf Redis restarts, all subscriptions are gone. Client must reconnect.\n\nUse for:\n  Real-time notifications:  PUBLISH notifications:user123 "New order placed"\n  Cache invalidation:       PUBLISH cache:invalidate "product:456"\n  Live dashboard updates:   PUBLISH metrics "cpu:87,mem:62"\n  Chat (prototype only):    PUBLISH chat:room123 "{user,message}"\n\nNOT for:\n  Reliable job delivery (use Streams or List+BRPOP instead)\n  Guaranteed delivery (messages lost if no active subscriber)\n  Persistence or replay (use Streams)\n\nWebSocket pattern:\n  Server subscribes to user\'s channel: SUBSCRIBE user:123:events\n  On message: push via WebSocket to browser' },
+};
+function showRedisDS(key) {
+  var d = REDIS_DS[key];
+  document.getElementById('redis-ds-output').innerHTML =
+    '<span style="color:var(--redis);font-weight:700">' + key.toUpperCase() + '</span>\n' +
+    'Operations:  ' + d.ops + '\n' +
+    'Complexity:  ' + d.complexity + '\n\n' + d.detail;
+}
+
+// ── VIZ 4: Redis patterns ──
+var REDIS_PATTERNS = {
+  cache_aside: { title:'Cache-aside (Lazy Loading)', detail:'Flow:\n  1. App reads cache: GET user:123\n  2a. Cache HIT → return data immediately (~0.1ms)\n  2b. Cache MISS → read from PostgreSQL (~5ms)\n       → write to cache: SETEX user:123 3600 data\n       → return data\n\nPros: Only requested data is cached. Cache stays small.\nCons: First request (cold start) goes to DB. Cache miss storm after flush.\n\nCache miss storm prevention:\n  - Mutex lock: on cache miss, only one thread fetches from DB\n    SET lock:user:123 1 NX EX 5 (only first thread gets lock)\n    Others wait, then re-check cache (second request hits cache)\n  - Background refresh: before TTL expires, async refresh the cache\n\nInvalidation: when user data changes → DEL user:123 (lazy eviction)\n             or: update DB + update cache simultaneously (write-through)' },
+  write_through: { title:'Write-through', detail:'Flow:\n  1. App writes to PostgreSQL\n  2. App immediately writes same data to Redis\n  Both happen in the same request before returning to client.\n\nPros: Cache is always warm. No cold start. Reads always fast.\nCons: Every write is 2 operations. Writes are slightly slower.\n      Data must be the same in both DB and cache.\n\nUse when: Read/write ratio is high (reads >> writes). You can\'t tolerate cache misses.\n          User profile reads (100s per day) vs writes (1-2 per day).\n\nInvalidation: not needed — cache is updated on every write.\nRisk: if DB write succeeds but Redis write fails → inconsistency.\n  Fix: write to DB, then Redis. If Redis write fails, log it.\n       On next read, cache miss will repopulate from DB.' },
+  lock: { title:'Distributed Lock (Redlock pattern)', detail:'Problem: Two worker pods both try to process the same job. How to prevent?\n\nSolution:\n  // Acquire lock (atomic: SET only if not exists)\n  SET lock:job_123 unique_id NX EX 30\n  // NX = only set if not exists\n  // EX 30 = auto-expire in 30s (prevents deadlock if holder crashes)\n  // unique_id = random UUID (identifies who holds the lock)\n\n  // Process the job...\n\n  // Release lock (only if we still own it)\n  Lua script: if GET lock:job_123 == unique_id then DEL lock:job_123\n  // Must be atomic — check-then-delete race condition otherwise\n\nCritical: TTL must be > max expected operation time + clock drift\n  If your job takes up to 25s, set TTL to 60s (2× margin).\n  If job exceeds TTL: lock expires, another worker starts — data corruption.\n  Fix: extend lock TTL periodically if job is still running.\n\nFor high-availability: Redlock algorithm (acquire on majority of N Redis nodes).' },
+  rate_limit: { title:'Rate Limiting with Sorted Set', detail:'Goal: allow N requests per window per user. Sliding window (more accurate than fixed window).\n\nSliding window algorithm:\n  1. ZREMRANGEBYSCORE ratelimit:user123 0 (now - window_ms)  ← remove old\n  2. ZADD ratelimit:user123 now "req-{uuid}"                  ← add this request\n  3. ZCARD ratelimit:user123                                   ← count in window\n  4. EXPIRE ratelimit:user123 window_seconds                   ← auto-cleanup\n  5. If ZCARD > limit → reject with 429\n\nAll 4 steps run atomically in a pipeline.\n\nFixed window (simpler, slightly less accurate):\n  key = ratelimit:user123:${floor(now / window_ms)}\n  count = INCR key\n  if count == 1: EXPIRE key window_seconds\n  if count > limit: reject\n\nToken bucket (for bursty traffic):\n  More complex — use a Lua script or existing library.\n  Allows bursts: 1000 requests in 1 second, then refills at 100/second.' },
+  leaderboard: { title:'Real-time Leaderboard with Sorted Set', detail:'Sorted Set is the canonical Redis data structure for leaderboards.\n\nOperations:\n  Add/update score:  ZADD leaderboard 4250 "user:123"         O(log N)\n  Increment score:   ZINCRBY leaderboard 100 "user:123"        O(log N)\n  Get rank (1-idx):  ZREVRANK leaderboard "user:123" + 1       O(log N)\n  Get top 10:        ZREVRANGE leaderboard 0 9 WITHSCORES      O(log N + K)\n  Get user score:    ZSCORE leaderboard "user:123"             O(1)\n  Range around user: ZREVRANGEBYSCORE leaderboard +inf -inf LIMIT offset count\n\nScaling beyond 1 node:\n  - Shard by game region or game type: leaderboard:region:India\n  - Use multiple sorted sets with periodic aggregation for global leaderboards\n\nTime-bounded leaderboard (weekly):\n  key = leaderboard:week:{weekNumber}\n  EXPIRE leaderboard:week:{weekNumber} 604800  ← auto-expire after 1 week' },
+  session: { title:'Session Store with Hash', detail:'Session storage: fast, TTL-based, no database query per request.\n\nPattern:\n  // On login — create session\n  session_id = crypto.randomUUID()\n  HSET session:{session_id}\n    user_id 456\n    role "admin"\n    email "user@example.com"\n    login_at 1700000000\n    last_active 1700000000\n  EXPIRE session:{session_id} 86400  // 24 hour session\n\n  // On each request — validate and refresh\n  data = HGETALL session:{session_id}\n  if not data: return 401\n  HSET session:{session_id} last_active now()\n  EXPIRE session:{session_id} 86400  // rolling expiry\n\n  // On logout\n  DEL session:{session_id}\n\n  // Invalidate all sessions for user (on password change)\n  // Must maintain index: SET user_sessions:{user_id} [session_ids]\n  // or scan for session keys (use SCAN, not KEYS!)\n\nWhy Hash over String+JSON:\n  HSET allows updating last_active without re-serialising the whole session.\n  HGET user_id is more efficient than parsing a JSON string.' },
+};
+function showRedisPattern(key) {
+  var d = REDIS_PATTERNS[key];
+  document.getElementById('redis-pattern-output').innerHTML =
+    '<span style="color:var(--redis);font-weight:700">' + d.title + '</span>\n\n' + d.detail;
+}
+
+// ── VIZ 5: Cassandra models ──
+var CASS_MODELS = {
+  iot_events: { title:'IoT Device Events', cql: `-- Query needed: "get last 100 events for device X in current month"
+
+CREATE TABLE device_events (
+  device_id    UUID,
+  month        TEXT,           -- '2024-06' (bucket to bound partition size)
+  event_time   TIMESTAMP,
+  sensor_type  TEXT,
+  value        DECIMAL,
+  unit         TEXT,
+  PRIMARY KEY ((device_id, month), event_time)  -- partition + clustering
+) WITH CLUSTERING ORDER BY (event_time DESC)    -- newest first
+  AND default_time_to_live = 7776000;           -- auto-delete after 90 days
+
+-- Query (hits exactly ONE partition on ONE node):
+SELECT * FROM device_events
+WHERE device_id = ? AND month = '2024-06'
+LIMIT 100;
+
+-- Multiple months (application-side merge):
+months = get_last_n_months(3)  -- ['2024-06', '2024-05', '2024-04']
+results = await Promise.all(months.map(m => query(device_id, m)))
+merged = merge_and_sort(results).slice(0, 100)` },
+  user_feed: { title:'User Activity Feed', cql: `-- Query needed: "get last 20 activities for user X"
+
+CREATE TABLE user_feed (
+  user_id      UUID,
+  created_at   TIMEUUID,       -- TIMEUUID: timestamp + uniqueness in one
+  activity_id  UUID,
+  actor_id     UUID,
+  verb         TEXT,           -- 'liked', 'commented', 'followed'
+  object_type  TEXT,
+  object_id    UUID,
+  extra        MAP<TEXT, TEXT>,
+  PRIMARY KEY (user_id, created_at)
+) WITH CLUSTERING ORDER BY (created_at DESC)
+  AND default_time_to_live = 2592000;  -- 30 days
+
+-- Query:
+SELECT * FROM user_feed WHERE user_id = ? LIMIT 20;
+
+-- Fan-out: when user A creates a post, write to each follower's feed
+-- (fan-out on write: fast reads, expensive writes for viral content)
+followers = get_followers(user_a_id)  -- could be millions!
+for follower_id in followers:
+    INSERT INTO user_feed (user_id, ...) VALUES (follower_id, ...)
+-- For celebrities: fan-out on read instead (merge feeds at query time)` },
+  messages: { title:'Chat Messages', cql: `-- Query needed: "get last 50 messages in channel X"
+
+CREATE TABLE messages (
+  channel_id   UUID,
+  bucket       INT,             -- floor(month_number / 3) = quarterly bucket
+  message_id   TIMEUUID,
+  sender_id    UUID,
+  content      TEXT,
+  media_url    TEXT,
+  PRIMARY KEY ((channel_id, bucket), message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+
+-- Why bucket? A busy channel could have millions of messages.
+-- Quarterly bucket caps partition growth to ~3 months of messages.
+
+-- Helper: get current bucket
+bucket = floor(current_month / 3)  -- 0, 1, 2, 3 per year
+
+-- Query (last 50 messages):
+SELECT * FROM messages
+WHERE channel_id = ? AND bucket = ?
+ORDER BY message_id DESC LIMIT 50;
+
+-- Pagination across buckets (if user scrolls back):
+-- If first query returns < 50, query previous bucket too
+-- Application merges and returns 50 total` },
+  metrics: { title:'System Metrics Aggregation', cql: `-- Query needed: "get CPU metrics for server X, last hour, per minute"
+
+CREATE TABLE metrics (
+  server_id    TEXT,
+  metric_name  TEXT,
+  hour         TEXT,           -- '2024-06-15-14' (hourly bucket)
+  minute       INT,            -- 0-59
+  p50          FLOAT,
+  p95          FLOAT,
+  p99          FLOAT,
+  avg          FLOAT,
+  sample_count INT,
+  PRIMARY KEY ((server_id, metric_name, hour), minute)
+) WITH CLUSTERING ORDER BY (minute ASC);
+
+-- Query: server CPU last hour
+SELECT minute, p50, p95, p99
+FROM metrics
+WHERE server_id = 'web-01'
+  AND metric_name = 'cpu_pct'
+  AND hour = '2024-06-15-14';
+
+-- Write: aggregate raw samples into minute buckets in application
+-- (don't write every sample — aggregate first, then write once per minute)
+
+-- Multiple hours: query per hour, merge in application
+hours = get_last_n_hours(6)
+results = await Promise.all(hours.map(h => query(server_id, metric, h)))` },
+  bad_design: { title:'Bad Design — What NOT to do', cql: `-- ❌ Using ALLOW FILTERING (full cluster scan)
+SELECT * FROM events WHERE event_type = 'payment' ALLOW FILTERING;
+-- Scans every partition on every node. Times out at scale.
+-- Fix: create a table keyed by event_type + time bucket.
+
+-- ❌ Unbounded partition (no time bucket)
+CREATE TABLE user_events (
+  user_id     UUID,
+  event_time  TIMESTAMP,
+  data        TEXT,
+  PRIMARY KEY (user_id, event_time)
+);
+-- A user active for 2 years → millions of rows in one partition.
+-- Reads slow, compaction slow, single hot node.
+-- Fix: PRIMARY KEY ((user_id, month), event_time)
+
+-- ❌ Using secondary index for high-cardinality column
+CREATE INDEX ON events (user_id);
+-- Local index: each node only knows about its own data.
+-- Query by user_id requires reading ALL nodes.
+-- Fix: make user_id part of the partition key.
+
+-- ❌ Modelling for the data, not the query
+-- "I have users and orders" → don't create users + orders tables
+-- and then wonder why JOIN doesn't work.
+-- Ask: "What queries do I need?" THEN design tables.
+
+-- ❌ Lightweight transactions (LWT) for common operations
+INSERT INTO users (email, ...) IF NOT EXISTS;
+-- LWT = Paxos = 4x slower than regular write.
+-- Kills throughput if used on hot paths.
+-- Fix: enforce uniqueness at the application layer with a dedicated lookup table.` },
+};
+function showCassModel(key) {
+  var d = CASS_MODELS[key];
+  document.getElementById('cass-model-output').innerHTML =
+    '<span style="color:var(--cassandra);font-weight:700">' + d.title + '</span>\n\n' + d.cql;
+}
+
+// ── VIZ 6: Partition size ──
+function calcPartition() {
+  var eps = parseInt(document.getElementById('eps-slider').value);
+  var rowSize = parseInt(document.getElementById('row-size-slider').value);
+  var bucket = document.getElementById('bucket-select').value;
+  document.getElementById('eps-val').textContent = eps.toLocaleString();
+  document.getElementById('row-size-val').textContent = rowSize;
+
+  var windowSec = { none: 365*24*3600, day: 86400, week: 604800, month: 30*86400 }[bucket];
+  var rows = eps * windowSec;
+  var sizeBytes = rows * rowSize;
+  var sizeMB = sizeBytes / (1024 * 1024);
+  var sizeGB = sizeMB / 1024;
+
+  var status, col, rec;
+  if (sizeMB < 10) { status = 'GOOD'; col = 'var(--green)'; rec = 'Partition size is within Cassandra sweet spot (<10MB).'; }
+  else if (sizeMB < 100) { status = 'WARNING'; col = 'var(--orange)'; rec = 'Approaching Cassandra partition soft limit. Monitor growth.'; }
+  else { status = 'CRITICAL'; col = 'var(--red)'; rec = 'Partition too large! Compaction and reads will degrade. Add smaller time bucket.'; }
+
+  document.getElementById('partition-output').innerHTML = [
+    'Events per second:      ' + eps.toLocaleString(),
+    'Row size:               ' + rowSize + ' bytes',
+    'Bucket window:          ' + { none:'No bucket (all time!)', day:'1 day', week:'1 week', month:'1 month' }[bucket],
+    '',
+    'Rows per partition:     ' + rows.toLocaleString(),
+    'Partition size:         <span style="color:' + col + ';font-weight:700">' + (sizeGB >= 1 ? sizeGB.toFixed(2) + ' GB' : sizeMB.toFixed(1) + ' MB') + '</span>',
+    'Status:                 <span style="color:' + col + '">' + status + '</span>',
+    '',
+    rec,
+    bucket === 'none' && sizeMB > 10 ? '\nRecommended bucket: ' + (eps > 1000 ? '"day"' : eps > 100 ? '"week"' : '"month"') : '',
+  ].filter(Boolean).join('\n');
+}
+
+// ── VIZ 7: Architecture patterns ──
+var ARCH_PATTERNS = {
+  typical_saas: { title:'Typical B2B SaaS', detail:'Database stack:\n  PostgreSQL → primary application database\n    Users, tenants, billing, audit logs, all core entities.\n    ACID transactions for plan changes, payments.\n    Read replicas for reporting dashboards.\n\n  Redis → caching + sessions\n    User sessions: Hash with 24h TTL\n    API response cache: String with 5-15min TTL\n    Rate limiting: Sorted Set per user/API key\n    Background job queue: List (or use Redis Streams for reliability)\n\n  (Optional) Elasticsearch → search\n    If you need full-text search across resources.\n    Otherwise: PostgreSQL tsvector is usually enough.\n\nThis stack handles: 10K-100K users, most SaaS workloads.\nAdd Cassandra or MongoDB only when you have a specific problem they solve better.' },
+  ecommerce: { title:'E-commerce Platform', detail:'Database stack:\n  PostgreSQL → orders, payments, users, inventory\n    Orders need ACID (debit inventory + create order = atomic)\n    Inventory counts need exactly-right consistency\n    Financial records need audit trail\n\n  MongoDB → product catalog\n    Variable attributes per product type (shirt vs laptop)\n    Nested specs, images arrays, variable fields\n    Read-heavy catalog serving (consider read replicas)\n\n  Redis → sessions, cart, recommendations, rate limiting\n    Cart: HASH cart:user_id with item quantities\n    Session: HASH with TTL\n    Real-time inventory availability: DECRBY for atomic decrement\n    Browse history: LIST capped at 50 items\n    Product page cache: STRING with 5min TTL\n\n  Elasticsearch → search\n    Full-text product search with facets, relevance ranking\n    Sync from MongoDB via Change Streams' },
+  gaming: { title:'Gaming Backend', detail:'Database stack:\n  PostgreSQL → accounts, purchases, long-term stats\n    Player accounts, IAP (in-app purchases), support tickets.\n    Financial records for purchases.\n    Monthly statistics that need complex aggregation.\n\n  Redis → everything real-time\n    Active game sessions: HASH with TTL\n    Leaderboards: Sorted Set per game mode\n    Matchmaking queues: List\n    Player presence (online/offline): Key with EXPIRE\n    In-game inventory: HASH per player\n    Rate limiting anti-cheat: Sorted Set\n    Pub/Sub: real-time event broadcasting to game server pods\n\n  Cassandra → game events and telemetry (at scale)\n    Every player action: move, kill, death, purchase.\n    Partition by (player_id, session_id).\n    Used for anti-cheat analytics, balance tuning, player behaviour.\n    Only needed at 1M+ DAU — PostgreSQL handles it below that.' },
+  iot: { title:'IoT / Telemetry Platform', detail:'Database stack:\n  Cassandra → raw time-series events (primary store)\n    Device sensor readings: temperature, pressure, GPS, etc.\n    Write throughput: 100K-1M events/second across cluster\n    Retention: 90 days with TTL, then archive to S3\n    Partition: (device_id, month)\n\n  PostgreSQL → device registry, alerts, user accounts\n    Device metadata, firmware versions, config.\n    Alert rules and notification settings.\n    User accounts and tenant management.\n\n  Redis → real-time state and recent data\n    Latest reading per device: HASH with no TTL\n      (fast dashboard: "current temperature of device X")\n    Alert state: SET of currently-alerting devices\n    Recent events: LIST per device, last 100 events\n      (much faster than Cassandra for "last 5 seconds")\n\n  (Optional) TimescaleDB → aggregated metrics\n    If you need complex time-series analytics.\n    Downsamples raw Cassandra data to minute/hour averages.' },
+  social: { title:'Social Platform', detail:'Database stack:\n  PostgreSQL → users, relationships, core entities\n    User accounts, profile data, follow relationships.\n    Content moderation records, reported posts.\n    Strong consistency for account actions.\n\n  Cassandra → feeds and content at scale\n    Posts/tweets: partition by (author_id, month)\n    Activity feeds: fan-out on write to follower feeds\n    Direct messages: partition by (conversation_id, month)\n    Notification history: partition by (user_id, month)\n\n  Redis → real-time + caching\n    Online presence: SET of user_ids + EXPIRE\n    Unread notification count: INCR / DECR\n    Trending hashtags: Sorted Set updated every minute\n    Post engagement counts: INCR (likes, shares)\n    Feed cache: LIST per user, last 200 posts\n    Rate limiting: per-user posting limits\n\n  Elasticsearch → search\n    User search, hashtag search, full-text post search.\n    Synced from PostgreSQL + Cassandra via events.' },
+};
+function showArch(key) {
+  var d = ARCH_PATTERNS[key];
+  document.getElementById('arch-output').innerHTML =
+    '<span style="color:var(--accent);font-weight:700">' + d.title + '</span>\n\n' + d.detail;
+}
+
+// Init
+showDBChoice('user_sessions');
+showEmbedRef('order_items');
+showRedisDS('zset');
+showRedisPattern('cache_aside');
+showCassModel('iot_events');
+calcPartition();
+showArch('typical_saas');
+</script>
+</body>
+</html>
