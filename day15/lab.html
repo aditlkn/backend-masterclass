@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 15 Lab: The Migration That Took Down Production</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:56px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--orange));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.incident-eyebrow::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+.incident p{color:var(--text2);font-size:15px;line-height:1.85;margin-bottom:16px;}
+.incident p strong{color:var(--text);}
+.tl-item{margin-bottom:18px;position:relative;}
+.tl-item::before{content:'';position:absolute;left:-26px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);}
+.tl-item.bad::before{border-color:var(--red);background:rgba(240,96,96,.2);}
+.tl-item.ok::before{border-color:var(--green);background:rgba(62,207,142,.2);}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px;}
+.tl-event{font-size:14px;color:var(--text2);line-height:1.6;}
+.tl-event strong{color:var(--text);}
+.incident-timeline{margin:24px 0;border-left:2px solid var(--border2);padding-left:20px;}
+.incident-reveal{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);border-radius:8px;padding:18px 20px;margin-top:24px;}
+.incident-reveal-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.incident-reveal p{color:var(--text2);font-size:14px;margin-bottom:0;line-height:1.7;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:16px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;align-items:flex-end;}
+.ctrl-group{display:flex;flex-direction:column;gap:4px;}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.ctrl-select{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;cursor:pointer;}
+.ctrl-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);}
+.ctrl-toggle.on{border-color:var(--green);color:var(--green);background:rgba(62,207,142,.08);}
+.ctrl-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.fire-btn{font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 18px;border-radius:6px;border:1px solid var(--accent);background:rgba(91,143,255,.1);color:var(--accent);cursor:pointer;transition:all .15s;}
+.fire-btn:hover{background:rgba(91,143,255,.2);}
+.runtime{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.runtime-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.queue-view{padding:16px 20px;min-height:100px;}
+.stats-row{display:flex;gap:20px;padding:10px 20px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.stat-val{font-size:22px;font-weight:700;display:block;}
+.log{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 18px;height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;margin-bottom:24px;}
+.log-line{animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.log-ok{color:var(--green)}.log-err{color:var(--red)}.log-warn{color:var(--orange)}.log-info{color:var(--text3)}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.cm{color:#5c6370;font-style:italic}.str{color:#98c379}.kw{color:#c678dd}.fn{color:#61afef}
+.hl{background:rgba(240,96,96,.1);border-left:2px solid var(--red);display:block;margin:0 -20px;padding:0 20px;}
+.hl-fix{background:rgba(62,207,142,.07);border-left:2px solid var(--green);display:block;margin:0 -20px;padding:0 20px;}
+.learned{background:var(--bg2);border:1px solid rgba(91,143,255,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}
+.learned-text strong{color:var(--text);}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day15" class="back-link">&#8592; Day 15: Database Migrations</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">Production Incident &nbsp;·&nbsp; PostgreSQL &nbsp;·&nbsp; Schema Migration</div>
+  <h2>ALTER TABLE held a lock for 4 hours — the long transaction nobody noticed</h2>
+  <div class="incident-meta">Monday 11:00 IST &nbsp;·&nbsp; Duration: 4h 12m &nbsp;·&nbsp; Severity: P0 &nbsp;·&nbsp; Complete site outage</div>
+
+  <p>The team had scheduled a "quick schema change" for Monday morning: add a <code>metadata</code> JSONB column to the orders table (180 million rows). The engineer had tested it on staging — it took 4 seconds. They ran it without lock_timeout. At 11:00 they ran the migration.</p>
+
+  <p>At 11:01, alerts started firing. Not from the migration itself — from the application. <code>ERROR: could not obtain lock on relation "orders"</code>. Then connection pool exhaustion. Then health checks failing. Load balancer marking instances as unhealthy.</p>
+
+  <p>The migration was waiting. An analytics job had been running since 10:45 — a long-running <code>SELECT</code> that generated a massive report once per hour. It held an <code>AccessShareLock</code> on orders. The <code>ALTER TABLE</code> was waiting for it. And every subsequent query — every order creation, every order status check — was queuing behind the ALTER TABLE. Three queries waiting in a queue became three hundred. The connection pool was full. The application was down.</p>
+
+  <div class="incident-timeline">
+    <div class="tl-item bad">
+      <div class="tl-time">10:45 IST</div>
+      <div class="tl-event">Analytics job starts: <code>SELECT * FROM orders WHERE ... GROUP BY ...</code> — expected runtime ~20 minutes. Holds <strong>AccessShareLock</strong>.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">11:00 IST</div>
+      <div class="tl-event">Engineer runs: <code>ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb</code> (PostgreSQL 10, no lock_timeout). Migration tries to acquire <strong>AccessExclusiveLock</strong> — waits for analytics job.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">11:00 IST</div>
+      <div class="tl-event">New queries (SELECT, INSERT, UPDATE) arrive — they queue <strong>behind the ALTER TABLE</strong>. Not behind the analytics job. Behind the waiting migration. <strong>Queue of death begins.</strong></div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">11:02 IST</div>
+      <div class="tl-event">Connection pool (50 connections) fills with waiting queries. Application returns 503. <strong>P0 declared.</strong></div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">11:05 IST</div>
+      <div class="tl-event">Team finds migration in pg_stat_activity: state='idle in transaction', wait_event='relation'. Kills the analytics job (pg_terminate_backend). Migration acquires lock.</div>
+    </div>
+    <div class="tl-item bad">
+      <div class="tl-time">11:05 IST</div>
+      <div class="tl-event">Migration starts rewriting 180M rows (PostgreSQL 10 — before PG11's instant column add). <strong>Lock held for the entire rewrite.</strong></div>
+    </div>
+    <div class="tl-item ok">
+      <div class="tl-time">15:12 IST</div>
+      <div class="tl-event">Rewrite completes (4h 7m). Lock released. Backlog of queued queries drains. Site recovers. <strong>4h 12m total outage.</strong></div>
+    </div>
+  </div>
+
+  <div class="incident-reveal">
+    <div class="incident-reveal-label">Root causes (two failures, not one)</div>
+    <p><strong>1:</strong> No <code>lock_timeout</code> — the migration waited indefinitely, blocking all subsequent traffic. With <code>SET lock_timeout = '3s'</code>, the migration would have failed in 3 seconds with no impact, and retried at a better time. <strong>2:</strong> PostgreSQL 10 rewriting all rows — on PG 11+, adding a column with a constant default is instant (metadata only, no row rewrite). The team was running PG 10. After the incident they upgraded to PG 11, making the same migration instant the next time.</p>
+  </div>
+</div>
+
+<h3>Lab: simulate the lock queue — see why the migration blocks everything</h3>
+<p>Toggle the migration approach and the long transaction. Watch whether the lock queue backs up and how quickly it clears.</p>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">Migration approach</div>
+    <select class="ctrl-select" id="mig-approach">
+      <option value="naive">Naive ALTER TABLE (no lock_timeout)</option>
+      <option value="lock_timeout">With SET lock_timeout = '3s'</option>
+      <option value="pg11">PostgreSQL 11+ (instant column add)</option>
+      <option value="concurrent">CREATE INDEX CONCURRENTLY</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Long transaction</div>
+    <div class="ctrl-toggle on" id="lt-toggle" onclick="toggleLT()">
+      <div class="ctrl-dot"></div>Analytics job running (20 min)
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Run</div>
+    <button class="fire-btn" onclick="runMigration()">&#9654; Run migration</button>
+  </div>
+</div>
+
+<div class="runtime">
+  <div class="runtime-header">Lock queue — pg_stat_activity simulation</div>
+  <div class="queue-view" id="queue-view" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:var(--text2)">
+    Press "Run migration" to simulate.
+  </div>
+  <div class="stats-row">
+    <div><span class="stat-val" id="stat-blocked" style="color:var(--green)">0</span><span>Queries blocked</span></div>
+    <div><span class="stat-val" id="stat-lockwait" style="color:var(--text3)">—</span><span>Lock wait</span></div>
+    <div><span class="stat-val" id="stat-outcome" style="color:var(--text3)">—</span><span>Outcome</span></div>
+    <div><span class="stat-val" id="stat-downtime" style="color:var(--green)">0s</span><span>Traffic impact</span></div>
+  </div>
+</div>
+
+<div class="log" id="log">
+  <div class="log-info">// Try "Naive ALTER TABLE" with analytics job ON to reproduce the incident.</div>
+  <div class="log-info">// Then try "With lock_timeout = 3s" to see the safe approach.</div>
+</div>
+
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-title">The fix — always use lock_timeout + check for long transactions first</span><span class="code-block-lang">SQL</span></div>
+  <pre><span class="cm">❌ How it was run (incident)</span>
+<span class="hl">ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb;
+<span class="hl">-- No lock_timeout → waits indefinitely → blocks all traffic
+
+<span class="cm">✅ Fix 1: lock_timeout — fails fast instead of blocking</span>
+<span class="hl-fix">SET lock_timeout = '3s';
+<span class="hl-fix">ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb;
+<span class="hl-fix">-- If can't lock in 3s → ERROR (traffic unaffected) → retry later
+
+<span class="cm">✅ Fix 2: Check for long transactions BEFORE running migration</span>
+<span class="hl-fix">SELECT pid, now() - xact_start AS duration, left(query, 80) AS query
+<span class="hl-fix">FROM pg_stat_activity
+<span class="hl-fix">WHERE state != 'idle' AND xact_start IS NOT NULL
+<span class="hl-fix">ORDER BY duration DESC;
+<span class="hl-fix">-- Any transaction > 1 minute? Investigate before running migration.
+<span class="hl-fix">-- The analytics job would have appeared here. Kill it or wait for it to finish.
+
+<span class="cm">✅ Fix 3: Upgrade to PostgreSQL 11+ (makes column add instant)</span>
+<span class="hl-fix">-- PG 11+: constant default stored in catalog, no row rewrite
+<span class="hl-fix">-- This 4h migration becomes ~50ms
+<span class="hl-fix">SELECT version();  -- verify you're on PG 11+
+
+<span class="cm">Pre-migration runbook (run BEFORE every migration):</span>
+<span class="hl-fix">-- 1. Check long transactions
+<span class="hl-fix">SELECT pid, now() - xact_start AS duration FROM pg_stat_activity
+<span class="hl-fix">WHERE state != 'idle' AND xact_start < now() - interval '1 minute';
+<span class="hl-fix">
+<span class="hl-fix">-- 2. Set timeouts
+<span class="hl-fix">SET lock_timeout = '3s';
+<span class="hl-fix">SET statement_timeout = '0';  -- migration itself may run long
+<span class="hl-fix">
+<span class="hl-fix">-- 3. Run migration
+<span class="hl-fix">-- 4. Verify
+<span class="hl-fix">SELECT column_name, data_type FROM information_schema.columns
+<span class="hl-fix">WHERE table_name = 'orders' ORDER BY ordinal_position;</pre>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>lock_timeout is mandatory on every migration.</strong> Without it, a migration waiting for a lock blocks all subsequent traffic indefinitely. Three seconds is the right default — it gives the lock a fair chance without causing visible degradation.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Check for long transactions before running any migration.</strong> Anything holding a lock longer than a minute will block your migration, which will block everything else. Check pg_stat_activity, terminate the long transaction if safe to do so, or reschedule the migration.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Staging timing is misleading.</strong> The migration took 4 seconds in staging (small table). It took 4 hours in production (180M rows). Always time migrations against a production-size data snapshot, not a dev database.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Upgrading PostgreSQL changed the economics.</strong> The same migration that caused a 4-hour outage on PG10 became a 50ms operation on PG11. Schema changes are a strong argument for staying current on major PostgreSQL versions.</span></div>
+</div>
+
+</div>
+<script>
+var longTxRunning = true;
+
+function toggleLT() {
+  longTxRunning = !longTxRunning;
+  var el = document.getElementById('lt-toggle');
+  el.classList.toggle('on', longTxRunning);
+  el.innerHTML = '<div class="ctrl-dot"></div>' + (longTxRunning ? 'Analytics job running (20 min)' : 'No long transactions');
+}
+
+function runMigration() {
+  var approach = document.getElementById('mig-approach').value;
+  var qv = document.getElementById('queue-view');
+  var steps = [];
+
+  if (approach === 'naive') {
+    if (longTxRunning) {
+      steps = [
+        { t: 0,    text: '[11:00:00] ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT \'{}\'', col: 'var(--accent)' },
+        { t: 300,  text: '[11:00:00] → Tries to acquire AccessExclusiveLock', col: 'var(--text2)' },
+        { t: 600,  text: '[11:00:00] → ⚠ WAITING — analytics job holds AccessShareLock', col: 'var(--orange)' },
+        { t: 1000, text: '[11:00:01] → SELECT * FROM orders WHERE ... (new query queues behind migration!)', col: 'var(--red)' },
+        { t: 1300, text: '[11:00:02] → INSERT INTO orders ... (queues behind migration)', col: 'var(--red)' },
+        { t: 1600, text: '[11:00:02] → SELECT, INSERT, UPDATE × 47 more (queue growing...)', col: 'var(--red)' },
+        { t: 2000, text: '[11:00:03] ⚠ Connection pool filling. App returning 503.', col: 'var(--red)' },
+        { t: 2500, text: '[11:05:00] Analytics job killed. Migration acquires lock.', col: 'var(--orange)' },
+        { t: 2900, text: '[11:05:00] Rewriting 180M rows... (PostgreSQL 10)', col: 'var(--orange)' },
+        { t: 3200, text: '[15:12:00] ✗ Rewrite complete (4h 7m). Lock released. 247 queries had queued.', col: 'var(--red)' },
+      ];
+      setStats('247', '4h 7m', 'OUTAGE', '4h 12m', 'var(--red)');
+      log('err', 'NAIVE: 4h 12m outage. 247 queries blocked. No lock_timeout.');
+    } else {
+      steps = [
+        { t: 0,   text: '[11:00:00] ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT \'{}\'', col: 'var(--accent)' },
+        { t: 300, text: '[11:00:00] → Acquires AccessExclusiveLock (no contention)', col: 'var(--text2)' },
+        { t: 700, text: '[11:00:00] → Rewriting 180M rows... (PostgreSQL 10)', col: 'var(--orange)' },
+        { t: 1200, text: '[15:07:00] Migration complete (4h 7m). No queries blocked (lucky timing).', col: 'var(--orange)' },
+        { t: 1500, text: 'Warning: got lucky. If any query had arrived during lock acquisition, it would have queued.', col: 'var(--orange)' },
+      ];
+      setStats('0', '0ms', 'LUCKY', '4h 7m', 'var(--orange)');
+      log('warn', 'NAIVE without long tx: lucky. Migration held lock for 4h but no other queries happened to arrive.');
+    }
+  } else if (approach === 'lock_timeout') {
+    if (longTxRunning) {
+      steps = [
+        { t: 0,   text: '[11:00:00] SET lock_timeout = \'3s\'', col: 'var(--green)' },
+        { t: 200, text: '[11:00:00] ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT \'{}\'', col: 'var(--accent)' },
+        { t: 500, text: '[11:00:00] → Tries to acquire AccessExclusiveLock', col: 'var(--text2)' },
+        { t: 900, text: '[11:00:00] → ⚠ WAITING — analytics job holds AccessShareLock', col: 'var(--orange)' },
+        { t: 1400, text: '[11:00:03] → lock_timeout (3s) exceeded', col: 'var(--orange)' },
+        { t: 1700, text: '[11:00:03] ✓ ERROR: canceling statement due to lock timeout', col: 'var(--green)' },
+        { t: 2000, text: '[11:00:03] ✓ Migration failed cleanly. Production traffic: unaffected.', col: 'var(--green)' },
+        { t: 2300, text: '[11:00:03] Retry plan: wait for analytics job (~17 min), then rerun.', col: 'var(--text2)' },
+        { t: 2700, text: '[11:20:00] Analytics job finishes. Migration reruns successfully (4h for PG10).', col: 'var(--green)' },
+      ];
+      setStats('0', '3s', 'CLEAN FAIL', '0s', 'var(--green)');
+      log('ok', 'LOCK_TIMEOUT: migration failed in 3s with no traffic impact. Retried after analytics job finished.');
+    } else {
+      steps = [
+        { t: 0,   text: '[11:00:00] SET lock_timeout = \'3s\'', col: 'var(--green)' },
+        { t: 200, text: '[11:00:00] ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT \'{}\'', col: 'var(--accent)' },
+        { t: 500, text: '[11:00:00] → Acquires AccessExclusiveLock (no contention, instant)', col: 'var(--text2)' },
+        { t: 800, text: '[11:00:00] → Rewriting 180M rows... (PostgreSQL 10)', col: 'var(--orange)' },
+        { t: 1200, text: '[15:07:00] Migration complete (4h 7m). lock_timeout protected against any lock contention.', col: 'var(--green)' },
+      ];
+      setStats('0', '0ms', 'SUCCESS', '4h 7m', 'var(--orange)');
+      log('warn', 'LOCK_TIMEOUT: succeeded but still took 4h (PG10 row rewrite). Upgrade to PG11 to make this instant.');
+    }
+  } else if (approach === 'pg11') {
+    steps = [
+      { t: 0,   text: '[11:00:00] SET lock_timeout = \'3s\'', col: 'var(--green)' },
+      { t: 200, text: '[11:00:00] ALTER TABLE orders ADD COLUMN metadata JSONB DEFAULT \'{}\'', col: 'var(--accent)' },
+      { t: 500, text: '[11:00:00] → PostgreSQL 11: constant default → stored in pg_attrdef catalog', col: 'var(--text2)' },
+      { t: 900, text: '[11:00:00] → No row rewrite. AccessExclusiveLock held for ~50ms.', col: 'var(--green)' },
+      longTxRunning
+        ? { t: 1200, text: '[11:00:00] → Analytics job holds lock for 50ms wait → lock_timeout could fire', col: 'var(--orange)' }
+        : { t: 1200, text: '[11:00:00] → Migration complete in ~50ms.', col: 'var(--green)' },
+      { t: 1600, text: '[11:00:00] ✓ Done. Column exists. All 180M rows return default value from catalog.', col: 'var(--green)' },
+    ];
+    setStats('0', longTxRunning ? '~50ms (may retry)' : '<50ms', 'SUCCESS', '<50ms', 'var(--green)');
+    log('ok', 'PG11+: instant column add. 4-hour migration → 50ms. This is why upgrading PostgreSQL matters.');
+  } else { // concurrent
+    steps = [
+      { t: 0,   text: '[11:00:00] CREATE INDEX CONCURRENTLY idx_orders_metadata ON orders((metadata->>\'type\'))', col: 'var(--accent)' },
+      { t: 300, text: '[11:00:00] → Acquires ShareUpdateExclusiveLock (only blocks other DDL)', col: 'var(--text2)' },
+      { t: 600, text: '[11:00:00] → Reads continue ✓  Writes continue ✓', col: 'var(--green)' },
+      { t: 1000, text: '[11:00:00] → First table scan: building index structure...', col: 'var(--text2)' },
+      { t: 1300, text: '[11:20:00] → First scan complete. Second scan (catch changes during first scan)...', col: 'var(--text2)' },
+      { t: 1700, text: '[11:35:00] → Index built and validated.', col: 'var(--green)' },
+      { t: 2000, text: '[11:35:00] ✓ Done in ~35 min. Zero production impact throughout.', col: 'var(--green)' },
+    ];
+    setStats('0', '0ms', 'SUCCESS', '0s', 'var(--green)');
+    log('ok', 'CONCURRENTLY: 35 min build, zero traffic impact. Production reads and writes continued throughout.');
+  }
+
+  qv.innerHTML = '';
+  steps.forEach(function(s, i) {
+    setTimeout(function() {
+      var div = document.createElement('div');
+      div.style.color = s.col;
+      div.style.animation = 'fadeIn .2s ease';
+      div.textContent = s.text;
+      qv.appendChild(div);
+      qv.scrollTop = qv.scrollHeight;
+    }, s.t);
+  });
+}
+
+function setStats(blocked, lockwait, outcome, downtime, col) {
+  document.getElementById('stat-blocked').textContent = blocked;
+  document.getElementById('stat-blocked').style.color = blocked === '0' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('stat-lockwait').textContent = lockwait;
+  document.getElementById('stat-outcome').textContent = outcome;
+  document.getElementById('stat-outcome').style.color = col;
+  document.getElementById('stat-downtime').textContent = downtime;
+  document.getElementById('stat-downtime').style.color = downtime === '0s' ? 'var(--green)' : 'var(--red)';
+}
+
+function log(type, msg) {
+  var el = document.getElementById('log');
+  var line = document.createElement('div');
+  line.className = 'log-line log-' + type;
+  var ts = new Date().toLocaleTimeString('en-IN',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 15 Deep Dive: Flyway Zero-Downtime, gh-ost Runbook, Alembic Expand-Contract</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day15" class="back-link">&#8592; Day 15: Database Migrations</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 15 · Database Migrations · Deep Dive</div>
+  <h1>Flyway zero-downtime patterns,<br>gh-ost runbook,<br>&amp; <em>Alembic expand-contract</em></h1>
+  <p>The main lesson covered why migrations fail, lock mechanics, expand-contract theory, and gh-ost concepts. This page is the implementation: Flyway migration file patterns that enforce zero-downtime discipline, a complete gh-ost production runbook, and an Alembic-based column rename using the full expand-contract pattern.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Flyway zero-downtime migration patterns</span><span class="deep-topic-sub">— file naming, lock_timeout template, repair, baseline</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">gh-ost production runbook</span><span class="deep-topic-sub">— pre-flight, execution, monitoring, rollback</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Alembic: column rename via expand-contract</span><span class="deep-topic-sub">— 3-migration sequence, autogenerate pitfalls, data migrations</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: FLYWAY -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Flyway zero-downtime:<br><em>migration file patterns</em></h2>
+  <p class="lead">Flyway's job is tracking which migrations have run. Your job is making those migrations safe. These patterns encode zero-downtime discipline directly into your migration files so every developer writing a migration gets the safety defaults automatically.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Flyway migration patterns — the right way to write every migration</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- ── Migration file naming ─────────────────────────────────────────</span>
+<span class="cm">-- V{version}__{description}.sql</span>
+<span class="cm">-- V1__create_users_table.sql</span>
+<span class="cm">-- V2__add_email_index.sql</span>
+<span class="cm">-- V3__expand_add_display_name.sql    ← expand phase</span>
+<span class="cm">-- V4__contract_drop_user_name.sql    ← contract phase (separate deploy)</span>
+
+<span class="cm">-- ── Every migration starts with this header ──────────────────────</span>
+<span class="cm">-- V5__add_metadata_column.sql</span>
+
+<span class="cm">-- SAFETY: fail fast if can't acquire lock (don't block traffic)</span>
+SET lock_timeout = <span class="str">'3s'</span>;
+<span class="cm">-- SAFETY: don't limit the migration itself (it may run long for large tables)</span>
+SET statement_timeout = <span class="str">'0'</span>;
+<span class="cm">-- SAFETY: see exactly what the migration is doing if it goes long</span>
+SET client_min_messages = <span class="str">'DEBUG'</span>;
+
+<span class="cm">-- ── ADD COLUMN (instant on PG11+) ────────────────────────────────</span>
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS metadata JSONB;
+<span class="cm">-- IF NOT EXISTS: migration is idempotent (safe to retry if something fails mid-way)</span>
+
+<span class="cm">-- ── CREATE INDEX (always CONCURRENTLY) ───────────────────────────</span>
+<span class="cm">-- Flyway runs inside a transaction by default.</span>
+<span class="cm">-- CONCURRENTLY cannot run inside a transaction!</span>
+<span class="cm">-- Solution: mark the migration as non-transactional</span>
+
+<span class="cm">-- flyway.conf (or per-migration annotation):</span>
+<span class="cm">-- Add a special marker for non-transactional migration files:</span>
+<span class="cm">-- V6__add_metadata_index.sql — starts with a no-tx marker</span>
+
+<span class="cm">-- The no-transaction migration file:</span>
+<span class="cm">-- (Flyway detects this when it sees the file doesn't start with BEGIN)</span>
+<span class="cm">-- Must be the ONLY statement in the file for CONCURRENTLY migrations</span>
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_metadata_type
+ON orders((metadata->>
+
+<span class="str">'type'</span>))
+WHERE metadata IS NOT NULL;
+
+<span class="cm">-- ── Expanding a column rename (V7) ───────────────────────────────</span>
+<span class="cm">-- V7__expand_add_display_name.sql</span>
+SET lock_timeout = <span class="str">'3s'</span>;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT;
+<span class="cm">-- Note: NO backfill here. Schema change only.</span>
+<span class="cm">-- Backfill runs separately as a background job (not in migration files).</span>
+
+<span class="cm">-- ── Contracting (V8) — run ONLY after backfill is complete ───────</span>
+<span class="cm">-- V8__contract_drop_user_name.sql</span>
+SET lock_timeout = <span class="str">'3s'</span>;
+ALTER TABLE users DROP COLUMN IF EXISTS user_name;
+
+<span class="cm">-- ── Flyway repair: fix a failed migration ────────────────────────</span>
+<span class="cm">-- If a migration fails halfway, Flyway marks it as FAILED in flyway_schema_history.</span>
+<span class="cm">-- Fix the migration file, then:</span>
+<span class="cm">-- flyway repair  ← resets the failed migration's checksum so it can run again</span>
+<span class="cm">-- flyway migrate ← reruns the fixed migration</span>
+
+<span class="cm">-- ── Flyway baseline: start tracking an existing database ─────────</span>
+<span class="cm">-- If you add Flyway to an existing production database:</span>
+<span class="cm">-- flyway baseline --baselineVersion=5  ← marks existing schema as version 5</span>
+<span class="cm">-- Future migrations run from V6 onwards. V1-V5 are skipped (already applied).</span>
+
+<span class="cm">-- ── flyway.conf ──────────────────────────────────────────────────</span>
+<span class="cm">-- url=jdbc:postgresql://primary.db.internal:5432/myapp</span>
+<span class="cm">-- user=${FLYWAY_USER}</span>
+<span class="cm">-- password=${FLYWAY_PASSWORD}</span>
+<span class="cm">-- locations=filesystem:./migrations</span>
+<span class="cm">-- validateOnMigrate=true     ← catches edited migration files</span>
+<span class="cm">-- outOfOrderAllowed=false    ← prevents running V6 before V5</span>
+<span class="cm">-- lockRetryCount=10          ← retry acquiring Flyway lock 10 times</span>
+<span class="cm">-- connectRetries=5           ← retry DB connection on startup</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify Flyway migration health</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text"><code>flyway info</code> shows all migrations with Pending/Success/Failed status — no Failed rows.</div></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Every migration file starts with <code>SET lock_timeout = '3s';</code> — enforce via a CI lint check.</div></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Index migrations are in separate files marked for non-transactional execution — <code>CONCURRENTLY</code> cannot run inside a transaction.</div></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No migration file contains <code>UPDATE ... SET</code> on a large table without a WHERE clause limiting rows — data migrations run as background jobs, not in migration files.</div></div>
+  </div>
+</div>
+
+<!-- SECTION 2: GH-OST RUNBOOK -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>gh-ost production runbook:<br><em>pre-flight to cleanup</em></h2>
+  <p class="lead">A gh-ost migration is not just a command you run. It's an operation that runs for hours against a live database. This runbook walks every step: pre-flight checks, execution with monitoring, the final swap, and what to do if things go wrong.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">gh-ost runbook — complete production migration procedure</span><span class="code-block-lang">BASH</span></div>
+    <pre><span class="cm">## ── STEP 1: Pre-flight checks ─────────────────────────────────────</span>
+
+<span class="cm"># 1a. Check table size</span>
+mysql -e "SELECT table_rows, data_length/1024/1024 AS data_mb,
+  index_length/1024/1024 AS index_mb
+  FROM information_schema.tables
+  WHERE table_schema='myapp' AND table_name='orders';"
+
+<span class="cm"># 1b. Check current replica lag (should be near 0 before starting)</span>
+mysql -h replica-1 -e "SHOW SLAVE STATUS\G" | grep Seconds_Behind_Master
+
+<span class="cm"># 1c. Check for long-running transactions</span>
+mysql -e "SELECT trx_id, trx_started, trx_mysql_thread_id, trx_query
+  FROM information_schema.innodb_trx
+  WHERE trx_started < NOW() - INTERVAL 60 SECOND;"
+
+<span class="cm"># 1d. Confirm binary logging is enabled</span>
+mysql -e "SHOW VARIABLES LIKE 'log_bin'; SHOW VARIABLES LIKE 'binlog_format';"
+<span class="cm"># Must be: log_bin=ON, binlog_format=ROW</span>
+
+<span class="cm"># 1e. Verify gh-ost user has required permissions</span>
+mysql -e "SHOW GRANTS FOR 'gh_ost_user'@'%';"
+
+<span class="cm">## ── STEP 2: Dry run ───────────────────────────────────────────────</span>
+gh-ost \
+  --host=primary.db.internal --port=3306 \
+  --user=gh_ost_user --password="${DB_PASSWORD}" \
+  --database=myapp --table=orders \
+  --alter="ADD COLUMN metadata JSON DEFAULT NULL, ADD INDEX idx_orders_metadata_type ((metadata->>'$.type'))" \
+  --dry-run 2>&1 | tee /tmp/ghost-dryrun.log
+
+<span class="cm"># Verify dry-run succeeded before proceeding</span>
+grep -i "error\|panic" /tmp/ghost-dryrun.log && echo "DRY RUN FAILED" || echo "DRY RUN OK"
+
+<span class="cm">## ── STEP 3: Execute ───────────────────────────────────────────────</span>
+<span class="cm"># Start in a tmux/screen session — migration runs for hours</span>
+tmux new-session -s ghost-migration
+
+gh-ost \
+  --host=primary.db.internal --port=3306 \
+  --user=gh_ost_user --password="${DB_PASSWORD}" \
+  --database=myapp --table=orders \
+  --alter="ADD COLUMN metadata JSON DEFAULT NULL" \
+  --assume-rbr \                      <span class="cm"># assume ROW-based binary logging</span>
+  --chunk-size=1000 \                 <span class="cm"># rows per chunk (start conservative)</span>
+  --max-load="Threads_running=25" \   <span class="cm"># pause if DB is loaded</span>
+  --critical-load="Threads_running=50" \  <span class="cm"># abort if critically loaded</span>
+  --max-lag-millis=1500 \             <span class="cm"># pause if replica lag > 1.5s</span>
+  --throttle-control-replicas="replica-1.db.internal:3306" \
+  --ok-to-drop-table \                <span class="cm"># allow dropping old table post-swap</span>
+  --initially-drop-ghost-table \      <span class="cm"># clean up from any previous failed run</span>
+  --execute \
+  2>&1 | tee /tmp/ghost-migration-$(date +%Y%m%d-%H%M).log
+
+<span class="cm">## ── STEP 4: Monitor (in a second terminal) ───────────────────────</span>
+<span class="cm"># Progress via socket</span>
+watch -n 5 'echo "status" | nc -U /tmp/gh-ost.orders.sock'
+
+<span class="cm"># Replica lag</span>
+watch -n 10 'mysql -h replica-1 -e "SHOW SLAVE STATUS\G" | grep Seconds_Behind_Master'
+
+<span class="cm"># DB load</span>
+watch -n 5 'mysql -e "SHOW GLOBAL STATUS LIKE \"Threads_running\";"'
+
+<span class="cm"># If load spikes: throttle gh-ost without stopping it</span>
+echo "throttle" | nc -U /tmp/gh-ost.orders.sock
+echo "unthrottle" | nc -U /tmp/gh-ost.orders.sock
+
+<span class="cm">## ── STEP 5: Verify post-swap ──────────────────────────────────────</span>
+mysql -e "DESCRIBE myapp.orders;"            <span class="cm"># new column exists</span>
+mysql -e "SHOW INDEX FROM myapp.orders;"     <span class="cm"># new index exists</span>
+mysql -e "SELECT COUNT(*) FROM myapp.orders;"  <span class="cm"># row count matches</span>
+
+<span class="cm"># Old table preserved as _orders_del until you drop it</span>
+mysql -e "SHOW TABLES LIKE '%orders%';"      <span class="cm"># should show _orders_del</span>
+mysql -e "SELECT COUNT(*) FROM myapp._orders_del;"  <span class="cm"># matches original count</span>
+mysql -e "DROP TABLE myapp._orders_del;"    <span class="cm"># ONLY after verifying everything is correct</span>
+
+<span class="cm">## ── STEP 6: Rollback (if needed) ──────────────────────────────────</span>
+<span class="cm"># If swap completed but something is wrong:</span>
+mysql -e "RENAME TABLE myapp.orders TO myapp._orders_new, myapp._orders_del TO myapp.orders;"
+<span class="cm"># This swaps back — old table becomes orders, new table gets the _new suffix</span>
+<span class="cm"># Drop the new table when safe: DROP TABLE myapp._orders_new;</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3: ALEMBIC -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Alembic expand-contract:<br><em>column rename across three migrations</em></h2>
+  <p class="lead">Alembic's autogenerate feature detects schema differences and generates migration scripts. But for expand-contract, you write the migrations manually — autogenerate would generate a single RENAME COLUMN which is exactly what you're trying to avoid. Here's the three-migration sequence for a safe column rename.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Alembic expand-contract — column rename across 3 migrations</span><span class="code-block-lang">PYTHON</span></div>
+    <pre><span class="cm"># ── Migration 1: Expand — add new column ─────────────────────────</span>
+<span class="cm"># alembic/versions/a1b2c3_expand_add_display_name.py</span>
+
+<span class="kw">def</span> <span class="fn">upgrade</span>():
+    <span class="cm"># Instant on PG11+: column with nullable, no default</span>
+    op.execute(<span class="str">"SET lock_timeout = '3s'"</span>)
+    op.add_column(<span class="str">'users'</span>, sa.Column(<span class="str">'display_name'</span>, sa.Text(), nullable=<span class="kw">True</span>))
+    <span class="cm"># DO NOT backfill here. This migration runs at deploy time.</span>
+    <span class="cm"># Backfill runs as a separate background job.</span>
+
+<span class="kw">def</span> <span class="fn">downgrade</span>():
+    op.execute(<span class="str">"SET lock_timeout = '3s'"</span>)
+    op.drop_column(<span class="str">'users'</span>, <span class="str">'display_name'</span>)
+
+<span class="cm"># ── Application code change (deployed with migration 1) ───────────</span>
+<span class="cm"># Write to BOTH columns</span>
+<span class="kw">def</span> <span class="fn">create_user</span>(user_name: str, email: str) -> User:
+    user = User(
+        user_name=user_name,
+        display_name=user_name,   <span class="cm"># ← write to both</span>
+        email=email,
+    )
+    db.add(user)
+    db.commit()
+    <span class="kw">return</span> user
+
+<span class="cm"># ── Backfill script (runs as separate background job) ─────────────</span>
+<span class="cm"># scripts/backfill_display_name.py</span>
+<span class="kw">def</span> <span class="fn">backfill_display_name</span>(batch_size=<span class="num">1000</span>, sleep_ms=<span class="num">50</span>):
+    <span class="kw">while True</span>:
+        result = db.execute(text(<span class="str">"""
+            UPDATE users
+            SET display_name = user_name
+            WHERE display_name IS NULL
+              AND id IN (
+                SELECT id FROM users
+                WHERE display_name IS NULL
+                LIMIT :batch_size
+              )
+        """</span>), {<span class="str">'batch_size'</span>: batch_size})
+        <span class="kw">if</span> result.rowcount == <span class="num">0</span>:
+            <span class="kw">break</span>  <span class="cm"># done</span>
+        db.commit()
+        lag = <span class="fn">check_replica_lag</span>()
+        <span class="kw">if</span> lag > <span class="num">1000</span>:  <span class="cm"># ms</span>
+            time.sleep(<span class="num">5</span>)  <span class="cm"># let replicas catch up</span>
+        <span class="kw">else</span>:
+            time.sleep(sleep_ms / <span class="num">1000</span>)
+
+<span class="cm"># Verify backfill before proceeding to migration 2:</span>
+<span class="cm"># SELECT COUNT(*) FROM users WHERE display_name IS NULL;</span>
+<span class="cm"># Must be 0 before proceeding.</span>
+
+<span class="cm"># ── Migration 2: Flip reads (separate deploy, after backfill) ────</span>
+<span class="cm"># This is an application code change only — no SQL migration needed.</span>
+<span class="cm"># Change all SELECTs from user_name → display_name.</span>
+
+<span class="cm"># models.py: add display_name to the model (if not already done)</span>
+<span class="kw">class</span> <span class="ty">User</span>(Base):
+    __tablename__ = <span class="str">'users'</span>
+    id           = Column(Integer, primary_key=<span class="kw">True</span>)
+    user_name    = Column(Text)     <span class="cm"># keep for now — still write to it</span>
+    display_name = Column(Text)     <span class="cm"># now the primary read column</span>
+    email        = Column(Text)
+
+<span class="cm"># ── Migration 3: Contract — drop old column ──────────────────────</span>
+<span class="cm"># alembic/versions/d4e5f6_contract_drop_user_name.py</span>
+<span class="cm"># Run ONLY after:</span>
+<span class="cm"># 1. All pods are on the code that reads from display_name</span>
+<span class="cm"># 2. Application no longer writes to user_name</span>
+
+<span class="kw">def</span> <span class="fn">upgrade</span>():
+    op.execute(<span class="str">"SET lock_timeout = '3s'"</span>)
+    op.drop_column(<span class="str">'users'</span>, <span class="str">'user_name'</span>)
+
+<span class="kw">def</span> <span class="fn">downgrade</span>():
+    <span class="cm"># Cannot restore data — this downgrade just adds the column back (empty)</span>
+    op.execute(<span class="str">"SET lock_timeout = '3s'"</span>)
+    op.add_column(<span class="str">'users'</span>, sa.Column(<span class="str">'user_name'</span>, sa.Text(), nullable=<span class="kw">True</span>))
+    <span class="cm"># Note: downgrade leaves user_name NULL for all rows.</span>
+    <span class="cm"># If you truly need to roll back here, restore from backup.</span>
+
+<span class="cm"># ── Alembic pitfall: autogenerate generates RENAME not expand-contract ──</span>
+<span class="cm"># NEVER run alembic revision --autogenerate for column renames.</span>
+<span class="cm"># Autogenerate detects: model has display_name, DB has user_name → generates RENAME.</span>
+<span class="cm"># That breaks all old code immediately.</span>
+<span class="cm"># For expand-contract: always write migrations manually, never autogenerate.</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify expand-contract is complete before running migration 3</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Backfill is complete: <code>SELECT COUNT(*) FROM users WHERE display_name IS NULL</code> returns 0.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No code references old column: <code>grep -r "user_name" ./app --include="*.py"</code> returns no results (or only migration files).</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">All pods running new code: check deploy status, all instances are on the version that reads display_name.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">No writes to old column in logs: search application logs for any INSERT/UPDATE referencing user_name — should be empty.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
