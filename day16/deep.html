@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 16 Deep Dive: Redis Cache Patterns, Cloudflare Rules, Cache Warming</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day16" class="back-link">&#8592; Day 16: Caching Strategies</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 16 · Caching Strategies · Deep Dive</div>
+  <h1>Redis cache class,<br>Cloudflare cache rules,<br>&amp; <em>cache warming scripts</em></h1>
+  <p>The main lesson covered cache patterns, stampede, invalidation, CDN, and HTTP headers. This page covers the implementation: a production-ready Redis cache class with stampede protection and instrumentation, Cloudflare cache rules for API responses, and a pre-deploy cache warming script that avoids the cold-start problem.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Production Redis cache class</span><span class="deep-topic-sub">— stampede protection, null caching, metrics, typed interface</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Cloudflare cache rules</span><span class="deep-topic-sub">— page rules, cache bypass for auth, purge on deploy</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Cache warming scripts</span><span class="deep-topic-sub">— pre-deploy warm-up, jitter population, hit rate monitoring</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Production Redis cache class:<br><em>everything in one place</em></h2>
+  <p class="lead">A cache scattered across the codebase — different TTLs, different key formats, different null-handling — is a maintenance nightmare. This cache class centralises the logic: stampede protection, null caching, metrics, typed keys, and jitter all in one place.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cache class — production-ready with stampede protection + metrics</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Redis } <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { metrics } <span class="kw">from</span> <span class="str">'./metrics'</span>;  <span class="cm">// Prometheus/StatsD</span>
+
+<span class="kw">const</span> NULL_SENTINEL = <span class="str">'__null__'</span>;  <span class="cm">// represents a cached null/not-found</span>
+
+<span class="kw">export class</span> <span class="ty">Cache</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> redis: Redis, <span class="kw">private</span> prefix = <span class="str">'v1'</span>) {}
+
+  <span class="kw">private</span> <span class="fn">key</span>(k: <span class="ty">string</span>) { <span class="kw">return</span> <span class="str">`\${this.prefix}:\${k}`</span>; }
+
+  <span class="cm">// Add jitter to avoid synchronized expiry</span>
+  <span class="kw">private</span> <span class="fn">jitteredTtl</span>(baseTtl: <span class="ty">number</span>, jitterPct = <span class="num">0.2</span>): <span class="ty">number</span> {
+    <span class="kw">return</span> Math.<span class="fn">floor</span>(baseTtl * (<span class="num">1</span> + jitterPct * Math.<span class="fn">random</span>()));
+  }
+
+  <span class="cm">// Core get-or-set with stampede protection + null caching</span>
+  <span class="kw">async</span> <span class="fn">getOrSet</span>&lt;T&gt;(
+    k: <span class="ty">string</span>,
+    fetch: () => <span class="kw">Promise</span>&lt;T | <span class="kw">null</span>&gt;,
+    opts: { ttl: <span class="ty">number</span>; nullTtl?: <span class="ty">number</span>; stampede?: <span class="ty">boolean</span> } = { ttl: <span class="num">300</span> }
+  ): <span class="kw">Promise</span>&lt;T | <span class="kw">null</span>&gt; {
+    <span class="kw">const</span> cacheKey = <span class="kw">this</span>.<span class="fn">key</span>(k);
+    <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+
+    <span class="cm">// 1. Check cache</span>
+    <span class="kw">const</span> cached = <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">get</span>(cacheKey);
+    <span class="kw">if</span> (cached !== <span class="kw">null</span>) {
+      metrics.<span class="fn">increment</span>(<span class="str">'cache.hit'</span>, { key: k });
+      metrics.<span class="fn">timing</span>(<span class="str">'cache.latency'</span>, Date.<span class="fn">now</span>() - start, { result: <span class="str">'hit'</span> });
+      <span class="kw">return</span> cached === NULL_SENTINEL ? <span class="kw">null</span> : JSON.<span class="fn">parse</span>(cached);
+    }
+
+    metrics.<span class="fn">increment</span>(<span class="str">'cache.miss'</span>, { key: k });
+
+    <span class="cm">// 2. Stampede protection (optional, for high-traffic keys)</span>
+    <span class="kw">if</span> (opts.stampede) {
+      <span class="kw">const</span> lockKey = <span class="kw">this</span>.<span class="fn">key</span>(<span class="str">`lock:\${k}`</span>);
+      <span class="kw">const</span> lockVal = Math.<span class="fn">random</span>().<span class="fn">toString</span>(<span class="num">36</span>);
+      <span class="kw">const</span> acquired = <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">set</span>(lockKey, lockVal, <span class="str">'NX'</span>, <span class="str">'EX'</span>, <span class="num">10</span>);
+      <span class="kw">if</span> (!acquired) {
+        <span class="cm">// Wait for the lock holder to populate cache</span>
+        <span class="kw">await</span> <span class="kw">new</span> <span class="ty">Promise</span>(r => <span class="fn">setTimeout</span>(r, <span class="num">50</span>));
+        <span class="kw">const</span> retried = <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">get</span>(cacheKey);
+        <span class="kw">if</span> (retried) <span class="kw">return</span> retried === NULL_SENTINEL ? <span class="kw">null</span> : JSON.<span class="fn">parse</span>(retried);
+      }
+    }
+
+    <span class="cm">// 3. Fetch from source</span>
+    <span class="kw">try</span> {
+      <span class="kw">const</span> value = <span class="kw">await</span> <span class="fn">fetch</span>();
+      metrics.<span class="fn">timing</span>(<span class="str">'cache.fetch_duration'</span>, Date.<span class="fn">now</span>() - start);
+
+      <span class="kw">if</span> (value === <span class="kw">null</span> || value === <span class="kw">undefined</span>) {
+        <span class="cm">// Cache the null — prevents repeated DB hits for non-existent entities</span>
+        <span class="kw">const</span> nullTtl = opts.nullTtl ?? <span class="num">60</span>;
+        <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">setex</span>(cacheKey, nullTtl, NULL_SENTINEL);
+        <span class="kw">return</span> <span class="kw">null</span>;
+      }
+
+      <span class="kw">const</span> ttl = <span class="kw">this</span>.<span class="fn">jitteredTtl</span>(opts.ttl);
+      <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">setex</span>(cacheKey, ttl, JSON.<span class="fn">stringify</span>(value));
+      <span class="kw">return</span> value;
+    } <span class="kw">finally</span> {
+      <span class="cm">// Release stampede lock if we held it</span>
+      <span class="kw">if</span> (opts.stampede) {
+        <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">eval</span>(
+          <span class="str">`if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end`</span>,
+          <span class="num">1</span>, <span class="kw">this</span>.<span class="fn">key</span>(<span class="str">`lock:\${k}`</span>), <span class="str">''</span>  <span class="cm">// lockVal lost in catch — harmless (EX=10 auto-releases)</span>
+        );
+      }
+    }
+  }
+
+  <span class="cm">// Invalidate a specific key or pattern</span>
+  <span class="kw">async</span> <span class="fn">del</span>(k: <span class="ty">string</span>): <span class="kw">Promise</span>&lt;<span class="ty">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">del</span>(<span class="kw">this</span>.<span class="fn">key</span>(k));
+  }
+
+  <span class="cm">// Bump cache version to invalidate ALL keys (deploy strategy)</span>
+  <span class="kw">static</span> <span class="fn">withVersion</span>(redis: Redis, version: <span class="ty">string</span>) {
+    <span class="kw">return new</span> <span class="ty">Cache</span>(redis, <span class="str">`v\${version}`</span>);
+  }
+}
+
+<span class="cm">// ── Usage ────────────────────────────────────────────────────────</span>
+<span class="kw">const</span> cache = <span class="kw">new</span> <span class="ty">Cache</span>(redis);
+
+<span class="cm">// Normal cached lookup (5 min TTL + jitter)</span>
+<span class="kw">const</span> product = <span class="kw">await</span> cache.<span class="fn">getOrSet</span>(
+  <span class="str">`product:\${id}`</span>,
+  () => db.<span class="fn">findProductById</span>(id),
+  { ttl: <span class="num">300</span> }
+);
+
+<span class="cm">// High-traffic key with stampede protection</span>
+<span class="kw">const</span> homepage = <span class="kw">await</span> cache.<span class="fn">getOrSet</span>(
+  <span class="str">'homepage:featured'</span>,
+  () => db.<span class="fn">getFeaturedProducts</span>(),
+  { ttl: <span class="num">60</span>, stampede: <span class="kw">true</span> }
+);
+
+<span class="cm">// Deploy-time version bump (invalidates all old keys)</span>
+<span class="kw">const</span> versionedCache = Cache.<span class="fn">withVersion</span>(redis, process.env.DEPLOY_VERSION);
+<span class="cm">// Old keys (v1:*) become unreachable; new keys (v2:*) populate lazily</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify cache is working correctly in production</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Hit rate ≥ 80%: <code>redis-cli info stats | grep keyspace</code> → <code>keyspace_hits / (keyspace_hits + keyspace_misses)</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Null values are cached: make a request for a non-existent entity, check that subsequent requests don't hit the DB (<code>redis-cli GET "v1:product:99999"</code> returns <code>__null__</code>)</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Jitter is applied: check TTLs of recently set keys — <code>redis-cli TTL "v1:product:123"</code> — should vary across similar keys by ±20%.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Eviction policy is set: <code>redis-cli config get maxmemory-policy</code> should return <code>allkeys-lru</code> or <code>allkeys-lfu</code>, not <code>noeviction</code>.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Cloudflare cache rules:<br><em>caching at the edge</em></h2>
+  <p class="lead">Cloudflare caches responses at 300+ edge locations worldwide. Correctly configured, a Cloudflare cache rule means your origin server never receives the majority of static and public-content requests. Incorrectly configured, it either fails to cache (costing you performance) or caches authenticated responses (a privacy incident).</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cloudflare cache rules — Terraform configuration</span><span class="code-block-lang">TERRAFORM + BASH</span></div>
+    <pre><span class="cm"># Cloudflare Cache Rules via Terraform (cloudflare_ruleset)</span>
+resource "cloudflare_ruleset" "cache_rules" {
+  zone_id = var.cloudflare_zone_id
+  name    = "Cache rules"
+  kind    = "zone"
+  phase   = "http_request_cache_settings"
+
+  rules {
+    <span class="cm"># Rule 1: Static assets — cache for 1 year</span>
+    description = "Static assets - immutable"
+    expression  = "(http.request.uri.path matches \"^/static/.*\\.(js|css|woff2|png|jpg|webp)$\")"
+    action      = "set_cache_settings"
+    action_parameters {
+      cache = true
+      edge_ttl {
+        mode    = "override_origin"
+        default = 31536000  <span class="cm"># 1 year</span>
+      }
+      browser_ttl {
+        mode    = "override_origin"
+        default = 31536000
+      }
+      cache_key {
+        ignore_query_strings_order = false
+        cache_deception_armor      = true
+      }
+    }
+  }
+
+  rules {
+    <span class="cm"># Rule 2: Public API responses — cache at edge, not browser</span>
+    description = "Public API - edge cache only"
+    expression  = "(http.request.uri.path matches \"^/api/v1/(products|categories|search)\")"
+    action      = "set_cache_settings"
+    action_parameters {
+      cache = true
+      edge_ttl {
+        mode    = "override_origin"
+        default = 60  <span class="cm"># 60 seconds at edge</span>
+      }
+      browser_ttl {
+        mode    = "bypass"  <span class="cm"># browser always fetches fresh from edge</span>
+      }
+    }
+  }
+
+  rules {
+    <span class="cm"># Rule 3: Bypass cache for authenticated requests</span>
+    description = "Bypass - authenticated"
+    expression  = "(http.request.headers[\"authorization\"] ne \"\" or http.cookie contains \"session=\")"
+    action      = "set_cache_settings"
+    action_parameters {
+      cache = false  <span class="cm"># NEVER cache authenticated responses</span>
+    }
+  }
+}
+
+<span class="cm">## ── Purge Cloudflare cache on deploy ──────────────────────────────</span>
+<span class="cm"># Option A: Purge entire cache (simple, slower recovery)</span>
+curl -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"purge_everything": true}'
+
+<span class="cm"># Option B: Purge specific URLs (precise, preferred)</span>
+curl -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "files": [
+      "https://yourapp.com/api/v1/products",
+      "https://yourapp.com/api/v1/categories"
+    ]
+  }'
+
+<span class="cm"># Option C: Purge by cache tag (requires Cloudflare Enterprise)</span>
+<span class="cm"># Add Cache-Tag header in responses: Cache-Tag: product-123,category-electronics</span>
+<span class="cm"># Then purge by tag:</span>
+curl -X POST ".../purge_cache" -d '{"tags": ["product-123"]}'
+
+<span class="cm">## ── Verify Cloudflare is caching (check response headers) ────────</span>
+curl -I https://yourapp.com/api/v1/products
+<span class="cm"># Look for: CF-Cache-Status: HIT (or MISS on first request)</span>
+<span class="cm"># CF-Cache-Status values:</span>
+<span class="cm">#   HIT    → served from Cloudflare edge cache</span>
+<span class="cm">#   MISS   → served from origin, now cached</span>
+<span class="cm">#   BYPASS → bypassed cache (auth request or rule bypass)</span>
+<span class="cm">#   EXPIRED → cache existed but expired, fetching from origin</span>
+<span class="cm">#   DYNAMIC → Cloudflare determined response is dynamic (not cacheable)</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Cache warming scripts:<br><em>no cold start after deploy</em></h2>
+  <p class="lead">A cold start after a deploy — when all caches are empty and every request hits the database — is avoidable. A pre-deploy warm-up script populates the cache with the most frequently accessed data before traffic switches to the new deployment, with jitter to prevent the midnight-expiry problem.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Cache warm-up script — pre-deploy, jittered, with hit rate monitoring</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// scripts/cache-warmup.ts</span>
+<span class="cm">// Run before traffic cutover in CI/CD pipeline</span>
+
+<span class="kw">const</span> WARMUP_CONFIG = [
+  <span class="cm">// [cacheKey, fetchFn, baseTtl, priority]</span>
+  { key: <span class="str">'homepage:featured'</span>,  fetch: () => db.<span class="fn">getFeaturedProducts</span>(),  ttl: <span class="num">300</span>,  priority: <span class="num">1</span> },
+  { key: <span class="str">'homepage:categories'</span>, fetch: () => db.<span class="fn">getCategories</span>(),       ttl: <span class="num">3600</span>, priority: <span class="num">1</span> },
+  { key: <span class="str">'config:features'</span>,     fetch: () => db.<span class="fn">getFeatureFlags</span>(),     ttl: <span class="num">300</span>,  priority: <span class="num">1</span> },
+  { key: <span class="str">'config:pricing'</span>,      fetch: () => db.<span class="fn">getPricingRules</span>(),    ttl: <span class="num">600</span>,  priority: <span class="num">1</span> },
+];
+
+<span class="kw">async function</span> <span class="fn">warmTopProducts</span>(limit = <span class="num">500</span>) {
+  <span class="cm">// Warm top N products by traffic (from analytics or access logs)</span>
+  <span class="kw">const</span> topProducts = <span class="kw">await</span> analytics.<span class="fn">getTopProducts</span>(limit);
+  <span class="kw">return</span> topProducts.<span class="fn">map</span>(id => ({
+    key: <span class="str">`product:\${id}`</span>,
+    fetch: () => db.<span class="fn">getProduct</span>(id),
+    ttl: <span class="num">300</span>,
+    priority: <span class="num">2</span>,
+  }));
+}
+
+<span class="kw">function</span> <span class="fn">jitteredTtl</span>(base: <span class="ty">number</span>): <span class="ty">number</span> {
+  <span class="cm">// ±20% jitter to prevent simultaneous expiry</span>
+  <span class="kw">return</span> Math.<span class="fn">floor</span>(base * (<span class="num">0.9</span> + Math.<span class="fn">random</span>() * <span class="num">0.2</span>));
+}
+
+<span class="kw">async function</span> <span class="fn">warmCache</span>() {
+  <span class="kw">const</span> cacheVersion = process.env.DEPLOY_VERSION;
+  <span class="kw">const</span> cache = <span class="kw">new</span> <span class="ty">Cache</span>(redis, <span class="str">`v\${cacheVersion}`</span>);
+
+  <span class="kw">const</span> items = [
+    ...WARMUP_CONFIG,
+    ...<span class="kw">await</span> <span class="fn">warmTopProducts</span>(<span class="num">500</span>),
+  ].<span class="fn">sort</span>((a, b) => a.priority - b.priority);  <span class="cm">// P1 first</span>
+
+  <span class="kw">let</span> success = <span class="num">0</span>, failed = <span class="num">0</span>;
+
+  <span class="cm">// Batch in groups of 20 (don't overwhelm DB)</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; items.length; i += <span class="num">20</span>) {
+    <span class="kw">const</span> batch = items.<span class="fn">slice</span>(i, i + <span class="num">20</span>);
+    <span class="kw">await</span> Promise.<span class="fn">all</span>(
+      batch.<span class="fn">map</span>(<span class="kw">async</span> item => {
+        <span class="kw">try</span> {
+          <span class="kw">const</span> value = <span class="kw">await</span> item.<span class="fn">fetch</span>();
+          <span class="kw">const</span> ttl = <span class="fn">jitteredTtl</span>(item.ttl);
+          <span class="kw">await</span> redis.<span class="fn">setex</span>(<span class="str">`v\${cacheVersion}:\${item.key}`</span>, ttl, JSON.<span class="fn">stringify</span>(value));
+          success++;
+        } <span class="kw">catch</span> (err) {
+          console.<span class="fn">error</span>(<span class="str">`Failed to warm \${item.key}:`</span>, err);
+          failed++;
+        }
+      })
+    );
+    <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">50</span>);  <span class="cm">// breathe between batches</span>
+  }
+
+  console.<span class="fn">log</span>(<span class="str">`Warm-up complete: \${success} succeeded, \${failed} failed`</span>);
+
+  <span class="cm">// Verify hit rate within 60s of traffic shift</span>
+  <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">60000</span>);
+  <span class="kw">const</span> info = <span class="kw">await</span> redis.<span class="fn">info</span>(<span class="str">'stats'</span>);
+  <span class="kw">const</span> hits = <span class="ty">parseInt</span>(info.<span class="fn">match</span>(<span class="str">/keyspace_hits:(\d+)/</span>)[<span class="num">1</span>]);
+  <span class="kw">const</span> misses = <span class="ty">parseInt</span>(info.<span class="fn">match</span>(<span class="str">/keyspace_misses:(\d+)/</span>)[<span class="num">1</span>]);
+  <span class="kw">const</span> hitRate = hits / (hits + misses);
+  console.<span class="fn">log</span>(<span class="str">`Hit rate 60s post-deploy: \${(hitRate*100).toFixed(1)}%`</span>);
+
+  <span class="kw">if</span> (hitRate &lt; <span class="num">0.7</span>) {
+    console.<span class="fn">error</span>(<span class="str">'⚠ Hit rate below 70%. Cache warm-up may have failed.'</span>);
+    process.<span class="fn">exit</span>(<span class="num">1</span>);  <span class="cm">// fail the deploy pipeline</span>
+  }
+}
+
+<span class="fn">warmCache</span>().<span class="fn">catch</span>(console.error);
+
+<span class="cm">## ── CI/CD integration ──────────────────────────────────────────────</span>
+<span class="cm"># .github/workflows/deploy.yml</span>
+<span class="cm"># - name: Build and deploy new version</span>
+<span class="cm">#   run: helm upgrade myapp ./charts/myapp</span>
+<span class="cm"># - name: Warm cache (before traffic shift)</span>
+<span class="cm">#   run: DEPLOY_VERSION=${{ github.sha }} npx ts-node scripts/cache-warmup.ts</span>
+<span class="cm"># - name: Shift traffic to new version</span>
+<span class="cm">#   run: kubectl rollout status deployment/myapp</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify warm-up is effective</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Hit rate ≥ 80% within 60 seconds of deploy: the warm-up script verifies this automatically and fails the pipeline if not met.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">TTLs are spread: <code>redis-cli --scan --pattern "v2:product:*" | head -20 | xargs -I{} redis-cli TTL {}</code> — values should vary, not all be identical.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">DB load stays flat during warm-up: check DB query rate during the warm-up phase — should be a steady low rate (20 concurrent queries max), not a spike.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Old version keys expire naturally: after the TTL window, old <code>v1:*</code> keys should be gone: <code>redis-cli --scan --pattern "v1:*" | wc -l</code> should approach 0.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
