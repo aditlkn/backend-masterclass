@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 18: Circuit Breakers & Resilience — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+/* circuit state indicator */
+.cb-state{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;}
+.cb-closed{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.35);color:var(--green);}
+.cb-open{background:rgba(240,96,96,.12);border:1px solid rgba(240,96,96,.35);color:var(--red);}
+.cb-half{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.35);color:var(--orange);}
+.cb-dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
+/* viz */
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* decision strip */
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 18 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-cascade">Cascade Failures</a>
+  <a href="#s-cb">Circuit Breaker</a>
+  <a href="#s-states">Three States</a>
+  <a href="#s-fallback">Fallbacks</a>
+  <a href="#s-retry">Retry with Jitter</a>
+  <a href="#s-timeout">Timeouts</a>
+  <a href="#s-bulkhead">Bulkhead Pattern</a>
+  <a href="#s-health">Health Checks</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day18/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day18/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 18 · Circuit Breakers & Resilience</div>
+  <h1>One service goes down.<br>Does it take<br><em>everything else with it?</em></h1>
+  <p class="hero-sub">Without resilience patterns, a single slow or failing dependency can exhaust your thread pool, fill your connection queue, and bring down services that have nothing to do with the failure. Circuit breakers, fallbacks, bulkheads, and retry jitter are the difference between a localised outage and a total cascade.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>Circuit breaker · Retry jitter · Bulkhead · Timeout</div>
+  </div>
+</div>
+
+<!-- S1: CASCADE -->
+<div class="section" id="s-cascade">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>How cascade failures happen — the anatomy</h2>
+
+  <p>A cascade failure starts with a single point of slowness — not even a complete failure. A downstream service starts responding in 3 seconds instead of 50ms. Your application makes a call, waits 3 seconds, gets a response. All seems fine. Then traffic increases. Each request ties up a thread for 3 seconds. Your thread pool has 100 threads. At 33 requests per second, the pool is full. New requests wait for a thread. Your response times spike. Health checks timeout. The load balancer removes you. Your users see errors — not from the slow downstream service, but from yours.</p>
+
+  <p>This is the core problem: <strong>slow dependencies are more dangerous than fast failures.</strong> A dependency that responds in 5ms — even with an error — lets you handle it quickly and move on. A dependency that responds in 3000ms holds your resources hostage for 3 seconds per request.</p>
+
+  <h3>The three failure modes that cascade</h3>
+  <ul>
+    <li><strong>Latency spike:</strong> Service responds, but slowly. Resources held waiting. Thread pool exhausted. Your service becomes slow, which may cascade to your callers.</li>
+    <li><strong>Connection queue:</strong> Service not responding at all. TCP connections queue up. Connection pool fills. New requests rejected. Same thread-pool exhaustion, but faster.</li>
+    <li><strong>Retry storm:</strong> Service fails. Callers retry. Each retry compounds the load on an already-struggling service. The retries prevent recovery. Without retry jitter and limits, a service trying to recover gets hammered back down.</li>
+  </ul>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>No timeout = guaranteed cascade</strong>
+      <p>Every external call — HTTP, database, cache, message queue — must have a timeout. Without a timeout, a slow dependency will eventually hold threads indefinitely. Even if the dependency is usually fast, a single network partition or slow GC pause on the remote side can cause every thread in your pool to wait forever. Set timeouts that reflect your SLA, not "infinity."</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Cascade simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Cascade failure — watch how one slow service brings down others</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showCascade('no_protection')">No protection</button>
+      <button class="viz-btn" onclick="showCascade('timeout_only')">Timeout only</button>
+      <button class="viz-btn" onclick="showCascade('circuit_breaker')">Circuit breaker</button>
+      <button class="viz-btn" onclick="showCascade('full_resilience')">Full resilience stack</button>
+    </div>
+    <div id="cascade-output" class="mono-out" style="min-height:180px">Select a protection level above.</div>
+  </div>
+</div>
+
+<!-- S2: CIRCUIT BREAKER -->
+<div class="section" id="s-cb">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>The circuit breaker pattern</h2>
+
+  <p>Named after the electrical analogy: a circuit breaker trips when it detects a fault, interrupting current flow to protect the circuit. In software, a circuit breaker wraps a remote call and monitors its success rate. When failures exceed a threshold, it "opens" — rejecting calls immediately without attempting the remote call. This protects both your system (no wasted threads waiting for a failing service) and the downstream service (no traffic hammering something that's already struggling).</p>
+
+  <p>The circuit breaker was popularised by Michael Nygard's "Release It!" and implemented prominently in Netflix's Hystrix library. Hystrix is now deprecated in favour of Resilience4j (Java) and similar libraries in other ecosystems. The pattern is language-agnostic.</p>
+
+  <h3>Why fast-fail matters</h3>
+  <p>When the circuit is open, calls fail immediately — in microseconds, not seconds. This means your thread pool doesn't fill up waiting. Users get an error (or a fallback response) quickly. The error is visible in your metrics. You can act on it. Contrast with no circuit breaker: threads pile up waiting for a service that will never respond, connection pools fill, and you discover the problem when your own health checks fail.</p>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>Circuit breakers are not just for microservices</strong>
+      <p>Any external dependency benefits from a circuit breaker: a third-party payment gateway, your own database (yes — a circuit breaker around DB calls protects your application when the DB is overwhelmed), an external API, a cache server. The pattern applies wherever you make a call that might be slow or fail. Don't reserve it only for service-to-service HTTP calls.</p>
+    </div>
+  </div>
+</div>
+
+<!-- S3: THREE STATES -->
+<div class="section" id="s-states">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>The three states — and the transitions between them</h2>
+
+  <p>A circuit breaker has exactly three states. Understanding the transitions is critical because misconfigured thresholds cause two common failure modes: a circuit that opens too eagerly (throttling legitimate traffic during transient errors) and a circuit that opens too slowly (not protecting against a real outage).</p>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin:24px 0">
+    <div class="cb-state cb-closed"><div class="cb-dot"></div>CLOSED</div>
+    <div style="display:flex;align-items:center;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:13px">→ failure threshold →</div>
+    <div class="cb-state cb-open"><div class="cb-dot"></div>OPEN</div>
+    <div style="display:flex;align-items:center;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:13px">→ timeout →</div>
+    <div class="cb-state cb-half"><div class="cb-dot"></div>HALF-OPEN</div>
+  </div>
+
+  <h3>CLOSED — normal operation</h3>
+  <p>Requests pass through to the downstream service. The circuit breaker tracks success and failure counts over a sliding window. When the failure rate exceeds the configured threshold (e.g. 50% of requests in the last 10 seconds fail), the circuit transitions to OPEN.</p>
+
+  <h3>OPEN — fast-failing</h3>
+  <p>All requests are rejected immediately without attempting the call. The caller receives an error (or fallback) in microseconds. The circuit stays open for a configured timeout (e.g. 30 seconds) to give the downstream service time to recover.</p>
+
+  <h3>HALF-OPEN — recovery probe</h3>
+  <p>After the timeout, the circuit transitions to HALF-OPEN. A limited number of probe requests are allowed through (e.g. 5 requests). If these succeed, the circuit closes and traffic resumes. If they fail, the circuit reopens for another timeout period.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Threshold calibration is where most circuit breakers are misconfigured</strong>
+      <p>Too sensitive (threshold: 10% failure rate, window: 5 requests): circuit opens on a single slow request during a legitimate traffic spike, blocking all traffic unnecessarily. Too loose (threshold: 80% failure rate, window: 1000 requests): circuit doesn't open until 800 consecutive failures — by which time you have a full cascade. Start with: failure rate ≥50%, minimum request count of 20 (to avoid opening on low-traffic noise), window of 10-60 seconds. Tune based on observed false-positive open events.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 2: Circuit breaker state machine -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Circuit breaker — live state machine simulation</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Failure threshold: <span id="cb-threshold-val" style="color:var(--accent)">50%</span></label>
+        <input type="range" class="viz-slider" id="cb-threshold" min="10" max="90" value="50" oninput="updateCBConfig()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Min requests before open: <span id="cb-minreq-val" style="color:var(--accent)">5</span></label>
+        <input type="range" class="viz-slider" id="cb-minreq" min="2" max="20" value="5" oninput="updateCBConfig()">
+      </div>
+    </div>
+    <div id="cb-state-display" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="cb-state cb-closed" id="cb-state-badge"><div class="cb-dot"></div><span id="cb-state-text">CLOSED</span></div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">Failures: <span id="cb-fail-count" style="color:var(--red)">0</span> / <span id="cb-total-count" style="color:var(--text2)">0</span> requests</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="cbRequest(true)" style="border-color:var(--green);color:var(--green)">&#10003; Success</button>
+      <button class="viz-btn" onclick="cbRequest(false)" style="border-color:var(--red);color:var(--red)">&#10007; Fail</button>
+      <button class="viz-btn" onclick="cbBurst(3, true)">3× Success</button>
+      <button class="viz-btn" onclick="cbBurst(5, false)" style="border-color:var(--orange);color:var(--orange)">5× Fail</button>
+      <button class="viz-btn" onclick="cbHalfOpen()" style="border-color:var(--orange);color:var(--orange)">Advance to half-open</button>
+      <button class="viz-btn" onclick="cbReset()" style="border-color:var(--text3);color:var(--text3)">Reset</button>
+    </div>
+    <div id="cb-log" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;height:100px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;"></div>
+  </div>
+</div>
+
+<!-- S4: FALLBACKS -->
+<div class="section" id="s-fallback">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Fallbacks: what to do when the circuit opens</h2>
+
+  <p>An open circuit tells callers "this service is unavailable." What the caller does next — the fallback — determines whether the user experiences a total failure or a degraded but functional experience. Fallback strategy is a product decision as much as an engineering decision: what can users do without, and what must always work?</p>
+
+  <h3>The fallback hierarchy</h3>
+  <ul>
+    <li><strong>Cached response:</strong> If you have a recently cached version of the data, return it. A product listing that's 5 minutes stale is almost always better than an error. The circuit breaker and cache work in tandem — cache-aside pattern with a circuit breaker around the database is a natural pairing.</li>
+    <li><strong>Default/empty response:</strong> Return a safe default. Recommendations service is down? Return an empty array (UI shows "No recommendations right now"). Feature flags service is down? Return the default flag values (safe defaults). Never crash the whole page because one non-critical service is unavailable.</li>
+    <li><strong>Degraded mode:</strong> Return a reduced version of the response. Can't reach the personalisation service? Return the generic product listing instead of the personalised one. User still gets a functional page, just not personalised.</li>
+    <li><strong>Queue for later:</strong> For write operations, accept the write into a local queue and process it when the downstream service recovers. Appropriate for non-critical writes (analytics events, email sends) where eventual consistency is acceptable.</li>
+    <li><strong>Fail fast with user messaging:</strong> For operations where none of the above apply (payment processing, critical writes), fail immediately with a clear message. "This feature is temporarily unavailable. Please try again in a few minutes." Better than a hanging spinner.</li>
+  </ul>
+</div>
+
+<!-- VIZ 3: Fallback strategy selector -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Fallback strategies — what to return when circuit opens</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showFallback('recommendations')">Recommendations service</button>
+      <button class="viz-btn" onclick="showFallback('payment')">Payment gateway</button>
+      <button class="viz-btn" onclick="showFallback('inventory')">Inventory check</button>
+      <button class="viz-btn" onclick="showFallback('auth')">Auth service</button>
+      <button class="viz-btn" onclick="showFallback('analytics')">Analytics events</button>
+      <button class="viz-btn" onclick="showFallback('search')">Search service</button>
+    </div>
+    <div id="fallback-output" class="mono-out" style="font-size:12px;min-height:140px">Select a service above.</div>
+  </div>
+</div>
+
+<!-- S5: RETRY WITH JITTER -->
+<div class="section" id="s-retry">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Retry with exponential backoff and jitter</h2>
+
+  <p>Retrying a failed request is sensible — transient failures (network glitch, momentary overload) resolve quickly and a retry succeeds. But naive retry logic — retry immediately, retry at fixed intervals — can make a bad situation much worse.</p>
+
+  <h3>The retry storm problem</h3>
+  <p>If 1,000 clients all experience a failure at the same moment and all retry immediately, the service goes from handling 1,000 requests to handling 2,000 simultaneously at exactly the moment it's already struggling. The retries prevent recovery. This is a retry storm, and it's why services that recover from an outage often experience a second outage immediately after — all the accumulated retries land at once.</p>
+
+  <h3>Exponential backoff</h3>
+  <p>Each retry waits longer than the last: 1s, 2s, 4s, 8s, 16s... up to a maximum (e.g. 32s). This gives the downstream service progressively more time to recover. But if all 1,000 clients use the same backoff schedule, they all retry at the same moment on each backoff interval — still a storm, just a slower one.</p>
+
+  <h3>Jitter</h3>
+  <p>Add randomness to the wait: instead of exactly 4 seconds, wait between 2 and 6 seconds. This spreads retries across time, turning a synchronised storm into a smooth spread. AWS's recommended approach: <code>sleep = min(cap, base * 2^attempt) + random(0, 1000ms)</code>. The random component breaks the synchronisation.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Retry with exponential backoff + jitter</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">interface</span> <span class="ty">RetryOptions</span> {
+  maxAttempts: <span class="ty">number</span>;
+  baseDelayMs: <span class="ty">number</span>;
+  maxDelayMs:  <span class="ty">number</span>;
+  jitterMs:    <span class="ty">number</span>;
+  retryOn?:    (err: <span class="ty">Error</span>) => <span class="ty">boolean</span>;  <span class="cm">// which errors to retry</span>
+}
+
+<span class="kw">async function</span> <span class="fn">withRetry</span>&lt;T&gt;(
+  fn: () => <span class="kw">Promise</span>&lt;T&gt;,
+  opts: <span class="ty">RetryOptions</span>
+): <span class="kw">Promise</span>&lt;T&gt; {
+  <span class="kw">let</span> lastError: <span class="ty">Error</span>;
+
+  <span class="kw">for</span> (<span class="kw">let</span> attempt = <span class="num">0</span>; attempt &lt; opts.maxAttempts; attempt++) {
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fn</span>();
+    } <span class="kw">catch</span> (err) {
+      lastError = err <span class="kw">as</span> <span class="ty">Error</span>;
+
+      <span class="cm">// Don't retry on non-retryable errors (4xx, validation, etc.)</span>
+      <span class="kw">if</span> (opts.retryOn && !opts.retryOn(lastError)) <span class="kw">throw</span> lastError;
+      <span class="kw">if</span> (attempt === opts.maxAttempts - <span class="num">1</span>) <span class="kw">break</span>;
+
+      <span class="cm">// Exponential backoff: base * 2^attempt, capped at maxDelay</span>
+      <span class="kw">const</span> exponential = Math.<span class="fn">min</span>(opts.maxDelayMs, opts.baseDelayMs * Math.<span class="fn">pow</span>(<span class="num">2</span>, attempt));
+      <span class="cm">// Full jitter: random value between 0 and exponential</span>
+      <span class="kw">const</span> delay = Math.<span class="fn">random</span>() * exponential + Math.<span class="fn">random</span>() * opts.jitterMs;
+
+      <span class="kw">await</span> <span class="kw">new</span> <span class="ty">Promise</span>(r => <span class="fn">setTimeout</span>(r, delay));
+    }
+  }
+  <span class="kw">throw</span> lastError!;
+}
+
+<span class="cm">// Usage</span>
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">withRetry</span>(
+  () => paymentService.<span class="fn">charge</span>(orderId, amount),
+  {
+    maxAttempts: <span class="num">3</span>,
+    baseDelayMs: <span class="num">100</span>,
+    maxDelayMs:  <span class="num">5000</span>,
+    jitterMs:    <span class="num">500</span>,
+    retryOn: (err) => {
+      <span class="cm">// Only retry on transient errors — not on 400 (bad request) or 402 (payment failed)</span>
+      <span class="kw">if</span> (err <span class="kw">instanceof</span> <span class="ty">HttpError</span> && err.status &lt; <span class="num">500</span>) <span class="kw">return false</span>;
+      <span class="kw">return true</span>;  <span class="cm">// retry 5xx, network errors, timeouts</span>
+    },
+  }
+);</pre>
+  </div>
+</div>
+
+<!-- VIZ 4: Retry storm simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Retry timing — storm vs jitter spread</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Concurrent clients: <span id="retry-clients-val" style="color:var(--accent)">50</span></label>
+        <input type="range" class="viz-slider" id="retry-clients" min="5" max="200" value="50" oninput="calcRetry()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Base delay (ms): <span id="retry-base-val" style="color:var(--accent)">1000ms</span></label>
+        <input type="range" class="viz-slider" id="retry-base" min="100" max="5000" step="100" value="1000" oninput="calcRetry()">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="viz-btn" onclick="showRetry('no_jitter')">Fixed backoff (no jitter)</button>
+      <button class="viz-btn" onclick="showRetry('full_jitter')">Full jitter</button>
+      <button class="viz-btn" onclick="showRetry('equal_jitter')">Equal jitter</button>
+    </div>
+    <div id="retry-output" class="mono-out" style="font-size:12px;min-height:140px">Select a retry strategy above.</div>
+  </div>
+</div>
+
+<!-- S6: TIMEOUT -->
+<div class="section" id="s-timeout">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Timeouts: every call needs one</h2>
+
+  <p>A timeout is the simplest and most important resilience pattern. It bounds the maximum time any call can take. Without it, a slow dependency can hold your thread indefinitely. With it, the worst case is "I waited N milliseconds and gave up" — a bounded, recoverable state.</p>
+
+  <h3>Setting timeout values</h3>
+  <p>Timeout values should be derived from your SLA, not guessed. If your API has a 500ms response time SLA, your outgoing calls should collectively take no more than ~400ms (leaving 100ms for your own processing). If you make 3 sequential calls, each gets ~130ms. If the normal P99 latency for a call is 80ms, set the timeout at 200-300ms — 2-3× the normal P99, not 10×.</p>
+
+  <p>Too tight a timeout causes false positives: legitimate slow responses are treated as failures. Too loose a timeout defeats the purpose: you've just moved the thread-exhaustion problem from "infinite wait" to "30 second wait." The correct timeout is the maximum response time you're willing to accept given your SLA, not the maximum response time the service could theoretically take.</p>
+
+  <h3>Cascading timeouts</h3>
+  <p>In a chain of services (A → B → C), each service should have a shorter timeout than its caller. If A gives B 500ms, B must complete — including its call to C — within 500ms. B should give C 300ms (leaving 200ms for B's own work). If B sets its timeout to C at 600ms, it guarantees B will timeout before C does — wasting a retry that could have used the remaining time.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Passing deadlines, not timeouts, across service calls</strong>
+      <p>When Service A calls Service B with a 500ms timeout, B should know how much time is left, not just that A has some timeout. If A spends 200ms of internal processing before calling B, B has 300ms left — but if A passes a 500ms timeout to B, B thinks it has 500ms and may accept work it can't complete in time. Pass deadlines (absolute timestamps) across service boundaries, not timeouts (durations). gRPC's deadline propagation does this automatically.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 5: Timeout sizing -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Timeout sizing — derive from SLA, not intuition</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Your API SLA (ms): <span id="sla-val" style="color:var(--accent)">500ms</span></label>
+        <input type="range" class="viz-slider" id="sla-slider" min="100" max="5000" step="100" value="500" oninput="calcTimeout()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Downstream call P99 (ms): <span id="p99-val" style="color:var(--accent)">80ms</span></label>
+        <input type="range" class="viz-slider" id="p99-slider" min="5" max="1000" step="5" value="80" oninput="calcTimeout()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Sequential calls in chain: <span id="calls-val" style="color:var(--accent)">2</span></label>
+        <input type="range" class="viz-slider" id="calls-slider" min="1" max="5" value="2" oninput="calcTimeout()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Own processing budget (ms): <span id="own-val" style="color:var(--accent)">50ms</span></label>
+        <input type="range" class="viz-slider" id="own-slider" min="10" max="200" step="10" value="50" oninput="calcTimeout()">
+      </div>
+    </div>
+    <div id="timeout-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S7: BULKHEAD -->
+<div class="section" id="s-bulkhead">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Bulkhead: isolate failures by resource pool</h2>
+
+  <p>Named after the watertight compartments in a ship's hull — if one compartment floods, the others stay dry. The bulkhead pattern applies the same principle to thread pools and connection pools: each downstream dependency gets its own isolated pool. If one pool fills up (because a dependency is slow), only calls to that dependency are affected — other dependencies continue operating normally.</p>
+
+  <p>Without bulkheads, all calls share a single thread pool. When Service B is slow, its calls hold threads. When those threads are exhausted, calls to Service C — which is working perfectly fine — are also rejected because there are no threads available. Bulkheads prevent this cross-contamination.</p>
+
+  <h3>Thread pool vs semaphore bulkhead</h3>
+  <p><strong>Thread pool isolation:</strong> Each dependency gets a dedicated thread pool. Calls execute in that pool's threads. The overhead: context switching, thread stack memory, scheduling. The benefit: complete isolation — a slow dependency cannot block any thread in the main pool. Used by Hystrix.</p>
+  <p><strong>Semaphore isolation:</strong> Calls still execute in the caller's thread, but a semaphore limits how many concurrent calls can be in flight. Lower overhead. The downside: a blocking call in the caller's thread still holds that thread — only the count is limited, not the thread allocation.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Bulkhead implementation — semaphore isolation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">class</span> <span class="ty">Bulkhead</span> {
+  <span class="kw">private</span> inFlight = <span class="num">0</span>;
+
+  <span class="kw">constructor</span>(
+    <span class="kw">private</span> maxConcurrent: <span class="ty">number</span>,
+    <span class="kw">private</span> maxQueue: <span class="ty">number</span> = <span class="num">0</span>  <span class="cm">// 0 = no queuing, fail immediately</span>
+  ) {}
+
+  <span class="kw">async</span> <span class="fn">execute</span>&lt;T&gt;(fn: () => <span class="kw">Promise</span>&lt;T&gt;): <span class="kw">Promise</span>&lt;T&gt; {
+    <span class="kw">if</span> (<span class="kw">this</span>.inFlight &gt;= <span class="kw">this</span>.maxConcurrent) {
+      <span class="cm">// Bulkhead full — fail immediately (or queue if maxQueue > 0)</span>
+      <span class="kw">throw new</span> <span class="ty">Error</span>(<span class="str">`Bulkhead full (\${this.inFlight}/\${this.maxConcurrent} in flight)`</span>);
+    }
+    <span class="kw">this</span>.inFlight++;
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fn</span>();
+    } <span class="kw">finally</span> {
+      <span class="kw">this</span>.inFlight--;
+    }
+  }
+
+  <span class="kw">get</span> <span class="fn">utilization</span>() { <span class="kw">return this</span>.inFlight / <span class="kw">this</span>.maxConcurrent; }
+}
+
+<span class="cm">// Separate bulkheads per dependency</span>
+<span class="kw">const</span> paymentBulkhead     = <span class="kw">new</span> <span class="ty">Bulkhead</span>(<span class="num">10</span>);   <span class="cm">// max 10 concurrent payment calls</span>
+<span class="kw">const</span> inventoryBulkhead   = <span class="kw">new</span> <span class="ty">Bulkhead</span>(<span class="num">20</span>);   <span class="cm">// max 20 concurrent inventory calls</span>
+<span class="kw">const</span> notificationBulkhead = <span class="kw">new</span> <span class="ty">Bulkhead</span>(<span class="num">5</span>);   <span class="cm">// max 5 (non-critical, intentionally small)</span>
+
+<span class="cm">// Usage: if payment is slow, inventory and notification are unaffected</span>
+<span class="kw">const</span> [paymentResult, inventoryResult] = <span class="kw">await</span> Promise.<span class="fn">allSettled</span>([
+  paymentBulkhead.<span class="fn">execute</span>(() => paymentService.<span class="fn">charge</span>(amount)),
+  inventoryBulkhead.<span class="fn">execute</span>(() => inventoryService.<span class="fn">reserve</span>(sku)),
+]);</pre>
+  </div>
+</div>
+
+<!-- VIZ 6: Bulkhead isolation demo -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Bulkhead isolation — compare with and without</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showBulkhead('no_bulkhead')">No bulkhead (shared pool)</button>
+      <button class="viz-btn" onclick="showBulkhead('with_bulkhead')">With bulkheads (isolated pools)</button>
+      <button class="viz-btn" onclick="showBulkhead('sizing')">Sizing bulkheads</button>
+    </div>
+    <div id="bulkhead-output" class="mono-out" style="font-size:12px;min-height:140px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- S8: HEALTH CHECKS -->
+<div class="section" id="s-health">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Health checks: liveness vs readiness</h2>
+
+  <p>Health checks are how your infrastructure (load balancers, Kubernetes, service mesh) decides whether to send traffic to an instance. Two distinct concepts are often conflated but serve different purposes.</p>
+
+  <h3>Liveness: is the process alive?</h3>
+  <p>A liveness check answers "is this process running and not deadlocked?" If the check fails, Kubernetes restarts the pod. A liveness check should be extremely simple — just verify the process is responsive. It should <strong>never</strong> check external dependencies (database connectivity, downstream services). If it did, a downstream failure would cause Kubernetes to kill healthy pods that just happen to be calling a failing service. Liveness failure = "restart me."</p>
+
+  <h3>Readiness: am I ready to serve traffic?</h3>
+  <p>A readiness check answers "can I currently handle requests?" If it fails, the load balancer removes the instance from the pool. Readiness can check dependencies — if the database connection pool is exhausted or a critical downstream service is unavailable, the instance should stop receiving traffic. Readiness failure = "stop sending me traffic, but don't restart me."</p>
+
+  <h3>Startup: am I done initialising?</h3>
+  <p>A startup check (Kubernetes 1.18+) gives a pod time to initialise before liveness checks begin. A slow-starting service that takes 60 seconds to warm up would fail liveness checks (which might run every 10 seconds) and get restarted in a loop. Startup probes prevent this.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Health check endpoints — correct implementation</span><span class="code-block-lang">TYPESCRIPT + YAML</span></div>
+    <pre><span class="cm">// Express health check endpoints</span>
+
+<span class="cm">// /healthz — LIVENESS: process is alive</span>
+<span class="cm">// Never checks dependencies — only responds if the process is running</span>
+app.<span class="fn">get</span>(<span class="str">'/healthz'</span>, (req, res) => {
+  res.<span class="fn">status</span>(<span class="num">200</span>).<span class="fn">json</span>({ status: <span class="str">'ok'</span>, timestamp: Date.<span class="fn">now</span>() });
+});
+
+<span class="cm">// /readyz — READINESS: ready to serve traffic</span>
+<span class="cm">// Checks critical dependencies</span>
+app.<span class="fn">get</span>(<span class="str">'/readyz'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> checks = <span class="kw">await</span> Promise.<span class="fn">allSettled</span>([
+    db.<span class="fn">query</span>(<span class="str">'SELECT 1'</span>),             <span class="cm">// DB connection</span>
+    redis.<span class="fn">ping</span>(),                      <span class="cm">// Cache</span>
+    <span class="cm">// Do NOT check non-critical services here</span>
+  ]);
+
+  <span class="kw">const</span> dbOk    = checks[<span class="num">0</span>].status === <span class="str">'fulfilled'</span>;
+  <span class="kw">const</span> redisOk = checks[<span class="num">1</span>].status === <span class="str">'fulfilled'</span>;
+  <span class="kw">const</span> ready = dbOk && redisOk;
+
+  res.<span class="fn">status</span>(ready ? <span class="num">200</span> : <span class="num">503</span>).<span class="fn">json</span>({
+    ready,
+    checks: { db: dbOk, redis: redisOk },
+  });
+});
+
+<span class="cm"># Kubernetes probe configuration</span>
+livenessProbe:
+  httpGet: { path: /healthz, port: 8080 }
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3   <span class="cm"># restart after 3 consecutive failures (30s)</span>
+
+readinessProbe:
+  httpGet: { path: /readyz, port: 8080 }
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2   <span class="cm"># remove from load balancer after 2 failures (10s)</span>
+
+startupProbe:
+  httpGet: { path: /healthz, port: 8080 }
+  failureThreshold: 30  <span class="cm"># allow 30 × 10s = 5 minutes to start</span>
+  periodSeconds: 10</pre>
+  </div>
+</div>
+
+<!-- VIZ 7: Resilience patterns comparison -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Resilience patterns — what each protects against</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPattern('circuit_breaker')">Circuit breaker</button>
+      <button class="viz-btn" onclick="showPattern('retry_jitter')">Retry + jitter</button>
+      <button class="viz-btn" onclick="showPattern('timeout')">Timeout</button>
+      <button class="viz-btn" onclick="showPattern('bulkhead')">Bulkhead</button>
+      <button class="viz-btn" onclick="showPattern('fallback')">Fallback</button>
+      <button class="viz-btn" onclick="showPattern('rate_limit')">Rate limiting</button>
+    </div>
+    <div id="pattern-output" class="mono-out" style="font-size:12px;min-height:140px">Select a pattern above.</div>
+  </div>
+</div>
+
+<!-- VIZ 8: Full resilience stack -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Full resilience stack — what order to apply patterns</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px">Trace a request through the full resilience stack. Patterns are applied in this order: outer → inner.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showStack('happy_path')">Happy path</button>
+      <button class="viz-btn" onclick="showStack('transient_fail')">Transient failure (retried)</button>
+      <button class="viz-btn" onclick="showStack('circuit_open')">Circuit open (fast fail)</button>
+      <button class="viz-btn" onclick="showStack('timeout_hit')">Timeout exceeded</button>
+      <button class="viz-btn" onclick="showStack('bulkhead_full')">Bulkhead full</button>
+    </div>
+    <div id="stack-output" class="mono-out" style="font-size:12px;min-height:160px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- PROD REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+
+  <h3>Start with timeouts — they're the most impactful pattern</h3>
+  <p>If you implement nothing else from this day, implement timeouts on every external call. A circuit breaker without timeouts is almost useless — the circuit opens only after connections time out, by which time threads are already exhausted. Timeouts bound the damage; circuit breakers prevent repeat damage. Do timeouts first.</p>
+
+  <h3>Circuit breakers need dashboards</h3>
+  <p>A circuit breaker that silently switches to OPEN and serves fallbacks is invisible without monitoring. You'll serve degraded responses for hours before noticing. Instrument every circuit breaker: emit metrics for state changes (CLOSED→OPEN, OPEN→HALF-OPEN, HALF-OPEN→CLOSED), fallback invocations, and rejection counts. Alert on circuit OPEN events — they indicate a failing dependency that needs attention.</p>
+
+  <h3>Don't retry on 4xx responses</h3>
+  <p>A 400 Bad Request won't succeed on retry — the request is malformed. A 401 won't succeed without a new token. A 422 Unprocessable won't succeed with the same payload. Only retry on 5xx responses (server error), network errors (connection refused, timeout), and specific 429 responses (where you respect the Retry-After header). Retrying 4xx is wasted compute and makes your logs noisy.</p>
+
+  <h3>The recovery problem: circuit in HALF-OPEN</h3>
+  <p>When the circuit transitions to HALF-OPEN and allows probe requests through, those requests may hit a service that's only partially recovered. If the probe fails, the circuit reopens. If the service is flapping (failing every other request), the circuit may oscillate — never fully closing, never staying open. Implement exponential backoff for the OPEN→HALF-OPEN timeout: first time 30s, second time 60s, third time 120s. This gives a flapping service more time to stabilise.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Cascading circuit opens are a pattern, not a bug</h3>
+  <p>If Service A depends on Service B, and Service B's circuit opens, Service A will start seeing failures too — its circuit may open as well. This cascade of circuit openings is correct behavior, not a bug. Each service protecting itself from a failing upstream is exactly what resilience patterns are supposed to do. What you should monitor: how far up the dependency chain the circuit opens propagated. That tells you the blast radius of the original failure.</p>
+
+  <h3>The circuit breaker state must survive restarts</h3>
+  <p>An in-memory circuit breaker resets when the process restarts. After a deployment, all circuits are CLOSED — no memory of previous failure states. If you deploy in the middle of a downstream service outage, your newly deployed pods will immediately start hammering the failing service before their circuits open. For critical paths, persist circuit state in Redis so it survives pod restarts and deploy cycles.</p>
+
+  <h3>Fallback responses can mask problems</h3>
+  <p>A circuit breaker with a good fallback is comfortable to ignore. "We're serving cached recommendations instead of live ones — good enough." Weeks later, the circuit is still open, you've been serving stale recommendations for weeks, and nobody noticed because the fallback worked. Set TTLs on how long you'll serve fallbacks: after N minutes of serving a fallback, alert the on-call team even if no user-facing error is visible.</p>
+
+  <h3>Chaos engineering validates your resilience patterns</h3>
+  <p>You don't know if your circuit breakers actually work until they're triggered in production. Chaos engineering — intentionally introducing failures in a controlled way — validates that your resilience patterns behave as expected. Netflix's Chaos Monkey randomly terminates production instances. More targeted: use fault injection in your load balancer or service mesh to introduce latency or errors on specific routes. Do this in production, not just staging.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Adding resilience to a service call</h2>
+  <p class="ds-sub">Apply in this order — each pattern builds on the previous.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Set a timeout first — always, no exceptions</div>
+        <div class="ds-detail">Every external call gets a timeout derived from your SLA. If your API must respond in 500ms, your outbound calls should have timeouts of 200-400ms depending on chain length. An unbound call is a thread held hostage indefinitely. Timeouts are the foundation everything else builds on.
+          <br><span class="ds-tag ds-tag-stop">no timeout = infinite thread hold = guaranteed cascade</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Add retry with exponential backoff + jitter for transient failures</div>
+        <div class="ds-detail">Retry only on 5xx and network errors. Max 3 attempts (original + 2 retries) for most cases. Exponential backoff with full jitter to prevent retry storms. Set a max backoff ceiling (e.g. 5 seconds). Don't retry on 4xx — those will never succeed with the same payload.
+          <br><span class="ds-tag ds-tag-warn">retry without jitter = synchronised storm on recovery</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Wrap with a circuit breaker if the call is high-frequency or critical</div>
+        <div class="ds-detail">For calls that happen on every request (database, auth service, product catalog), a circuit breaker prevents thread-pool exhaustion when that service fails. Configure: failure rate ≥50%, minimum 20 requests before opening, 10-second window, 30-second open timeout. Emit metrics on state transitions.
+          <br><span class="ds-tag ds-tag-ok">circuit breaker = fast fail when downstream is struggling</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Design the fallback before adding the circuit breaker</div>
+        <div class="ds-detail">A circuit breaker without a fallback just converts "slow response" into "fast error." Decide what to return when the circuit opens before writing the circuit breaker code. Cached data? Empty response? Degraded version? For critical paths with no acceptable fallback, skip the circuit breaker and focus on the upstream service's availability.
+          <br><span class="ds-tag ds-tag-warn">circuit breaker without fallback = fast error instead of slow error</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Add bulkheads for non-critical or unreliable dependencies</div>
+        <div class="ds-detail">External third-party services (payment gateway, SMS provider, analytics) should have their own resource pools. If they're slow, they shouldn't affect calls to your own database. Limit concurrent calls per dependency based on expected load: 10 concurrent calls to a payment gateway is usually sufficient; 100 to your primary database may be too few.
+          <br><span class="ds-tag ds-tag-ok">bulkhead = failure isolation across dependencies</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Monitor state transitions and set alerts</div>
+        <div class="ds-detail">A circuit that opens silently is invisible. Emit a metric on every state change. Alert when any circuit has been OPEN for more than 5 minutes — it means a dependency is struggling and needs attention. Track fallback invocation rate — a sustained fallback rate is a signal of systemic degradation, not just transient failures.
+          <br><span class="ds-tag ds-tag-stop">unmonitored circuit breakers = false confidence in resilience</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Payment service times out — the cascade that took down the entire checkout</div>
+    <div style="font-size:13px;color:var(--text2)">Thread pool exhaustion · timeout chain · circuit breaker recovery</div>
+  </div>
+  <a href="/day18/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Resilience4j config, cockatiel patterns, full stack composition</div>
+    <div style="font-size:13px;color:var(--text2)">Java Resilience4j · TypeScript cockatiel · pattern composition order</div>
+  </div>
+  <a href="/day18/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Resilience checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">TMO</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Timeouts everywhere</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every external call has a timeout derived from your SLA. No unbounded calls. Database, cache, HTTP — all have explicit timeouts.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">JTR</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Jitter on retries</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">No fixed-interval retries. Exponential backoff + full jitter. Max 3 attempts. Never retry on 4xx responses.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">FLB</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Fallback defined</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every circuit breaker has a fallback defined before deployment. Cached data, safe default, or explicit degraded mode.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">LVS</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Liveness ≠ readiness</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">/healthz checks only process health. /readyz checks dependencies. Never check downstream services in liveness — it causes restart storms.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">BLK</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Bulkhead 3rd parties</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">External services (payment, SMS, analytics) have isolated resource pools. One slow provider can't exhaust threads for everything else.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">ALT</div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Alert on OPEN</div>
+      <p style="font-size:12.5px;color:var(--text3);margin:0">Every circuit OPEN event emits a metric. Alert when circuit stays open >5 min. Unmonitored circuit opens = silent degradation.</p>
+    </div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, {passive:true});
+
+// ── VIZ 1: Cascade ──
+var CASCADE = {
+  no_protection: 'NO PROTECTION — one slow service cascades to everything\n\nScenario: Payment service starts responding in 3000ms (up from 50ms)\n\nThread pool: 100 threads. Normal traffic: 30 req/s.\n\n  T+0s:   Payment service slows to 3000ms\n  T+1s:   30 requests arrive. Each calls payment. Each thread now\n           holds for 3s. 30 threads busy.\n  T+3s:   30 more requests. 60 threads busy.\n  T+6s:   30 more. 90 threads busy.\n  T+7s:   ALL 100 threads waiting for payment responses.\n           New requests: no threads available → QUEUED\n  T+10s:  Queue fills. New requests REJECTED.\n           Health checks time out. Load balancer removes this pod.\n           Users see errors on the CHECKOUT page — nothing to do\n           with the payment service directly.\n\nBlast radius: your entire application is down because\nONE downstream service got slow. Without protection.',
+
+  timeout_only: 'TIMEOUT ONLY — bounds the damage, doesn\'t prevent repeat\n\nSame scenario, but payment calls have a 500ms timeout.\n\n  T+0s:   Payment service slows to 3000ms\n  T+0.5s: First payment call times out. Error returned.\n           Thread released! Only held for 500ms, not 3000ms.\n  T+1s:   More requests arrive. Each call payment. Each times out\n           in 500ms. Threads release. Thread pool stays healthy.\n  T+1s:   But: 30 req/s × 500ms = 15 threads busy at any time.\n           Still have 85 threads free. System stays up.\n  T+1s:   Every checkout FAILS (payment timeout = order error)\n           but checkout page itself stays up.\n\nImprovement: system stays up. Users see payment errors, not\nblanket 503s. But every single checkout attempt fails.\nTimeouts bound damage; circuit breakers prevent repeat trips.',
+
+  circuit_breaker: 'CIRCUIT BREAKER — fast-fails after threshold, allows recovery\n\nTimeout: 500ms. Circuit: opens after 50% failures in 10 requests.\n\n  T+0s:   Payment service slows to 3000ms\n  T+0s-5s: 10 requests → 10 timeouts. Circuit OPENS.\n  T+5s:   Circuit OPEN. All payment calls fast-fail in ~1ms.\n           Thread pool: threads held for 1ms, not 500ms.\n           10× more capacity freed.\n  T+5s:   Checkout shows "Payment temporarily unavailable"\n           (fallback). Users can still browse, add to cart.\n           Only checkout is degraded.\n  T+35s:  Circuit HALF-OPEN. 3 probe requests allowed.\n           Payment service has recovered → probes succeed.\n  T+35s:  Circuit CLOSES. Normal operation resumes.\n\nBlast radius: only payment-dependent features degraded.\nEverything else continues normally.',
+
+  full_resilience: 'FULL RESILIENCE STACK — defence in depth\n\nTimeout: 500ms. Retry: 2× with jitter. Circuit: 50%/10 req.\nBulkhead: 10 concurrent payment calls max. Fallback: show "Payment retry later" option.\n\n  T+0s:   Payment service slows.\n  T+0s:   Bulkhead: caps concurrent payment calls at 10.\n           Even at 100 req/s, only 10 threads ever wait for payment.\n  T+0.5s: Timeout: each call times out in 500ms.\n  T+0.7s: Retry: 1 retry with jitter (300-700ms wait). Fails again.\n  T+5s:   Circuit: opens after threshold. Fast-fails.\n  T+5s:   Fallback: "Payment temporarily unavailable. We\'ve saved\n           your cart. You\'ll be notified when payments resume."\n  T+35s:  Circuit half-opens. Probe succeeds. Closes.\n\nUser experience: "Payment temporarily unavailable" with clear\nmessaging. Cart is preserved. Everything else works.\n\nThis is the difference between a P1 outage and a controlled degradation.',
+};
+function showCascade(key) {
+  document.getElementById('cascade-output').textContent = CASCADE[key];
+}
+
+// ── VIZ 2: Circuit breaker state machine ──
+var cbState = 'CLOSED';
+var cbFailures = 0;
+var cbTotal = 0;
+var cbWindow = [];
+var cbThreshold = 0.5;
+var cbMinReq = 5;
+var cbOpenTimer = null;
+
+function updateCBConfig() {
+  cbThreshold = parseInt(document.getElementById('cb-threshold').value) / 100;
+  cbMinReq = parseInt(document.getElementById('cb-minreq').value);
+  document.getElementById('cb-threshold-val').textContent = Math.round(cbThreshold*100) + '%';
+  document.getElementById('cb-minreq-val').textContent = cbMinReq;
+}
+
+function cbRequest(success) {
+  if (cbState === 'OPEN') {
+    cbLog('⛔ OPEN — request fast-failed (not sent to downstream)', 'var(--red)');
+    return;
+  }
+  if (cbState === 'HALF-OPEN' && cbWindow.length >= 3) {
+    cbLog('⛔ HALF-OPEN — probe quota full', 'var(--orange)');
+    return;
+  }
+  cbTotal++;
+  cbWindow.push(success ? 1 : 0);
+  if (cbWindow.length > 10) cbWindow.shift();
+  if (!success) cbFailures++;
+  document.getElementById('cb-fail-count').textContent = cbFailures;
+  document.getElementById('cb-total-count').textContent = cbTotal;
+
+  if (cbState === 'HALF-OPEN') {
+    var probesFailed = cbWindow.filter(function(x){return x===0;}).length;
+    var probesSucceeded = cbWindow.filter(function(x){return x===1;}).length;
+    if (probesSucceeded >= 3) {
+      setCBState('CLOSED');
+      cbLog('✓ 3 probes succeeded → circuit CLOSED', 'var(--green)');
+    } else if (probesFailed >= 1) {
+      setCBState('OPEN');
+      cbLog('✗ probe failed → circuit re-OPENED (backoff 60s)', 'var(--red)');
+    } else {
+      cbLog((success ? '✓ probe success' : '✗ probe fail') + ' (' + cbWindow.length + '/3)', success ? 'var(--green)' : 'var(--orange)');
+    }
+    return;
+  }
+
+  // Check if should open
+  if (cbWindow.length >= cbMinReq) {
+    var failRate = (1 - cbWindow.reduce(function(a,b){return a+b;},0) / cbWindow.length);
+    if (failRate >= cbThreshold) {
+      setCBState('OPEN');
+      cbLog('✗ Failure rate ' + Math.round(failRate*100) + '% ≥ ' + Math.round(cbThreshold*100) + '% → circuit OPENED', 'var(--red)');
+      return;
+    }
+  }
+  cbLog((success ? '✓ success' : '✗ failure') + ' | window: ' + cbWindow.join('') + ' | fail rate: ' + Math.round((1-cbWindow.reduce(function(a,b){return a+b;},0)/Math.max(1,cbWindow.length))*100) + '%', success ? 'var(--green)' : 'var(--orange)');
+}
+
+function cbBurst(n, success) {
+  for (var i = 0; i < n; i++) cbRequest(success);
+}
+
+function cbHalfOpen() {
+  if (cbState !== 'OPEN') {
+    cbLog('Circuit must be OPEN to advance to HALF-OPEN', 'var(--text3)');
+    return;
+  }
+  setCBState('HALF-OPEN');
+  cbWindow = [];
+  cbLog('⏱ Timeout elapsed → circuit HALF-OPEN (3 probe requests allowed)', 'var(--orange)');
+}
+
+function setCBState(state) {
+  cbState = state;
+  var badge = document.getElementById('cb-state-badge');
+  var text = document.getElementById('cb-state-text');
+  badge.className = 'cb-state ' + (state === 'CLOSED' ? 'cb-closed' : state === 'OPEN' ? 'cb-open' : 'cb-half');
+  text.textContent = state;
+}
+
+function cbReset() {
+  cbState = 'CLOSED'; cbFailures = 0; cbTotal = 0; cbWindow = [];
+  setCBState('CLOSED');
+  document.getElementById('cb-fail-count').textContent = '0';
+  document.getElementById('cb-total-count').textContent = '0';
+  document.getElementById('cb-log').innerHTML = '';
+}
+
+function cbLog(msg, col) {
+  var el = document.getElementById('cb-log');
+  var line = document.createElement('div');
+  line.style.color = col || 'var(--text2)';
+  line.style.fontSize = '11px';
+  var ts = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+
+// ── VIZ 3: Fallbacks ──
+var FALLBACKS = {
+  recommendations: 'RECOMMENDATIONS SERVICE — circuit opens\n\nFallback strategy: return cached + static defaults\n\nOption A: last cached recommendations (TTL: 30 min)\n  → User sees recommendations from 30 min ago. Usually fine.\n  → Code:\n    const cached = await redis.get(`rec:user:${userId}`);\n    return cached ? JSON.parse(cached) : DEFAULT_RECS;\n\nOption B: popular items (pre-computed, always fresh from DB)\n  → User sees "Popular right now" instead of personalised.\n  → Slightly degraded experience, completely functional.\n\nOption C: empty array\n  → UI hides the "Recommended" section entirely.\n  → Clean, but loses a conversion opportunity.\n\nRecommendation: Option A → B → C (cascade fallbacks).\nNone of these cause user-visible errors.',
+
+  payment: 'PAYMENT GATEWAY — circuit opens\n\nFallback strategy: fail fast with clear user messaging\n\nPayment is a CRITICAL write. No acceptable degraded mode.\nDo not silently queue the payment — users expect immediate confirmation.\n\nFallback:\n  return {\n    status: "service_unavailable",\n    message: "Payment processing is temporarily unavailable.",\n    details: "Your cart has been saved. Please try again in a few minutes.",\n    cart_saved: true,\n    retry_at: Date.now() + 300_000  // retry suggestion: 5 min\n  };\n\nAdditional actions:\n  → Preserve cart state in session\n  → Offer alternative: "Try a different payment method"\n  → Email notification when payment service recovers (if user opts in)\n  → Alert on-call: payment circuit open is a P1 event\n\nDo NOT: silently queue the payment for later processing.\nUser thinks it failed; they may pay twice on retry.',
+
+  inventory: 'INVENTORY SERVICE — circuit opens\n\nFallback strategy: optimistic availability\n\nFor product listing pages:\n  → Show item as "available" (optimistic)\n  → Defer the true inventory check to checkout\n  → Risk: user adds to cart, finds at checkout it\'s out of stock\n  → Acceptable tradeoff for most products\n\nFor checkout flow:\n  → Use last known inventory (cached, may be stale)\n  → If cache is too old (>5 min): show "availability unconfirmed"\n  → Allow order to proceed with "we\'ll contact you if unavailable"\n\nFor high-value/limited stock items:\n  → Block the purchase (don\'t optimistically allow)\n  → "Inventory check temporarily unavailable. Please try again shortly."\n\nCode:\n  const cachedStock = await redis.get(`stock:${sku}`);\n  if (cachedStock !== null) return { inStock: parseInt(cachedStock) > 0, source: "cache" };\n  return { inStock: true, source: "optimistic", stale: true };',
+
+  auth: 'AUTH SERVICE — circuit opens\n\nFallback strategy: depends on auth type\n\nJWT (stateless):\n  → Don\'t need the auth service to validate JWTs!\n  → JWT validation uses a public key (stored locally)\n  → Auth service circuit opening doesn\'t affect token validation\n  → Only affects: issuing NEW tokens (login, refresh)\n  → Login fallback: "Login temporarily unavailable. Existing sessions work."\n\nOpaque tokens (stateful, requires DB lookup):\n  → Can\'t validate without the service\n  → Fallback: cache recent token validations in Redis (short TTL: 60s)\n  → For cached tokens: allow. For uncached: deny (fail-closed)\n  → Better: use JWT instead of opaque tokens\n\nSession cookies + external session store:\n  → Same problem as opaque tokens\n  → Cache session data locally for short windows\n\nKey insight: auth is the worst service to circuit-break\nbecause the fallback is "block all users" (too strict)\nor "allow all users" (security risk). Design auth to be\nstateless (JWT) so it doesn\'t need a circuit breaker.',
+
+  analytics: 'ANALYTICS EVENTS — circuit opens\n\nFallback strategy: buffer locally, flush when service recovers\n\nAnalytics is a GREAT candidate for graceful degradation.\nIt\'s non-critical and write-only. Users don\'t see it.\n\nFallback:\n  class AnalyticsClient {\n    private buffer: Event[] = [];\n    \n    async track(event: Event) {\n      try {\n        await circuitBreaker.execute(() => analyticsService.send(event));\n      } catch {\n        // Circuit open: buffer locally\n        this.buffer.push(event);\n        if (this.buffer.length > 10_000) this.buffer.shift(); // cap size\n      }\n    }\n    \n    // Called when circuit closes\n    async flush() {\n      if (this.buffer.length === 0) return;\n      await analyticsService.sendBatch(this.buffer);\n      this.buffer = [];\n    }\n  }\n\nResult: zero user impact. Small data loss risk (if pod restarts\nbefore flush). For critical analytics: use Redis as buffer\ninstead of in-memory.',
+
+  search: 'SEARCH SERVICE — circuit opens\n\nFallback strategy: database fallback with limited capabilities\n\nSearch is a good candidate for degraded-but-functional fallback.\n\nFallback tier 1: cached search results\n  → For popular queries (logged as hot): return cached results\n  → const cached = await redis.get(`search:${hashQuery(query)}`);\n\nFallback tier 2: database LIKE query (limited)\n  → SELECT * FROM products WHERE name ILIKE $1 LIMIT 20\n  → No relevance ranking. No fuzzy match. No facets.\n  → Much slower than Elasticsearch. But functional.\n\nFallback tier 3: return empty + message\n  → "Search is temporarily unavailable. Browse by category instead."\n  → Show category navigation prominently\n\nCascade: tier 1 → tier 2 → tier 3\n\nMonitor: how often tier 2/3 is used — indicates search\nservice reliability issues that need infrastructure attention.',
+};
+function showFallback(key) {
+  document.getElementById('fallback-output').textContent = FALLBACKS[key];
+}
+
+// ── VIZ 4: Retry ──
+function calcRetry() {
+  document.getElementById('retry-clients-val').textContent = document.getElementById('retry-clients').value;
+  document.getElementById('retry-base-val').textContent = document.getElementById('retry-base').value + 'ms';
+}
+
+function showRetry(strategy) {
+  var clients = parseInt(document.getElementById('retry-clients').value);
+  var base = parseInt(document.getElementById('retry-base').value);
+
+  if (strategy === 'no_jitter') {
+    document.getElementById('retry-output').innerHTML = [
+      'FIXED BACKOFF (no jitter) — ' + clients + ' clients, base: ' + base + 'ms',
+      '',
+      'All ' + clients + ' clients use identical backoff schedule:',
+      '  Attempt 1: fail immediately',
+      '  Attempt 2: retry at T+' + base + 'ms  ← ALL ' + clients + ' clients retry at exactly the same time',
+      '  Attempt 3: retry at T+' + (base*2) + 'ms ← ALL ' + clients + ' clients again simultaneously',
+      '',
+      'Load at retry moments:',
+      '  T+' + base + 'ms:   ' + clients + ' simultaneous requests (SPIKE)',
+      '  T+' + (base*2) + 'ms:  ' + clients + ' simultaneous requests (SPIKE)',
+      '',
+      '⚠ Retry storm: the service that just failed gets hit by',
+      '  ' + clients + ' simultaneous retries at the worst possible moment.',
+      '  If it was borderline-recovered, the storm pushes it back down.',
+      '',
+      'The service never recovers because every recovery attempt',
+      'is met with an immediate coordinated spike.',
+    ].join('\n');
+  } else if (strategy === 'full_jitter') {
+    var spread = Math.round(base * 1.5);
+    document.getElementById('retry-output').innerHTML = [
+      'FULL JITTER — ' + clients + ' clients, base: ' + base + 'ms',
+      '',
+      'Each client picks a random delay in [0, base * 2^attempt]:',
+      '  Attempt 1: fail immediately',
+      '  Attempt 2: retry at T+random(0, ' + base + 'ms)',
+      '  Attempt 3: retry at T+random(0, ' + (base*2) + 'ms)',
+      '',
+      'Load spread at retry window:',
+      '  T+0 to T+' + base + 'ms: ~' + Math.round(clients/base*10) + ' req/10ms (evenly spread)',
+      '  No spike — requests arrive at ~uniform rate across the window',
+      '',
+      '✓ Service sees roughly constant load during recovery window.',
+      '  Not overwhelmed. Has time to recover between requests.',
+      '',
+      'With ' + clients + ' clients and base ' + base + 'ms:',
+      '  Max load at any 50ms window: ~' + Math.round(clients / (base/50)) + ' req/50ms',
+      '  vs fixed backoff: ' + clients + ' req in the same 50ms (storm)',
+      '',
+      '✓ Full jitter is the AWS recommendation. Use this.',
+    ].join('\n');
+  } else {
+    document.getElementById('retry-output').innerHTML = [
+      'EQUAL JITTER — ' + clients + ' clients, base: ' + base + 'ms',
+      '',
+      'Wait = base/2 + random(0, base/2):',
+      '  Attempt 2: retry at T+random(' + base/2 + 'ms, ' + base + 'ms)',
+      '  Attempt 3: retry at T+random(' + base + 'ms, ' + base*2 + 'ms)',
+      '',
+      'Guarantees minimum backoff (base/2) before any retry.',
+      'Adds jitter within the top half of the range.',
+      '',
+      'Tradeoff vs full jitter:',
+      '  + Guarantees some minimum wait (avoids very fast retries)',
+      '  - Less spread than full jitter (bunched in top half of window)',
+      '  - More conservative — takes longer to retry at low jitter values',
+      '',
+      'Load: better than fixed, not as spread as full jitter.',
+      'Good default when minimum delay is important.',
+      'Full jitter is usually preferred for high-concurrency scenarios.',
+    ].join('\n');
+  }
+}
+
+// ── VIZ 5: Timeout ──
+function calcTimeout() {
+  var sla  = parseInt(document.getElementById('sla-slider').value);
+  var p99  = parseInt(document.getElementById('p99-slider').value);
+  var calls= parseInt(document.getElementById('calls-slider').value);
+  var own  = parseInt(document.getElementById('own-slider').value);
+  document.getElementById('sla-val').textContent = sla + 'ms';
+  document.getElementById('p99-val').textContent = p99 + 'ms';
+  document.getElementById('calls-val').textContent = calls;
+  document.getElementById('own-val').textContent = own + 'ms';
+
+  var budget = sla - own;
+  var perCall = Math.floor(budget / calls);
+  var recommended = Math.min(perCall, Math.round(p99 * 2.5));
+  var col = recommended > p99 * 5 ? 'var(--orange)' : recommended > p99 ? 'var(--green)' : 'var(--red)';
+  var tight = recommended < p99 * 1.5;
+  var loose = recommended > p99 * 10;
+
+  document.getElementById('timeout-output').innerHTML = [
+    'SLA:                    ' + sla + 'ms',
+    'Own processing:         ' + own + 'ms',
+    'Budget for calls:       ' + budget + 'ms (' + calls + ' sequential call' + (calls > 1 ? 's' : '') + ')',
+    'Budget per call:        ' + perCall + 'ms',
+    '',
+    'Normal P99 latency:     ' + p99 + 'ms',
+    'Recommended timeout:    <span style="color:' + col + ';font-weight:700">' + recommended + 'ms</span>  (~' + Math.round(recommended/p99*10)/10 + '× P99)',
+    '',
+    tight ? '<span style="color:var(--red)">⚠ Timeout is tight (< 1.5× P99). Will cause false positives on normal slow requests.\n  Consider: reduce own processing budget or use parallel calls.</span>'
+    : loose ? '<span style="color:var(--orange)">⚠ Timeout is loose (> 10× P99). Provides little protection — slow calls hold threads\n  for too long. Can your SLA or call count be adjusted?</span>'
+    : '<span style="color:var(--green)">✓ Timeout is well-calibrated (2-5× P99). Allows normal latency variance\n  while protecting against genuinely stuck calls.</span>',
+    '',
+    calls > 1 ? ('For a ' + calls + '-call chain, pass DEADLINES not timeouts:\n  A receives: ' + sla + 'ms deadline\n  A processes: ' + own + 'ms\n  A calls B with: ' + (sla - own) + 'ms remaining\n  B processes: ' + own + 'ms\n  B calls C with: ' + (sla - own*2) + 'ms remaining') : '',
+  ].filter(Boolean).join('\n');
+}
+
+// ── VIZ 6: Bulkhead ──
+var BULKHEADS = {
+  no_bulkhead: 'NO BULKHEAD — shared thread pool\n\nArchitecture: single thread pool of 100 threads handles ALL calls.\n\n  Normal state:\n  → Payment calls: 10 concurrent (~50ms each) → 10 threads\n  → Inventory calls: 20 concurrent (~30ms each) → 20 threads\n  → Notification calls: 5 concurrent (~20ms each) → 5 threads\n  → Total: 35 threads used. 65 free.\n\n  Payment service slows to 2000ms:\n  → 30 req/s × 2s per call = 60 threads waiting for payment\n  → After 3 seconds: 90 threads waiting for payment\n  → Total: 90 threads used. 10 free for everything else.\n  → Inventory calls: 10 threads → 8 free. Degraded.\n  → Notification calls: 10 threads → NONE AVAILABLE. Blocked.\n  → Thread pool exhausted. System unavailable.\n\nPayment\'s problem became everyone\'s problem.',
+
+  with_bulkhead: 'WITH BULKHEADS — isolated resource pools\n\nEach dependency gets its own fixed-size concurrency limit:\n\n  paymentBulkhead:      max 10 concurrent calls\n  inventoryBulkhead:    max 20 concurrent calls\n  notificationBulkhead: max  5 concurrent calls\n\n  Payment service slows to 2000ms:\n  → Payment calls: 10 concurrent → BULKHEAD FULL\n  → New payment requests: fail immediately (BulkheadFullError)\n  → Inventory calls: still have 20 slots. UNAFFECTED.\n  → Notification calls: still have 5 slots. UNAFFECTED.\n\nPayment\'s problem stays with payment.\nInventory and notifications continue normally.\n\n  User experience:\n  → Checkout payment: "Payment temporarily unavailable"\n  → Inventory checks: working\n  → Email notifications: working\n  → Everything except payment: functional\n\n✓ Failure is isolated to the failing dependency.',
+
+  sizing: 'BULKHEAD SIZING — how many concurrent calls\n\nSizing formula:\n  max_concurrent = expected_RPS × p99_latency_sec × safety_factor\n\nExamples:\n\n  Payment gateway:\n    → 50 checkout attempts/sec (peak)\n    → P99 latency: 200ms = 0.2s\n    → In-flight at any time: 50 × 0.2 = 10 calls\n    → Safety factor 1.5: max_concurrent = 15\n    → But: payment gateway has its own limit? Set 10 to be safe.\n\n  Inventory service (internal):\n    → 200 req/sec (product pages + checkout)\n    → P99 latency: 30ms = 0.03s\n    → In-flight: 200 × 0.03 = 6 calls\n    → Safety factor 2: max_concurrent = 12\n    → Set 20 (internal service, can handle more)\n\n  Analytics (fire-and-forget):\n    → Don\'t need a large bulkhead — it\'s non-critical\n    → 5 concurrent: if service is slow, queue up to 5, then drop\n    → Dropped analytics events are acceptable\n\nRule: size for peak traffic × P99 latency, not average.\nBulkhead that\'s too small causes false rejections at normal load.',
+};
+function showBulkhead(key) {
+  document.getElementById('bulkhead-output').textContent = BULKHEADS[key];
+}
+
+// ── VIZ 7: Pattern comparison ──
+var PATTERNS = {
+  circuit_breaker: 'CIRCUIT BREAKER\n\nProtects against: sustained failure or latency in a dependency\nDoes NOT protect: first N failures (needs threshold to trip)\nDoes NOT protect: very short transient spikes (window may not accumulate)\n\nHow it works:\n  Monitors failure rate over a sliding window.\n  CLOSED → OPEN when failure rate ≥ threshold after min requests.\n  OPEN: fast-fails all requests (microseconds vs seconds).\n  HALF-OPEN after timeout: tests recovery.\n\nWhere to add:\n  Around every call to a service you don\'t own, or any critical\n  dependency that handles significant traffic.\n\nMetrics to track:\n  circuit_state (CLOSED/OPEN/HALF-OPEN)\n  rejection_rate (% fast-failed)\n  fallback_invocation_rate\n  time_in_open_state',
+
+  retry_jitter: 'RETRY WITH EXPONENTIAL BACKOFF + JITTER\n\nProtects against: transient failures (network blip, momentary overload)\nDoes NOT protect: sustained failures (retry doesn\'t help if service is down)\nDoes NOT protect: 4xx errors (won\'t succeed with same payload)\n\nHow it works:\n  On failure: wait random(0, base * 2^attempt) before retrying.\n  Max 2-3 retries. Max delay cap (e.g. 30s).\n  Jitter breaks retry storm synchronisation.\n\nWhen to use:\n  ✓ Transient network errors (connection refused, timeout)\n  ✓ 5xx responses from normally-reliable services\n  ✓ Rate limit responses (with Retry-After)\n  ✗ 4xx responses\n  ✗ Already-open circuit breaker\n  ✗ Non-idempotent writes (risk of double-processing)\n\nComposed with circuit breaker: retries happen inside circuit breaker.\nIf all retries fail, circuit breaker counts it as a failure.',
+
+  timeout: 'TIMEOUT\n\nProtects against: slow dependencies holding threads indefinitely\nDoes NOT protect: sustained failure (timeout just means fast failure)\nDoes NOT protect: thread pool if many calls pile up before timeout\n\nHow it works:\n  Abort the call after N milliseconds.\n  Release the thread immediately.\n  Caller sees error (or triggers retry/fallback).\n\nThe most important pattern — foundation everything else builds on.\nWithout timeout: one slow service → thread exhaustion → full outage.\nWith timeout: one slow service → bounded error rate.\n\nSet based on:\n  SLA budget - own processing = available for downstream calls\n  Recommended: 2-5× P99 latency of the downstream call\n  Never: "whatever the downstream might take"\n\nPass deadlines (absolute times) not timeouts (durations)\nacross service boundaries.',
+
+  bulkhead: 'BULKHEAD\n\nProtects against: one slow dependency consuming all shared resources\nDoes NOT protect: if the bulkhead is sized at the thread pool limit\nDoes NOT protect: the bulkheaded dependency itself\n\nHow it works:\n  Limit concurrent calls to each dependency independently.\n  If pool is full: fail immediately (no waiting).\n  Other dependencies: unaffected.\n\nSemaphore vs thread pool:\n  Semaphore: limits concurrency, calls run in caller\'s threads.\n    → Lower overhead\n    → Blocking call in caller\'s thread still holds that thread\n  Thread pool: dedicated threads per dependency.\n    → Complete isolation\n    → Higher overhead (stack, context switch)\n\nSizing: expected_RPS × p99_latency_sec × safety_factor\nMonitor: bulkhead_rejection_rate per dependency\nAlert when: rejection rate > 0 at normal traffic (undersized)',
+
+  fallback: 'FALLBACK\n\nProtects against: user-visible errors when circuit opens\nDoes NOT protect: the downstream service itself\nDoes NOT protect: if fallback is also unavailable\n\nFallback hierarchy:\n  1. Recent cached response (stale-ok for non-critical)\n  2. Default/empty response (show nothing rather than error)\n  3. Degraded version (generic instead of personalised)\n  4. Queue for later (for non-critical writes)\n  5. Fail fast with user messaging (for critical paths)\n\nDecide fallback BEFORE writing the circuit breaker.\nA circuit breaker without a fallback just makes errors faster.\n\nMonitor: fallback_invocation_rate\nAlert: sustained fallback rate (>5min) indicates systemic issue\nTTL: set maximum time to serve fallbacks before alerting on-call',
+
+  rate_limit: 'RATE LIMITING (as a resilience pattern)\n\nProtects against: one client overwhelming a shared service\nDoes NOT protect: service failure (that\'s circuit breaker + timeout)\n\nHow it relates to resilience:\n  Rate limiting protects the SERVER from excessive client load.\n  Circuit breaker protects the CLIENT from a failing server.\n  They complement each other:\n    → Rate limiter on your API: protect from abusive callers\n    → Circuit breaker in your code: protect from failing dependencies\n\nLoad shedding (related but different):\n  Rate limiting: per-client quotas\n  Load shedding: global system protection (drop requests when CPU/memory critical)\n  Circuit breaker: per-dependency protection\n\nAll three together:\n  Load shed globally → rate limit per client → circuit break per dependency\n  Different failure modes, different protection mechanisms.',
+};
+function showPattern(key) {
+  document.getElementById('pattern-output').textContent = PATTERNS[key];
+}
+
+// ── VIZ 8: Stack ──
+var STACKS = {
+  happy_path: 'HAPPY PATH — all patterns traversed successfully\n\nStack (outer → inner): Bulkhead → Circuit Breaker → Retry → Timeout → Call\n\n  1. Bulkhead.execute():     ✓ Slots available (3/10 in flight)\n  2. CircuitBreaker.call():  ✓ CLOSED (failure rate: 5%)\n  3. withRetry():            attempt 1\n  4. setTimeout(200ms):      ✓ Call completes in 45ms\n  5. HTTP GET /api/product:  ✓ 200 OK, 45ms\n\n  ← Result: { product: {...} }, 47ms total\n\nAll patterns added ~2ms of overhead combined.\nHappy path: patterns are invisible.',
+
+  transient_fail: 'TRANSIENT FAILURE — retry succeeds\n\nStack: Bulkhead → Circuit Breaker → Retry → Timeout → Call\n\n  T+0ms:  Bulkhead: ✓ slots available\n  T+0ms:  CircuitBreaker: ✓ CLOSED\n  T+0ms:  Retry: attempt 1\n  T+0ms:  Timeout(200ms) starts\n  T+120ms: HTTP GET /api/product → 503 (service momentarily overloaded)\n  T+120ms: Timeout: still within 200ms\n  T+120ms: Retry: 503 is retryable → wait random(0, 100ms) → 67ms\n  T+187ms: Retry: attempt 2\n  T+187ms: Timeout(200ms) starts fresh\n  T+230ms: HTTP GET /api/product → 200 OK, 43ms\n\n  ← Result: { product: {...} }, 230ms total\n\nCircuit breaker counts: 1 failure, 1 success.\nFailure rate still below threshold → stays CLOSED.\nUser sees: slight latency (230ms vs 47ms). No error.',
+
+  circuit_open: 'CIRCUIT OPEN — fast fail with fallback\n\nStack: Bulkhead → Circuit Breaker → [BLOCKED] → Fallback\n\nPrecondition: circuit opened 15s ago (10 failures in last 20 requests)\n\n  T+0ms:  Bulkhead: ✓ slots available\n  T+0ms:  CircuitBreaker: ✗ OPEN (opened 15s ago, resets in 15s)\n           Fast-fails immediately. Retry not attempted.\n           No HTTP call made. No thread held waiting.\n  T+0.1ms: Fallback invoked:\n           const cached = await redis.get("product:123");\n           → HIT: returns cached product from 8 minutes ago\n\n  ← Result: { product: {...}, _source: "cache", _stale: true }, 0.8ms total\n\nCircuit breaker rejection counted.\nUser sees: response with stale data (or empty if no cache).\nThroughput: can handle 10,000× more req/s (not waiting 200ms each).',
+
+  timeout_hit: 'TIMEOUT EXCEEDED — fallback after timeout\n\nStack: Bulkhead → Circuit Breaker → Retry → Timeout → [TIMEOUT] → Fallback\n\n  T+0ms:    Bulkhead: ✓\n  T+0ms:    CircuitBreaker: ✓ CLOSED\n  T+0ms:    Retry: attempt 1\n  T+0ms:    Timeout(200ms) starts\n  T+200ms:  TIMEOUT! HTTP call was still pending.\n             TCP connection closed. Call aborted. Thread released.\n  T+200ms:  Retry: timeout is retryable → wait 80ms (jitter)\n  T+280ms:  Retry: attempt 2\n  T+280ms:  Timeout(200ms) starts\n  T+480ms:  TIMEOUT again!\n  T+480ms:  Retry: max attempts (2) reached. Give up.\n  T+480ms:  CircuitBreaker: 2 more failures recorded. Rate now 60% → OPENS.\n  T+480ms:  Fallback: return stale cached data\n\n  ← Result: fallback response, 480ms total\n\nNext request: circuit OPEN → fast-fail in 0.1ms.',
+
+  bulkhead_full: 'BULKHEAD FULL — immediate rejection\n\nStack: Bulkhead → [REJECTED] → Fallback\n\nPrecondition: 10/10 bulkhead slots in use (service is slow)\n\n  T+0ms:  Bulkhead.execute(): ✗ 10/10 slots in use → BulkheadFullError\n           Immediate rejection. No circuit breaker check.\n           No retry. No timeout started.\n           Thread never enters the call path.\n  T+0.05ms: Fallback invoked immediately.\n\n  ← Result: fallback response, 0.05ms total\n\nBulkhead prevents the thread pool from being held hostage\nwhile waiting for slots to open. If this happens at normal\ntraffic: bulkhead is undersized → increase max concurrent.\nIf at spike traffic: bulkhead is working correctly.',
+};
+function showStack(key) {
+  document.getElementById('stack-output').textContent = STACKS[key];
+}
+
+// Init
+showCascade('no_protection');
+updateCBConfig();
+showFallback('recommendations');
+showRetry('no_jitter');
+calcTimeout();
+showBulkhead('no_bulkhead');
+showPattern('circuit_breaker');
+showStack('happy_path');
+</script>
+</body>
+</html>

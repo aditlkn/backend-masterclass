@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 18 Deep Dive: Resilience4j, cockatiel, Full Stack Composition</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day18" class="back-link">&#8592; Day 18: Circuit Breakers</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 18 · Circuit Breakers · Deep Dive</div>
+  <h1>Resilience4j config,<br>cockatiel patterns,<br>&amp; <em>full stack composition</em></h1>
+  <p>The main lesson covered the concepts: cascade failures, circuit breaker states, fallbacks, retry jitter, timeouts, bulkheads. This page is the implementation: Resilience4j configuration for Java services, the cockatiel library for TypeScript, and a complete composition of all patterns in the correct order — including the subtle bugs that arise from composing them wrong.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Resilience4j — Java/Kotlin configuration</span><span class="deep-topic-sub">— circuit breaker, retry, bulkhead, time limiter, metrics</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">cockatiel — TypeScript resilience library</span><span class="deep-topic-sub">— circuit breaker, retry, timeout, composition via policy</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Composition order and failure modes</span><span class="deep-topic-sub">— why order matters, what goes wrong when you get it wrong</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1: Resilience4j -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Resilience4j:<br><em>complete Java/Kotlin configuration</em></h2>
+  <p class="lead">Resilience4j is the standard resilience library for Java and Kotlin, replacing the deprecated Netflix Hystrix. It's modular — each pattern is a separate module. Configuration goes in application.yml for Spring Boot apps or programmatically for other frameworks.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Resilience4j — complete Spring Boot configuration</span><span class="code-block-lang">YAML + KOTLIN</span></div>
+    <pre><span class="cm"># application.yml</span>
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowType: COUNT_BASED   <span class="cm"># or TIME_BASED</span>
+        slidingWindowSize: 10            <span class="cm"># last 10 calls</span>
+        minimumNumberOfCalls: 5          <span class="cm"># don't open on first few calls</span>
+        failureRateThreshold: 50         <span class="cm"># open at 50% failure rate</span>
+        slowCallRateThreshold: 50        <span class="cm"># also open if 50% of calls are slow</span>
+        slowCallDurationThreshold: 2000ms  <span class="cm"># "slow" = > 2 seconds</span>
+        waitDurationInOpenState: 30s     <span class="cm"># stay open 30s before trying half-open</span>
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - feign.FeignException$InternalServerError
+        ignoreExceptions:
+          - com.example.BusinessException  <span class="cm"># don't count business errors as failures</span>
+
+      inventoryService:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 60
+        waitDurationInOpenState: 10s     <span class="cm"># internal service recovers faster</span>
+
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - com.example.PaymentDeclinedException  <span class="cm"># don't retry declined cards!</span>
+
+  bulkhead:
+    instances:
+      paymentService:
+        maxConcurrentCalls: 15
+        maxWaitDuration: 0ms    <span class="cm"># fail immediately if full (no queuing)</span>
+
+  timelimiter:  <span class="cm"># Resilience4j's timeout</span>
+    instances:
+      paymentService:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
+
+<span class="cm">## ── Kotlin usage with Spring annotations ─────────────────────────</span>
+<span class="cm"># Order of decorator application (outer → inner):</span>
+<span class="cm"># @Bulkhead → @CircuitBreaker → @Retry → @TimeLimiter → actual call</span>
+
+@Service
+class PaymentServiceClient {
+
+  @Bulkhead(name = "paymentService", fallbackMethod = "bulkheadFallback")
+  @CircuitBreaker(name = "paymentService", fallbackMethod = "circuitFallback")
+  @Retry(name = "paymentService", fallbackMethod = "retryFallback")
+  @TimeLimiter(name = "paymentService")
+  fun charge(orderId: String, amount: Long): CompletableFuture&lt;PaymentResult&gt; {
+    return CompletableFuture.supplyAsync {
+      paymentGateway.charge(orderId, amount)  <span class="cm">// actual HTTP call</span>
+    }
+  }
+
+  fun bulkheadFallback(orderId: String, amount: Long, ex: BulkheadFullException): CompletableFuture&lt;PaymentResult&gt; {
+    logger.warn("Payment bulkhead full for order {}", orderId)
+    return CompletableFuture.completedFuture(PaymentResult.pending("Service at capacity"))
+  }
+
+  fun circuitFallback(orderId: String, amount: Long, ex: Exception): CompletableFuture&lt;PaymentResult&gt; {
+    logger.warn("Payment circuit open for order {}", orderId)
+    return CompletableFuture.completedFuture(PaymentResult.pending("Service temporarily unavailable"))
+  }
+
+  fun retryFallback(orderId: String, amount: Long, ex: Exception): CompletableFuture&lt;PaymentResult&gt; {
+    logger.error("Payment exhausted retries for order {}: {}", orderId, ex.message)
+    <span class="cm">// Queue for async retry</span>
+    retryQueue.add(RetryJob(orderId, amount))
+    return CompletableFuture.completedFuture(PaymentResult.queued())
+  }
+}
+
+<span class="cm">## ── Metrics (Prometheus/Grafana) ─────────────────────────────────</span>
+<span class="cm"># Resilience4j auto-exports to Micrometer (Spring Actuator)</span>
+<span class="cm"># Key metrics to dashboard:</span>
+<span class="cm">#   resilience4j_circuitbreaker_state{name="paymentService"}  → 0=CLOSED,1=OPEN,2=HALF</span>
+<span class="cm">#   resilience4j_circuitbreaker_failure_rate{name="paymentService"}</span>
+<span class="cm">#   resilience4j_retry_calls_total{name="paymentService",kind="successful_without_retry"}</span>
+<span class="cm">#   resilience4j_bulkhead_available_concurrent_calls{name="paymentService"}</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify Resilience4j is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Circuit state visible in actuator: <code>GET /actuator/circuitbreakers</code> — shows state, failure rate, and call counts for each circuit.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Business exceptions not counted: throw a <code>BusinessException</code> — circuit failure rate should not increase. Throw an IOException — rate should increase.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Slow calls trigger open: simulate calls taking > 2s — circuit should open when 50% of calls exceed slow threshold.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2: cockatiel -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>cockatiel:<br><em>TypeScript resilience with policy composition</em></h2>
+  <p class="lead">cockatiel is the production-grade TypeScript resilience library (used in VS Code's extension host, among others). Its key feature is explicit policy composition — you define each policy separately and compose them in order. This makes the composition visible and testable, unlike callback-based approaches.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">cockatiel — circuit breaker, retry, timeout, full composition</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> {
+  CircuitBreakerPolicy, RetryPolicy, TimeoutPolicy,
+  BulkheadPolicy, FallbackPolicy,
+  ConsecutiveBreaker, SamplingBreaker,
+  ExponentialBackoff, handleAll, handleWhen,
+  wrap, timeout, retry, circuitBreaker, bulkhead, fallback
+} <span class="kw">from</span> <span class="str">'cockatiel'</span>;
+
+<span class="cm">// ── 1. Define individual policies ──────────────────────────────</span>
+<span class="cm">// Timeout: 3 seconds</span>
+<span class="kw">const</span> paymentTimeout = <span class="fn">timeout</span>(<span class="num">3000</span>, TimeoutStrategy.Cooperative);
+
+<span class="cm">// Retry: exponential backoff, jitter, max 3 attempts</span>
+<span class="kw">const</span> paymentRetry = <span class="fn">retry</span>(
+  <span class="fn">handleWhen</span>(err => !(err <span class="kw">instanceof</span> <span class="ty">PaymentDeclinedException</span>)),
+  {
+    maxAttempts: <span class="num">3</span>,
+    backoff: <span class="kw">new</span> <span class="ty">ExponentialBackoff</span>({
+      initialDelay: <span class="num">500</span>,  <span class="cm">// ms</span>
+      maxDelay: <span class="num">5000</span>,    <span class="cm">// ms cap</span>
+      exponent: <span class="num">2</span>,
+    })
+  }
+);
+
+<span class="cm">// Circuit breaker: sampling (count-based over time window)</span>
+<span class="kw">const</span> paymentCB = <span class="fn">circuitBreaker</span>(
+  <span class="fn">handleAll</span>(),  <span class="cm">// handle all errors</span>
+  {
+    halfOpenAfter: <span class="num">30</span> * <span class="num">1000</span>,  <span class="cm">// 30s before probing</span>
+    breaker: <span class="kw">new</span> <span class="ty">SamplingBreaker</span>({
+      threshold: <span class="num">0.5</span>,        <span class="cm">// 50% failure rate triggers open</span>
+      duration:  <span class="num">10</span> * <span class="num">1000</span>,  <span class="cm">// over 10 second window</span>
+      minimumRps: <span class="num">2</span>,         <span class="cm">// need at least 2 req/s before opening</span>
+    }),
+  }
+);
+
+<span class="cm">// Bulkhead: max 15 concurrent calls</span>
+<span class="kw">const</span> paymentBulkhead = <span class="fn">bulkhead</span>(<span class="num">15</span>);
+
+<span class="cm">// Fallback: return pending result when circuit open</span>
+<span class="kw">const</span> paymentFallback = <span class="fn">fallback</span>(
+  <span class="fn">handleAll</span>(),
+  async (ctx, signal) => ({
+    status: <span class="str">'pending'</span>,
+    message: <span class="str">'Payment processing temporarily unavailable'</span>,
+    retryAfter: <span class="num">300</span>,
+  })
+);
+
+<span class="cm">// ── 2. Compose in correct order: outer → inner ─────────────────</span>
+<span class="cm">// Outermost executes first on entry, last on exit</span>
+<span class="cm">// Order: Fallback → Bulkhead → Circuit → Retry → Timeout → Call</span>
+<span class="kw">const</span> paymentPolicy = <span class="fn">wrap</span>(
+  paymentFallback,   <span class="cm">// catches ALL errors from inner policies</span>
+  paymentBulkhead,   <span class="cm">// limits concurrency before attempting call</span>
+  paymentCB,         <span class="cm">// fast-fails if circuit open</span>
+  paymentRetry,      <span class="cm">// retries failures (inside circuit)</span>
+  paymentTimeout,    <span class="cm">// innermost: times out the actual call</span>
+);
+
+<span class="cm">// ── 3. Use the policy ─────────────────────────────────────────</span>
+<span class="kw">async function</span> <span class="fn">chargePayment</span>(orderId: <span class="ty">string</span>, amount: <span class="ty">number</span>) {
+  <span class="kw">return</span> paymentPolicy.<span class="fn">execute</span>(
+    (ctx) => paymentGateway.<span class="fn">charge</span>(orderId, amount),
+    AbortSignal.timeout(<span class="num">5000</span>)  <span class="cm">// overall deadline</span>
+  );
+}
+
+<span class="cm">// ── 4. Monitor events ──────────────────────────────────────────</span>
+paymentCB.onStateChange(state => {
+  logger.<span class="fn">warn</span>({ state }, <span class="str">'Payment circuit state changed'</span>);
+  metrics.<span class="fn">gauge</span>(<span class="str">'payment_cb_state'</span>, { CLOSED:<span class="num">0</span>, OPEN:<span class="num">1</span>, HALF_OPEN:<span class="num">2</span> }[state] ?? <span class="num">-1</span>);
+  <span class="kw">if</span> (state === <span class="str">'OPEN'</span>) alerting.<span class="fn">notify</span>(<span class="str">'payment_circuit_open'</span>);
+});
+
+paymentRetry.onGiveUp(({ error, attempts }) => {
+  logger.<span class="fn">error</span>({ error, attempts }, <span class="str">'Payment retries exhausted'</span>);
+  metrics.<span class="fn">increment</span>(<span class="str">'payment_retry_exhausted'</span>);
+});
+
+paymentBulkhead.onReject(() => {
+  metrics.<span class="fn">increment</span>(<span class="str">'payment_bulkhead_rejected'</span>);
+});</pre>
+  </div>
+</div>
+
+<!-- SECTION 3: Composition -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Composition order:<br><em>why it matters and what goes wrong</em></h2>
+  <p class="lead">The order in which you compose resilience patterns is not arbitrary. Each pattern wraps the next. The outermost pattern sees everything that happens inside. Getting the order wrong causes subtle bugs where retries don't count toward the circuit breaker, or timeouts fire before retries run.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Composition order — correct vs wrong, with failure modes</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// ── CORRECT order: Fallback → Bulkhead → CB → Retry → Timeout ──</span>
+<span class="kw">const</span> correct = <span class="fn">wrap</span>(fallback, bulkhead, circuitBreaker, retry, timeout);
+
+<span class="cm">// Why this order works:</span>
+<span class="cm">//</span>
+<span class="cm">// Timeout (innermost): bounds the single call attempt. If it times out,</span>
+<span class="cm">//   throws TimeoutError → Retry catches it and tries again.</span>
+<span class="cm">//</span>
+<span class="cm">// Retry: wraps Timeout. Each retry gets its own fresh timeout.</span>
+<span class="cm">//   Retry INSIDE circuit breaker: each attempt (including retries) is</span>
+<span class="cm">//   recorded as a failure/success by the circuit breaker.</span>
+<span class="cm">//</span>
+<span class="cm">// Circuit breaker: wraps Retry. Sees final outcome of each request</span>
+<span class="cm">//   (after retries). If retry succeeds on attempt 3, CB records success.</span>
+<span class="cm">//   If retry exhausts, CB records failure → may open circuit.</span>
+<span class="cm">//</span>
+<span class="cm">// Bulkhead: wraps CB. Limits concurrency BEFORE hitting circuit breaker.</span>
+<span class="cm">//   If bulkhead full: reject immediately, CB not involved.</span>
+<span class="cm">//</span>
+<span class="cm">// Fallback (outermost): catches everything. BulkheadFull, CircuitOpen,</span>
+<span class="cm">//   RetryExhausted, Timeout — all handled by one fallback.</span>
+
+<span class="cm">// ── WRONG: Retry OUTSIDE Circuit Breaker ──────────────────────</span>
+<span class="kw">const</span> wrong1 = <span class="fn">wrap</span>(retry, circuitBreaker, timeout);
+<span class="cm">// Problem: CB opens after threshold failures.</span>
+<span class="cm">// Retry wraps CB → retry catches CircuitOpenError and retries!</span>
+<span class="cm">// Each retry hits the CB which is open → another CircuitOpenError.</span>
+<span class="cm">// Result: max 3 retries of a circuit that's already open.</span>
+<span class="cm">// CB is supposed to STOP retries. Here retries happen anyway.</span>
+
+<span class="cm">// ── WRONG: Timeout OUTSIDE Retry ──────────────────────────────</span>
+<span class="kw">const</span> wrong2 = <span class="fn">wrap</span>(timeout, retry, actualCall);
+<span class="cm">// Timeout(3s) wraps Retry(3 attempts).</span>
+<span class="cm">// After 3s, timeout fires — even if retry is mid-attempt.</span>
+<span class="cm">// User gets 1 timeout after 3s instead of 3 × 1s attempts.</span>
+<span class="cm">// If you want: total timeout of 10s with 3 retries of 3s each</span>
+<span class="cm">// → Need the outer deadline (AbortSignal) for total + inner timeout per attempt.</span>
+
+<span class="cm">// ── WRONG: Fallback INSIDE Circuit Breaker ─────────────────────</span>
+<span class="kw">const</span> wrong3 = <span class="fn">wrap</span>(circuitBreaker, fallback, timeout);
+<span class="cm">// CB wraps Fallback.</span>
+<span class="cm">// When fallback runs (returning cached data), CB sees a "success".</span>
+<span class="cm">// Fallback successes count toward CB's success rate → CB may close</span>
+<span class="cm">// even though the actual downstream service is still failing.</span>
+<span class="cm">// CB never actually knows the service is down because fallback masks it.</span>
+
+<span class="cm">// ── CORRECT: per-attempt timeout vs overall deadline ───────────</span>
+<span class="kw">const</span> perAttemptTimeout = <span class="fn">timeout</span>(<span class="num">1000</span>);      <span class="cm">// 1s per attempt</span>
+<span class="kw">const</span> retryPolicy = <span class="fn">retry</span>(<span class="fn">handleAll</span>(), { maxAttempts: <span class="num">3</span> });
+
+<span class="kw">const</span> policy = <span class="fn">wrap</span>(retryPolicy, perAttemptTimeout);
+
+<span class="cm">// Execute with overall 4s deadline (enough for 3 × 1s attempts + backoff)</span>
+<span class="kw">await</span> policy.<span class="fn">execute</span>(
+  (ctx) => service.<span class="fn">call</span>(),
+  AbortSignal.<span class="fn">timeout</span>(<span class="num">4000</span>)  <span class="cm">// overall deadline passed via AbortSignal</span>
+);</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify composition is correct</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Retries don't trigger on open circuit: open the circuit manually, then make a request — it should fast-fail immediately without retry. No retry attempts should appear in logs.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Each retry attempt registers with circuit breaker: make 3 failing requests (each retry exhausts) — the CB failure count should increase by 3, not by 1.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Fallback doesn't count as CB success: trigger fallback by opening circuit, verify CB state stays OPEN. Fallback responses should not cause the circuit to close.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">State change alerts fire: with monitoring set up, manually open the circuit — an alert should appear in your observability stack within 30 seconds.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
