@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 17 Deep Dive: Production Rate Limiter, Kong Config, Tiered Limits</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.var{color:#e5c07b}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/day17" class="back-link">&#8592; Day 17: Rate Limiting</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 17 · Rate Limiting · Deep Dive</div>
+  <h1>Production rate limiter class,<br>Kong configuration,<br>&amp; <em>tiered limits by plan</em></h1>
+  <p>The main lesson covered the algorithms — token bucket, sliding window, fixed window, and why each exists. This page covers the implementation: a complete TypeScript rate limiter class with all algorithms, Kong declarative config for gateway-level limiting, and a plan-aware tiered limiter that gives free/paid/enterprise users different limits from one middleware.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Production RateLimiter class</span><span class="deep-topic-sub">— token bucket + sliding window, Lua scripts, typed interface</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Kong rate-limiting configuration</span><span class="deep-topic-sub">— per-consumer limits, multi-window, Redis policy</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Tiered rate limits by subscription plan</span><span class="deep-topic-sub">— middleware that reads user plan, applies correct limits</span></div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Production RateLimiter class:<br><em>both algorithms, one interface</em></h2>
+  <p class="lead">A rate limiter scattered across the codebase — different Lua scripts, different key formats, different header logic — is impossible to audit or change consistently. This class wraps both token bucket and sliding window behind a single interface, centralises all Lua scripts, and handles headers and error responses uniformly.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">RateLimiter class — token bucket + sliding window, typed</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Redis } <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { Request, Response, NextFunction } <span class="kw">from</span> <span class="str">'express'</span>;
+
+<span class="kw">interface</span> <span class="ty">RLResult</span> {
+  allowed: <span class="ty">boolean</span>;
+  remaining: <span class="ty">number</span>;
+  limit: <span class="ty">number</span>;
+  resetAt: <span class="ty">number</span>;    <span class="cm">// Unix timestamp</span>
+  retryAfter?: <span class="ty">number</span>; <span class="cm">// seconds until retry</span>
+}
+
+<span class="kw">export class</span> <span class="ty">RateLimiter</span> {
+  <span class="kw">private</span> tokenBucketScript: <span class="ty">string</span>;
+  <span class="kw">private</span> slidingWindowScript: <span class="ty">string</span>;
+
+  <span class="kw">constructor</span>(<span class="kw">private</span> redis: Redis) {
+    <span class="cm">// Load Lua scripts once (SHA cached by Redis)</span>
+    <span class="kw">this</span>.tokenBucketScript = <span class="str">`
+      local key = KEYS[1]
+      local capacity = tonumber(ARGV[1])
+      local rate = tonumber(ARGV[2])
+      local requested = tonumber(ARGV[3])
+      local now = tonumber(redis.call('TIME')[1])
+      local b = redis.call('HMGET', key, 'tokens', 'ts')
+      local tokens = tonumber(b[1]) or capacity
+      local ts = tonumber(b[2]) or now
+      local elapsed = math.max(0, now - ts)
+      tokens = math.min(capacity, tokens + elapsed * rate)
+      local reset_in = math.ceil((capacity - tokens) / rate)
+      if tokens < requested then
+        redis.call('HMSET', key, 'tokens', tokens, 'ts', now)
+        redis.call('EXPIRE', key, math.ceil(capacity / rate) + 10)
+        return {0, math.floor(tokens), capacity, now + reset_in}
+      end
+      tokens = tokens - requested
+      redis.call('HMSET', key, 'tokens', tokens, 'ts', now)
+      redis.call('EXPIRE', key, math.ceil(capacity / rate) + 10)
+      return {1, math.floor(tokens), capacity, now + reset_in}
+    `</span>;
+
+    <span class="kw">this</span>.slidingWindowScript = <span class="str">`
+      local curr_key = KEYS[1]
+      local prev_key = KEYS[2]
+      local window = tonumber(ARGV[1])
+      local limit = tonumber(ARGV[2])
+      local now = tonumber(redis.call('TIME')[1])
+      local curr = tonumber(redis.call('GET', curr_key)) or 0
+      local prev = tonumber(redis.call('GET', prev_key)) or 0
+      local window_start = math.floor(now / window) * window
+      local elapsed_frac = (now - window_start) / window
+      local count = prev * (1 - elapsed_frac) + curr
+      local reset_at = window_start + window
+      if count >= limit then
+        return {0, 0, limit, reset_at}
+      end
+      redis.call('INCR', curr_key)
+      redis.call('EXPIRE', curr_key, window * 2)
+      return {1, math.floor(limit - count - 1), limit, reset_at}
+    `</span>;
+  }
+
+  <span class="kw">async</span> <span class="fn">tokenBucket</span>(key: <span class="ty">string</span>, capacity: <span class="ty">number</span>, rate: <span class="ty">number</span>, cost = <span class="num">1</span>): <span class="kw">Promise</span>&lt;<span class="ty">RLResult</span>&gt; {
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">eval</span>(
+      <span class="kw">this</span>.tokenBucketScript, <span class="num">1</span>,
+      <span class="str">`rl:tb:\${key}`</span>, capacity, rate, cost
+    ) <span class="kw">as</span> [<span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>];
+
+    <span class="kw">return</span> {
+      allowed:    result[<span class="num">0</span>] === <span class="num">1</span>,
+      remaining:  result[<span class="num">1</span>],
+      limit:      result[<span class="num">2</span>],
+      resetAt:    result[<span class="num">3</span>],
+      retryAfter: result[<span class="num">0</span>] === <span class="num">0</span> ? result[<span class="num">3</span>] - Math.<span class="fn">floor</span>(Date.<span class="fn">now</span>() / <span class="num">1000</span>) : <span class="kw">undefined</span>,
+    };
+  }
+
+  <span class="kw">async</span> <span class="fn">slidingWindow</span>(key: <span class="ty">string</span>, limit: <span class="ty">number</span>, windowSec: <span class="ty">number</span>): <span class="kw">Promise</span>&lt;<span class="ty">RLResult</span>&gt; {
+    <span class="kw">const</span> now = Math.<span class="fn">floor</span>(Date.<span class="fn">now</span>() / <span class="num">1000</span>);
+    <span class="kw">const</span> windowKey = Math.<span class="fn">floor</span>(now / windowSec);
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="kw">this</span>.redis.<span class="fn">eval</span>(
+      <span class="kw">this</span>.slidingWindowScript, <span class="num">2</span>,
+      <span class="str">`rl:sw:\${key}:\${windowKey}`</span>,
+      <span class="str">`rl:sw:\${key}:\${windowKey - 1}`</span>,
+      windowSec, limit
+    ) <span class="kw">as</span> [<span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>, <span class="ty">number</span>];
+
+    <span class="kw">return</span> {
+      allowed:    result[<span class="num">0</span>] === <span class="num">1</span>,
+      remaining:  result[<span class="num">1</span>],
+      limit:      result[<span class="num">2</span>],
+      resetAt:    result[<span class="num">3</span>],
+      retryAfter: result[<span class="num">0</span>] === <span class="num">0</span> ? result[<span class="num">3</span>] - now : <span class="kw">undefined</span>,
+    };
+  }
+
+  <span class="cm">// Express middleware factory</span>
+  <span class="fn">middleware</span>(
+    keyFn: (req: Request) => <span class="ty">string</span>,
+    opts: { algorithm: <span class="str">'token_bucket'</span> | <span class="str">'sliding_window'</span>; limit: <span class="ty">number</span>; window?: <span class="ty">number</span>; rate?: <span class="ty">number</span>; cost?: <span class="ty">number</span> }
+  ) {
+    <span class="kw">return async</span> (req: Request, res: Response, next: NextFunction) => {
+      <span class="kw">const</span> key = <span class="fn">keyFn</span>(req);
+      <span class="kw">const</span> result = opts.algorithm === <span class="str">'token_bucket'</span>
+        ? <span class="kw">await this</span>.<span class="fn">tokenBucket</span>(key, opts.limit, opts.rate!, opts.cost)
+        : <span class="kw">await this</span>.<span class="fn">slidingWindow</span>(key, opts.limit, opts.window!);
+
+      res.<span class="fn">set</span>({
+        <span class="str">'X-RateLimit-Limit'</span>:     opts.limit,
+        <span class="str">'X-RateLimit-Remaining'</span>: result.remaining,
+        <span class="str">'X-RateLimit-Reset'</span>:     result.resetAt,
+      });
+
+      <span class="kw">if</span> (!result.allowed) {
+        res.<span class="fn">set</span>(<span class="str">'Retry-After'</span>, String(result.retryAfter));
+        <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">429</span>).<span class="fn">json</span>({
+          error: <span class="str">'rate_limit_exceeded'</span>,
+          limit: opts.limit,
+          retry_after: result.retryAfter,
+          docs: <span class="str">'https://api.example.com/docs/rate-limits'</span>,
+        });
+      }
+      <span class="fn">next</span>();
+    };
+  }
+}</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify rate limiting is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">429 responses include <code>Retry-After</code>: <code>curl -v POST /api/auth/login</code> repeatedly — 429 response must have <code>Retry-After: N</code> header.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Lua atomicity: run 100 concurrent requests at the limit boundary — the count should never exceed the limit by more than 0.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Redis key TTLs are set: <code>redis-cli TTL "rl:tb:user:123"</code> — should return a positive number, never -1 (no TTL = memory leak).</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Metrics track 429s: check your monitoring dashboard for a <code>rate_limit_exceeded</code> metric. Alert threshold set at 10× baseline per endpoint.</span></div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Kong rate-limiting:<br><em>declarative config with per-consumer overrides</em></h2>
+  <p class="lead">Kong's rate-limiting plugin implements the sliding window counter algorithm in Lua. The declarative config approach lets you define different limits per consumer (free vs paid), set multiple time windows (per-minute AND per-hour), and use Redis for distributed state — all without application code changes.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Kong rate limiting — complete declarative config (kong.yaml)</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># kong.yaml — rate limiting at the gateway layer</span>
+_format_version: "3.0"
+
+<span class="cm">## ── Global rate limit (applies to all routes without override) ───</span>
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 60           <span class="cm"># 60 requests per minute (global default)</span>
+      hour:   1000         <span class="cm"># 1000 per hour</span>
+      policy: redis
+      redis_host: redis.prod.internal
+      redis_port: 6379
+      limit_by: consumer   <span class="cm"># limit per authenticated consumer</span>
+      fault_tolerant: true <span class="cm"># allow requests if Redis is unavailable</span>
+      hide_client_headers: false  <span class="cm"># send X-RateLimit-* headers</span>
+
+<span class="cm">## ── Services and routes ──────────────────────────────────────────</span>
+services:
+  - name: api-service
+    host: api.prod.internal
+    port: 8080
+    routes:
+      - name: api-routes
+        paths: [/api/v1]
+        plugins:
+          <span class="cm"># Stricter limit on expensive endpoints</span>
+          - name: rate-limiting
+            config:
+              minute: 30
+              hour: 500
+              policy: redis
+              redis_host: redis.prod.internal
+              limit_by: consumer
+
+      - name: auth-routes
+        paths: [/api/v1/auth]
+        plugins:
+          <span class="cm"># Very strict on auth — 5 per 15 minutes</span>
+          - name: rate-limiting
+            config:
+              minute: 5       <span class="cm"># 5 per minute per IP</span>
+              limit_by: ip    <span class="cm"># IP-based for unauthenticated auth endpoint</span>
+              policy: redis
+              redis_host: redis.prod.internal
+              fault_tolerant: false  <span class="cm"># fail-closed for auth — security critical</span>
+
+<span class="cm">## ── Consumers with plan-based overrides ─────────────────────────</span>
+consumers:
+  - username: free-tier
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 10
+          hour: 100
+          day: 1000
+          policy: redis
+          redis_host: redis.prod.internal
+
+  - username: pro-tier
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 5000
+          day: 50000
+          policy: redis
+          redis_host: redis.prod.internal
+
+  - username: enterprise-tier
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 1000
+          hour: 50000
+          day: 500000
+          policy: redis
+          redis_host: redis.prod.internal
+
+  - username: internal-service
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 10000    <span class="cm"># very high for internal services</span>
+          policy: redis
+          redis_host: redis.prod.internal
+
+<span class="cm">## ── Apply changes ────────────────────────────────────────────────</span>
+<span class="cm"># deck sync --kong-addr http://kong-admin:8001 --state kong.yaml</span>
+<span class="cm"># deck diff --kong-addr http://kong-admin:8001 --state kong.yaml</span>
+
+<span class="cm">## ── Verify headers in response ───────────────────────────────────</span>
+<span class="cm"># curl -I https://api.example.com/api/v1/products \</span>
+<span class="cm">#   -H "Authorization: Bearer <token>"</span>
+<span class="cm"># Look for:</span>
+<span class="cm"># X-RateLimit-Limit-Minute: 100</span>
+<span class="cm"># X-RateLimit-Remaining-Minute: 99</span>
+<span class="cm"># X-RateLimit-Limit-Hour: 5000</span>
+<span class="cm"># X-RateLimit-Remaining-Hour: 4999</span></pre>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Tiered limits by subscription plan:<br><em>one middleware, all plans</em></h2>
+  <p class="lead">Most SaaS APIs need different limits for different subscription tiers. Rather than writing separate middleware for each plan, a single plan-aware middleware reads the user's subscription from the request context and applies the appropriate limits — both the per-minute cap and the burst tolerance change with the plan.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Plan-aware rate limiter — one middleware, all tiers</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// Plan definitions — single source of truth</span>
+<span class="kw">const</span> PLAN_LIMITS = {
+  free: {
+    requestsPerHour: <span class="num">100</span>,
+    burstCapacity:   <span class="num">10</span>,    <span class="cm">// token bucket capacity</span>
+    refillPerMin:    <span class="num">1.67</span>,  <span class="cm">// 100/hr = 1.67/min</span>
+    costMultiplier:  <span class="num">1</span>,     <span class="cm">// all endpoints cost 1 token</span>
+  },
+  pro: {
+    requestsPerHour: <span class="num">5000</span>,
+    burstCapacity:   <span class="num">200</span>,
+    refillPerMin:    <span class="num">83.3</span>,
+    costMultiplier:  <span class="num">1</span>,
+  },
+  enterprise: {
+    requestsPerHour: <span class="num">50000</span>,
+    burstCapacity:   <span class="num">2000</span>,
+    refillPerMin:    <span class="num">833</span>,
+    costMultiplier:  <span class="num">1</span>,
+  },
+} <span class="kw">as const</span>;
+
+<span class="cm">// Endpoint costs — expensive endpoints cost more tokens</span>
+<span class="kw">const</span> ENDPOINT_COSTS: Record&lt;<span class="ty">string</span>, <span class="ty">number</span>&gt; = {
+  <span class="str">'/api/v1/ai/generate'</span>:   <span class="num">10</span>,  <span class="cm">// LLM endpoint: costs 10 tokens</span>
+  <span class="str">'/api/v1/reports/export'</span>: <span class="num">5</span>,   <span class="cm">// heavy export: 5 tokens</span>
+  <span class="str">'/api/v1/bulk'</span>:           <span class="num">3</span>,   <span class="cm">// bulk operations: 3 tokens</span>
+  <span class="str">'default'</span>:                <span class="num">1</span>,   <span class="cm">// all other endpoints: 1 token</span>
+};
+
+<span class="kw">function</span> <span class="fn">planRateLimiter</span>(rl: <span class="ty">RateLimiter</span>) {
+  <span class="kw">return async</span> (req: Request, res: Response, next: NextFunction) => {
+    <span class="kw">const</span> user = req.user;  <span class="cm">// set by auth middleware</span>
+    <span class="kw">if</span> (!user) <span class="kw">return</span> <span class="fn">next</span>();  <span class="cm">// unauthenticated: handled by IP limit at gateway</span>
+
+    <span class="kw">const</span> plan = PLAN_LIMITS[user.subscription as keyof typeof PLAN_LIMITS]
+      || PLAN_LIMITS.free;
+
+    <span class="cm">// Endpoint cost (expensive operations cost more tokens)</span>
+    <span class="kw">const</span> path = req.route?.path || req.path;
+    <span class="kw">const</span> cost = ENDPOINT_COSTS[path] || ENDPOINT_COSTS[<span class="str">'default'</span>];
+    <span class="kw">const</span> effectiveCost = cost * plan.costMultiplier;
+
+    <span class="kw">const</span> result = <span class="kw">await</span> rl.<span class="fn">tokenBucket</span>(
+      <span class="str">`user:\${user.id}`</span>,
+      plan.burstCapacity,
+      plan.refillPerMin / <span class="num">60</span>,  <span class="cm">// convert to per-second</span>
+      effectiveCost
+    );
+
+    res.<span class="fn">set</span>({
+      <span class="str">'X-RateLimit-Limit'</span>:     plan.burstCapacity,
+      <span class="str">'X-RateLimit-Remaining'</span>: result.remaining,
+      <span class="str">'X-RateLimit-Reset'</span>:     result.resetAt,
+      <span class="str">'X-RateLimit-Plan'</span>:      user.subscription,  <span class="cm">// helps debugging</span>
+    });
+
+    <span class="kw">if</span> (!result.allowed) {
+      <span class="cm">// Include upgrade suggestion in the error response</span>
+      <span class="kw">const</span> nextPlan = user.subscription === <span class="str">'free'</span> ? <span class="str">'pro'</span>
+                     : user.subscription === <span class="str">'pro'</span>  ? <span class="str">'enterprise'</span>
+                     : <span class="kw">null</span>;
+      res.<span class="fn">set</span>(<span class="str">'Retry-After'</span>, String(result.retryAfter));
+      <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">429</span>).<span class="fn">json</span>({
+        error:       <span class="str">'rate_limit_exceeded'</span>,
+        plan:        user.subscription,
+        retry_after: result.retryAfter,
+        ...(nextPlan && {
+          upgrade_message: <span class="str">`Upgrade to \${nextPlan} for \${PLAN_LIMITS[nextPlan as keyof typeof PLAN_LIMITS].requestsPerHour} req/hr`</span>,
+          upgrade_url: <span class="str">`https://app.example.com/billing/upgrade?to=\${nextPlan}`</span>,
+        }),
+      });
+    }
+    <span class="fn">next</span>();
+  };
+}
+
+<span class="cm">// Usage</span>
+<span class="kw">const</span> limiter = <span class="kw">new</span> <span class="ty">RateLimiter</span>(redis);
+app.<span class="fn">use</span>(<span class="str">'/api'</span>, authMiddleware, <span class="fn">planRateLimiter</span>(limiter));
+
+<span class="cm">// Auth endpoint gets its own strict limiter (before plan check)</span>
+app.<span class="fn">use</span>(<span class="str">'/api/auth/login'</span>,
+  limiter.<span class="fn">middleware</span>(req => req.ip, {
+    algorithm: <span class="str">'sliding_window'</span>, limit: <span class="num">5</span>, window: <span class="num">900</span>
+  })
+);</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify tiered limits work correctly</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Free user hits limit at 10 burst: make 11 rapid requests as free user — 11th should return 429 with upgrade_message.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Expensive endpoints cost more: call <code>/api/v1/ai/generate</code> as free user — should deplete 10 tokens per call, hitting limit after 1 request.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Pro user has 200-token burst: pro user should handle 200 rapid requests before hitting limit.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">429 body includes <code>retry_after</code>: <code>curl -s -o /dev/null -D - POST /api/v1/ai/generate</code> when rate limited — confirm Retry-After header and upgrade_url in body.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
