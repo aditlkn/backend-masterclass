@@ -712,17 +712,25 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 
   <h3>The passenger's journey, step by step</h3>
 
-  <p><strong>First: check-in and the departure board.</strong> You arrive at the airport, look up at the departure board, and find your gate. You don't know gate B47 exists until you look it up. In HTTP terms, this is <strong>DNS resolution</strong> — your code knows the name <code>api.payments.com</code> but has no idea which IP address to connect to. It asks the DNS system, which is the airport's departure board: "which server is handling api.payments.com right now?" The answer comes back with a TTL — how long to trust this information before checking again. Just like a gate assignment can change, IP addresses can change, and the TTL controls how long you can assume your information is still valid.</p>
+  <p><strong>First: check-in and the departure board.</strong> You arrive at the airport and look up at the departure board. You don't know which gate you need until you look it up. Gate B47. Terminal 2. Good for the next hour — after that, check again in case it changes.</p>
 
-  <p><strong>Second: passport control.</strong> Before you reach the gate, you go through passport control. An officer verifies who you are, checks you haven't been blacklisted, and stamps your entry. In HTTP terms, this is <strong>TLS</strong> — the security handshake that verifies the server is actually who it claims to be (via its certificate, signed by a trusted authority), and negotiates the encryption keys that will protect everything that follows. A forged certificate is like a fake passport — TLS catches it before your data ever gets transmitted.</p>
+  <p>That's <strong>DNS resolution</strong>. Your code knows the name <code>api.payments.com</code> but has no idea which server to connect to. It asks the DNS system — the departure board — and gets back an IP address and a TTL: how long this answer can be trusted before checking again. A gate assignment can change. So can an IP. The TTL is how long you can assume your information is still valid.</p>
 
-  <p><strong>Third: the boarding gate.</strong> Passport control done, you walk to the gate. An agent scans your boarding pass — <code>B47, seat 23C, economy</code> — and logs your departure. In HTTP terms, this is the <strong>TCP connection</strong> — the three-way handshake that establishes the channel between you and the server. The boarding pass is your request with its headers: method, URL, content type, authorization token. Cookies are your frequent flyer card — they travel with you automatically and give you a different experience based on who you are.</p>
+  <p><strong>Second: passport control.</strong> Before you reach the gate, you go through passport control. An officer examines your passport — is it real? Is it issued by a government they trust? Are you on any lists? If everything checks out, they stamp your entry and you proceed. If not, you go no further, regardless of where you're trying to go.</p>
 
-  <p><strong>Fourth: the flight itself.</strong> You're in the air. Data is moving. This is the <strong>HTTP request and response</strong> — your application protocol, finally running. Everything before this was protocol overhead. The flight duration is your server's processing time. Everything else was the airport.</p>
+  <p>That's <strong>TLS</strong>. Before any data flows, the server presents a certificate — its passport. Your client checks: is this certificate signed by a trusted authority? Has it expired? Does it match the domain? If everything checks out, both sides negotiate encryption keys and proceed. A forged certificate is a fake passport. TLS catches it before your data is ever exposed.</p>
 
-  <p><strong>Fifth: keep-alive is staying inside the airport.</strong> Here's the insight that changes how most engineers think about HTTP performance: what if, instead of going home after each flight and coming back through passport control for every new journey, you stayed inside the airport? You'd skip passport control, skip the departure board, skip the check-in queue. The next flight would be just the gate and the plane.</p>
+  <p><strong>Third: the boarding gate.</strong> You walk to gate B47. An agent scans your boarding pass — seat 23C, economy, flight confirmed — and you join the jet bridge. Only now, with identity verified and seat assigned, does the physical journey begin.</p>
 
-  <p>This is exactly what <strong>HTTP keep-alive and connection pooling</strong> do. Instead of tearing down the TCP connection after each request and rebuilding it from scratch (DNS → TCP → TLS → HTTP each time), the connection stays open. The next request skips straight to the application data — no DNS lookup, no TCP handshake, no TLS negotiation. On a 50ms round-trip link, this saves 100-200ms per request. I've watched teams cut their API latency by 80% purely by enabling connection pooling. Nothing else changed.</p>
+  <p>That's the <strong>TCP handshake</strong>. Three packets — SYN, SYN-ACK, ACK — establish the reliable channel between client and server before a byte of application data moves. Your boarding pass is your HTTP request headers: method, path, content-type, authorization token. Your frequent flyer card is your cookies — they travel with you automatically and unlock a different experience based on who you are.</p>
+
+  <p><strong>Fourth: the flight itself.</strong> Doors close. Plane accelerates. You're airborne. For the first time since leaving home, you're actually moving toward your destination.</p>
+
+  <p>That's the <strong>HTTP request and response</strong> — your application protocol, finally running. The server receives your request, runs your code, queries your database, and sends back a response. The flight duration is your server's processing time. Everything before this was the airport. This is the only phase your backend code controls.</p>
+
+  <p><strong>Fifth: staying inside the airport.</strong> You land. You have another flight in two hours. You could go home, come back, check in again, go through passport control again, find the gate again. Or you could stay airside. Skip everything except the gate. The second journey costs a fraction of the first.</p>
+
+  <p>That's <strong>HTTP keep-alive and connection pooling</strong>. Instead of tearing down the TCP connection after each request — forcing the next request to redo DNS, TCP, and TLS from scratch — the connection stays open. The next request skips straight to sending data. On a 50ms round-trip link, this saves 100-200ms per request. I've watched teams cut API latency by 80% purely by enabling connection pooling. No server changes. No code changes. Just not going home between flights.</p>
 
   <div class="callout insight">
     <div class="callout-icon">✈️</div>
@@ -762,13 +770,14 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     <span class="viz-badge">INTERACTIVE</span>
   </div>
   <div class="viz-body">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <button class="viz-btn active" onclick="showAirport('dns')">🔭 Departure board → DNS</button>
       <button class="viz-btn" onclick="showAirport('tls')">🛂 Passport control → TLS</button>
       <button class="viz-btn" onclick="showAirport('tcp')">🎫 Boarding gate → TCP</button>
       <button class="viz-btn" onclick="showAirport('http')">✈️ The flight → HTTP</button>
       <button class="viz-btn" onclick="showAirport('keepalive')">🏠 Stay in airport → Keep-alive</button>
     </div>
+    <div id="airport-deeplink" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:16px;min-height:16px"></div>
 
     <!-- visual diagram area -->
     <div id="airport-diagram" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;min-height:140px;display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:center">
@@ -1942,6 +1951,16 @@ You'll see DNS/TCP/TLS/TTFB for real — the numbers this page actually paid.
 
 <!-- ─── CHECKLIST ─── -->
 
+
+<div class="section" id="s-closing-hook" style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    Every HTTP request is just another passenger. Some get delayed at the departure board — a cold DNS miss adds 100ms before a socket opens. Some get held up at passport control — TLS 1.2 costs an extra round-trip on every new connection. Some wait at the gate — TCP setup on every request because nobody enabled connection pooling. Very few are actually delayed on the plane itself.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:0">
+    The next time someone says "our API is slow" — ask: <em style="color:var(--accent)">which checkpoint?</em>
+  </p>
+</div>
+
 <div class="decision-strip" id="s-sequence">
   <div class="decision-strip-eyebrow">When things go wrong</div>
   <h2>Your API is slow — check in this order</h2>
@@ -3106,6 +3125,14 @@ var AIRPORT_DATA = {
   }
 };
 
+var AIRPORT_DEEPLINKS = {
+  dns:       { label: 'DNS in depth: lifecycle, caching, and resolver chains', href: '#s-lifecycle' },
+  tls:       { label: 'TLS in depth: the full handshake, certificate chains, OCSP stapling', href: '#s-tls' },
+  tcp:       { label: 'TCP in depth: connection reuse, keep-alive, timeout anatomy', href: '#s-keepalive' },
+  http:      { label: 'HTTP phases in depth: lifecycle, versions, and what curl -w shows you', href: '#s-lifecycle' },
+  keepalive: { label: 'Connection pooling in depth: undici, pool sizing, the ECONNRESET bug', href: '#s-keepalive' },
+};
+
 function showAirport(key) {
   document.querySelectorAll('.viz-btn').forEach(function(b) {
     if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('showAirport')) {
@@ -3114,6 +3141,11 @@ function showAirport(key) {
   });
   var d = AIRPORT_DATA[key];
   if (!d) return;
+  var dl = AIRPORT_DEEPLINKS[key];
+  var dlEl = document.getElementById('airport-deeplink');
+  if (dlEl && dl) {
+    dlEl.innerHTML = '→ <a href="' + dl.href + '" style="color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(91,143,255,0.3)">' + dl.label + '</a>';
+  }
 
   var colors = { dns:'var(--accent)', tls:'var(--purple)', tcp:'var(--green)', http:'var(--orange)', keepalive:'var(--green)' };
   var col = colors[key];
