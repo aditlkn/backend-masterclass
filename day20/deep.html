@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 20 Deep Dive: Pino Config, Loki Setup, PII Scrubbing</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day20" class="back-link">&#8592; Day 20: Structured Logging</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 20 · Structured Logging · Deep Dive</div>
+  <h1>Pino production config,<br>Loki + Promtail stack,<br>&amp; <em>PII scrubbing patterns</em></h1>
+  <p>The main lesson covered concepts: JSON output, log levels, context fields, sampling, and LogQL. This page covers the production setup: a complete Pino configuration with serialisers and redaction, a Grafana Loki + Promtail Docker Compose stack, and a sanitisation utility for stripping PII before logs are emitted.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Pino production configuration</span><span class="deep-topic-sub">— serialisers, redaction, child loggers, pretty-print in dev</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Grafana Loki + Promtail stack</span><span class="deep-topic-sub">— Docker Compose, label config, Grafana dashboard provisioning</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">PII scrubbing and field conventions</span><span class="deep-topic-sub">— sanitise utility, naming conventions across services</span></div>
+  </div>
+</div>
+
+<!-- S1: Pino -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Pino production config:<br><em>serialisers, redaction, child loggers</em></h2>
+  <p class="lead">Pino is the fastest Node.js JSON logger. It achieves speed by doing minimal work synchronously and offloading serialisation to a worker thread via pino-pretty or pino/transport. This config covers everything needed for production: request serialiser, error serialiser, sensitive field redaction, and the middleware pattern for child loggers.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">logger.ts — complete Pino production configuration</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> pino, { Logger, SerializerFn } <span class="kw">from</span> <span class="str">'pino'</span>;
+
+<span class="cm">// Custom serialisers — control exactly what gets logged for known types</span>
+<span class="kw">const</span> serializers: Record&lt;string, SerializerFn&gt; = {
+  <span class="cm">// err: pino's default is fine, but extend it</span>
+  err: pino.<span class="fn">stdSerializers</span>.err,
+
+  <span class="cm">// req: log the request, but NEVER the body or auth headers</span>
+  req: (req) => ({
+    method:    req.method,
+    path:      req.route?.path || req.path || req.url,  <span class="cm">// route pattern not URL</span>
+    userAgent: req.headers?.[<span class="str">'user-agent'</span>],
+    requestId: req.headers?.[<span class="str">'x-request-id'</span>],
+    <span class="cm">// deliberately omit: headers.authorization, body, query params</span>
+  }),
+
+  <span class="cm">// res: log response metadata, not body</span>
+  res: (res) => ({
+    statusCode: res.statusCode,
+    contentType: res.getHeader?.(<span class="str">'content-type'</span>),
+    bytes: res.getHeader?.(<span class="str">'content-length'</span>),
+  }),
+};
+
+<span class="cm">// Fields to redact wherever they appear in the log object tree</span>
+<span class="kw">const</span> redactPaths = [
+  <span class="str">'password'</span>, <span class="str">'*.password'</span>, <span class="str">'body.password'</span>,
+  <span class="str">'token'</span>, <span class="str">'*.token'</span>, <span class="str">'accessToken'</span>, <span class="str">'refreshToken'</span>,
+  <span class="str">'cardNumber'</span>, <span class="str">'*.cardNumber'</span>, <span class="str">'cvv'</span>,
+  <span class="str">'authorization'</span>, <span class="str">'*.authorization'</span>, <span class="str">'headers.authorization'</span>,
+  <span class="str">'email'</span>,      <span class="cm">// use userId instead</span>
+  <span class="str">'ssn'</span>, <span class="str">'pan'</span>,  <span class="cm">// national IDs</span>
+  <span class="str">'privateKey'</span>, <span class="str">'secretKey'</span>, <span class="str">'apiKey'</span>,
+];
+
+<span class="kw">export const</span> logger = <span class="fn">pino</span>({
+  level: process.env.LOG_LEVEL || <span class="str">'info'</span>,
+
+  <span class="cm">// Static metadata on every log line</span>
+  base: {
+    service: process.env.SERVICE_NAME || <span class="str">'unknown'</span>,
+    version: process.env.APP_VERSION  || <span class="str">'local'</span>,
+    env:     process.env.NODE_ENV     || <span class="str">'development'</span>,
+    pid:     process.pid,
+  },
+
+  <span class="cm">// ISO timestamp (not the default epoch ms)</span>
+  timestamp: pino.stdTimeFunctions.isoTime,
+
+  <span class="cm">// Emit "level" as string not number</span>
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
+
+  serializers,
+  redact: { paths: redactPaths, censor: <span class="str">'[REDACTED]'</span> },
+
+  <span class="cm">// In development: pretty print. In production: raw JSON to stdout.</span>
+  transport: process.env.NODE_ENV !== <span class="str">'production'</span>
+    ? { target: <span class="str">'pino-pretty'</span>, options: { colorize: <span class="kw">true</span>, translateTime: <span class="str">'SYS:HH:MM:ss.l'</span> } }
+    : <span class="kw">undefined</span>,  <span class="cm">// undefined = write JSON to stdout directly</span>
+});
+
+<span class="cm">// ── Express middleware: bind request context to child logger ─────</span>
+<span class="kw">import</span> { Request, Response, NextFunction } <span class="kw">from</span> <span class="str">'express'</span>;
+<span class="kw">import</span> { trace } <span class="kw">from</span> <span class="str">'@opentelemetry/api'</span>;
+
+<span class="kw">declare</span> <span class="kw">module</span> <span class="str">'express-serve-static-core'</span> {
+  <span class="kw">interface</span> Request { log: Logger; startTime: number; }
+}
+
+<span class="kw">export function</span> <span class="fn">requestLogger</span>() {
+  <span class="kw">return</span> (req: Request, res: Response, next: NextFunction) => {
+    req.startTime = Date.<span class="fn">now</span>();
+    <span class="kw">const</span> span = trace.<span class="fn">getActiveSpan</span>();
+    <span class="kw">const</span> traceCtx = span?.spanContext();
+
+    req.log = logger.<span class="fn">child</span>({
+      requestId: req.headers[<span class="str">'x-request-id'</span>] || <span class="fn">crypto</span>.<span class="fn">randomUUID</span>(),
+      method:    req.method,
+      path:      req.route?.path || req.path,
+      ip:        req.ip,
+      traceId:   traceCtx?.traceId,
+      spanId:    traceCtx?.spanId,
+    });
+
+    <span class="cm">// Suppress health check logs entirely</span>
+    <span class="kw">if</span> (req.path === <span class="str">'/healthz'</span> || req.path === <span class="str">'/readyz'</span>) {
+      req.log = { <span class="fn">info</span>: ()=>{}, <span class="fn">warn</span>: ()=>{}, <span class="fn">error</span>: ()=>{}, <span class="fn">debug</span>: ()=>{}, <span class="fn">child</span>: ()=>req.log } <span class="kw">as any</span>;
+      <span class="kw">return</span> <span class="fn">next</span>();
+    }
+
+    res.<span class="fn">on</span>(<span class="str">'finish'</span>, () => {
+      <span class="kw">const</span> duration = Date.<span class="fn">now</span>() - req.startTime;
+      <span class="kw">const</span> level = res.statusCode >= <span class="num">500</span> ? <span class="str">'error'</span> : res.statusCode >= <span class="num">400</span> ? <span class="str">'warn'</span> : <span class="str">'info'</span>;
+
+      <span class="cm">// Sample: always log errors, sample 10% of successful requests</span>
+      <span class="kw">if</span> (level === <span class="str">'info'</span> && Math.<span class="fn">random</span>() > <span class="num">0.10</span>) <span class="kw">return</span>;
+
+      req.log[level]({ statusCode: res.statusCode, durationMs: duration },
+        <span class="str">'http.request.completed'</span>);
+    });
+    <span class="fn">next</span>();
+  };
+}</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify Pino setup</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">JSON output in production: <code>NODE_ENV=production node app.js | head -5</code> — each line must be valid JSON. Run through <code>| jq .</code> to confirm.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Redaction works: log an object with a <code>password</code> field — it should appear as <code>[REDACTED]</code> in output, not the actual value.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Child logger context propagates: make a request, check that all log lines from that request handler share the same <code>requestId</code> and <code>traceId</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Health checks suppressed: call <code>GET /healthz</code> 10 times — no log lines should appear in output.</span></div>
+  </div>
+</div>
+
+<!-- S2: Loki -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Grafana Loki + Promtail:<br><em>self-hosted log aggregation stack</em></h2>
+  <p class="lead">Loki stores logs indexed only by labels (not content), keeping costs low. Promtail is the log shipper that reads Kubernetes pod logs from disk and adds labels from pod metadata. This Docker Compose stack runs the entire pipeline locally — identical to a Kubernetes production setup, just smaller.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">docker-compose.logging.yaml — Loki + Promtail + Grafana</span><span class="code-block-lang">YAML</span></div>
+    <pre>version: "3.8"
+
+services:
+  <span class="cm"># Grafana Loki — log storage</span>
+  loki:
+    image: grafana/loki:2.9.0
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml
+      - loki-data:/loki
+    ports:
+      - "3100:3100"   <span class="cm"># Loki API (Promtail pushes here)</span>
+
+  <span class="cm"># Promtail — log shipper (reads Docker container logs)</span>
+  promtail:
+    image: grafana/promtail:2.9.0
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock  <span class="cm"># read Docker logs</span>
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on: [loki]
+
+  <span class="cm"># Grafana — dashboards and log querying</span>
+  grafana:
+    image: grafana/grafana:10.3.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning  <span class="cm"># auto-provision datasource</span>
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"   <span class="cm"># Grafana UI → http://localhost:3000</span>
+    depends_on: [loki]
+
+volumes:
+  loki-data:
+  grafana-data:
+
+<span class="cm">## ── loki-config.yaml (minimal) ───────────────────────────────────</span>
+<span class="cm">## auth_enabled: false</span>
+<span class="cm">## server:</span>
+<span class="cm">##   http_listen_port: 3100</span>
+<span class="cm">## ingester:</span>
+<span class="cm">##   lifecycler:</span>
+<span class="cm">##     ring: { kvstore: { store: inmemory }, replication_factor: 1 }</span>
+<span class="cm">## schema_config:</span>
+<span class="cm">##   configs:</span>
+<span class="cm">##     - from: 2024-01-01</span>
+<span class="cm">##       store: boltdb-shipper</span>
+<span class="cm">##       object_store: filesystem</span>
+<span class="cm">##       schema: v12</span>
+<span class="cm">##       index: { prefix: index_, period: 24h }</span>
+<span class="cm">## storage_config:</span>
+<span class="cm">##   boltdb_shipper: { active_index_directory: /loki/boltdb-shipper-active }</span>
+<span class="cm">##   filesystem: { directory: /loki/chunks }</span>
+<span class="cm">## limits_config:</span>
+<span class="cm">##   reject_old_samples: true</span>
+<span class="cm">##   reject_old_samples_max_age: 168h</span>
+
+<span class="cm">## ── promtail-config.yaml ─────────────────────────────────────────</span>
+<span class="cm">## server: { http_listen_port: 9080 }</span>
+<span class="cm">## positions: { filename: /tmp/positions.yaml }</span>
+<span class="cm">## clients:</span>
+<span class="cm">##   - url: http://loki:3100/loki/api/v1/push</span>
+<span class="cm">## scrape_configs:</span>
+<span class="cm">##   - job_name: docker</span>
+<span class="cm">##     docker_sd_configs:</span>
+<span class="cm">##       - host: unix:///var/run/docker.sock</span>
+<span class="cm">##         refresh_interval: 5s</span>
+<span class="cm">##     relabel_configs:</span>
+<span class="cm">##       # Extract service name from container label</span>
+<span class="cm">##       - source_labels: [__meta_docker_container_label_com_docker_compose_service]</span>
+<span class="cm">##         target_label: service</span>
+<span class="cm">##       # Extract log level from JSON body and use as label</span>
+<span class="cm">##       - source_labels: [__meta_docker_container_label_logging_level]</span>
+<span class="cm">##         target_label: level</span>
+<span class="cm">##     pipeline_stages:</span>
+<span class="cm">##       - json:</span>
+<span class="cm">##           expressions:</span>
+<span class="cm">##             level: level    # extract level from JSON body</span>
+<span class="cm">##             service: service</span>
+<span class="cm">##       - labels:</span>
+<span class="cm">##           level:   # promote extracted level to Loki label</span>
+<span class="cm">##           service:</span>
+<span class="cm">##       - drop:  # suppress health check logs before they reach Loki</span>
+<span class="cm">##           source: path</span>
+<span class="cm">##           expression: ".*(healthz|readyz).*"</span>
+
+<span class="cm">## ── grafana/provisioning/datasources/loki.yaml ───────────────────</span>
+<span class="cm">## apiVersion: 1</span>
+<span class="cm">## datasources:</span>
+<span class="cm">##   - name: Loki</span>
+<span class="cm">##     type: loki</span>
+<span class="cm">##     access: proxy</span>
+<span class="cm">##     url: http://loki:3100</span>
+<span class="cm">##     isDefault: true</span>
+<span class="cm">##     jsonData:</span>
+<span class="cm">##       maxLines: 1000</span></pre>
+  </div>
+</div>
+
+<!-- S3: PII -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>PII scrubbing and<br><em>field naming conventions</em></h2>
+  <p class="lead">Two problems teams always hit late: PII in logs (a compliance and security issue discovered during an audit, not during development) and inconsistent field names across services (discovered during an incident when cross-service log queries return nothing because one service uses <code>userId</code> and another uses <code>user_id</code>). Fix both proactively.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">sanitise.ts — strip PII before logging</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// Use this before logging any object you don't fully control</span>
+<span class="cm">// (request bodies, user-provided data, third-party API responses)</span>
+
+<span class="kw">const</span> SENSITIVE_KEYS = <span class="kw">new</span> Set([
+  <span class="str">'password'</span>, <span class="str">'passwd'</span>, <span class="str">'secret'</span>, <span class="str">'token'</span>, <span class="str">'apiKey'</span>, <span class="str">'api_key'</span>,
+  <span class="str">'authorization'</span>, <span class="str">'auth'</span>, <span class="str">'credential'</span>, <span class="str">'credentials'</span>,
+  <span class="str">'cardNumber'</span>, <span class="str">'card_number'</span>, <span class="str">'cvv'</span>, <span class="str">'cvc'</span>,
+  <span class="str">'ssn'</span>, <span class="str">'pan'</span>, <span class="str">'aadhaar'</span>,
+  <span class="str">'email'</span>, <span class="str">'phone'</span>, <span class="str">'mobile'</span>,
+  <span class="str">'privateKey'</span>, <span class="str">'private_key'</span>, <span class="str">'secretKey'</span>,
+]);
+
+<span class="kw">const</span> SENSITIVE_PATTERNS = [
+  /^\d{12,19}$/,           <span class="cm">// card numbers (12-19 digits)</span>
+  /^\d{3,4}$/,             <span class="cm">// CVV</span>
+  /^[A-Z0-9]{10,}$/,       <span class="cm">// API keys (uppercase alphanum)</span>
+  /^Bearer\s+.+/i,         <span class="cm">// auth tokens</span>
+  /^\d{12}$/,              <span class="cm">// Aadhaar</span>
+];
+
+<span class="kw">export function</span> <span class="fn">sanitise</span>(obj: unknown, depth = <span class="num">0</span>): unknown {
+  <span class="kw">if</span> (depth > <span class="num">10</span>) <span class="kw">return</span> <span class="str">'[MAX_DEPTH]'</span>;  <span class="cm">// prevent infinite recursion</span>
+  <span class="kw">if</span> (obj === <span class="kw">null</span> || <span class="kw">typeof</span> obj !== <span class="str">'object'</span>) {
+    <span class="kw">if</span> (<span class="kw">typeof</span> obj === <span class="str">'string'</span> && SENSITIVE_PATTERNS.<span class="fn">some</span>(p => p.<span class="fn">test</span>(obj))) {
+      <span class="kw">return</span> <span class="str">'[REDACTED]'</span>;
+    }
+    <span class="kw">return</span> obj;
+  }
+  <span class="kw">if</span> (Array.<span class="fn">isArray</span>(obj)) {
+    <span class="kw">return</span> obj.<span class="fn">map</span>(item => <span class="fn">sanitise</span>(item, depth + <span class="num">1</span>));
+  }
+  <span class="kw">const</span> result: Record&lt;string, unknown&gt; = {};
+  <span class="kw">for</span> (<span class="kw">const</span> [key, value] <span class="kw">of</span> Object.<span class="fn">entries</span>(obj <span class="kw">as</span> object)) {
+    <span class="kw">if</span> (SENSITIVE_KEYS.<span class="fn">has</span>(key.<span class="fn">toLowerCase</span>())) {
+      result[key] = <span class="str">'[REDACTED]'</span>;
+    } <span class="kw">else</span> {
+      result[key] = <span class="fn">sanitise</span>(value, depth + <span class="num">1</span>);
+    }
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="cm">// Usage: log user-provided data safely</span>
+logger.<span class="fn">info</span>({ body: <span class="fn">sanitise</span>(req.body) }, <span class="str">'payment.request.received'</span>);
+<span class="cm">// Input:  { amount: 5000, cardNumber: "4111111111111111", cvv: "123" }</span>
+<span class="cm">// Output: { amount: 5000, cardNumber: "[REDACTED]", cvv: "[REDACTED]" }</span>
+
+<span class="cm">// ── Field naming conventions — document and enforce ───────────────</span>
+<span class="cm">// Agree on these across ALL services before you have logs to query.</span>
+
+<span class="kw">const</span> LOG_FIELD_CONVENTIONS = {
+  <span class="cm">// IDs — always camelCase, always "Id" suffix</span>
+  userId:     <span class="str">'string'</span>,  <span class="cm">// NOT user_id, user, userId, uid</span>
+  orderId:    <span class="str">'string'</span>,  <span class="cm">// NOT order_id, orderID, order</span>
+  requestId:  <span class="str">'string'</span>,  <span class="cm">// NOT request_id, reqId, req_id</span>
+  traceId:    <span class="str">'string'</span>,  <span class="cm">// NOT trace_id, traceID</span>
+
+  <span class="cm">// Time — always milliseconds as integer</span>
+  durationMs: <span class="str">'number'</span>,  <span class="cm">// NOT duration, duration_ms, "342ms" (string!)</span>
+
+  <span class="cm">// Money — always lowest denomination as integer</span>
+  amountCents: <span class="str">'number'</span>, <span class="cm">// NOT amount, "₹50.00", amount_rupees</span>
+  currency:    <span class="str">'string'</span>, <span class="cm">// ISO 4217: "INR", "USD", not "rupees"</span>
+
+  <span class="cm">// HTTP</span>
+  statusCode:  <span class="str">'number'</span>, <span class="cm">// NOT status, status_code, httpStatus</span>
+  method:      <span class="str">'string'</span>, <span class="cm">// NOT httpMethod, verb</span>
+  path:        <span class="str">'string'</span>, <span class="cm">// route pattern: /users/{id}, NOT /users/123</span>
+
+  <span class="cm">// Events — dot.separated.hierarchy</span>
+  msg: <span class="str">'payment.charge.failed'</span>,  <span class="cm">// NOT "Payment charge failed", not camelCase</span>
+} <span class="kw">as const</span>;</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify PII scrubbing and conventions</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Sanitise test: <code>console.log(sanitise({ password: "secret123", amount: 500 }))</code> — password should be <code>[REDACTED]</code>, amount should be <code>500</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Pino redaction test: log <code>{ auth: { token: "abc" } }</code> — <code>token</code> should appear as <code>[REDACTED]</code> even nested inside another object.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Cross-service field consistency: run <code>{service=~".+"} | json | userId="usr_123"</code> in Loki — results should appear from all services, not just some. If any service uses <code>user_id</code> instead, fix it.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Numeric types preserved: in Loki, run <code>{service="checkout"} | json | durationMs > 500</code> — this only works if <code>durationMs</code> is logged as a number. If logged as a string, the query returns nothing.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

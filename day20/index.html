@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 20: Structured Logging — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--green);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.log-line{display:block;padding:2px 0;border-bottom:1px solid rgba(35,40,64,.5);}
+.log-line:last-child{border:none;}
+.log-error{color:var(--red);}
+.log-warn{color:var(--orange);}
+.log-info{color:var(--text2);}
+.log-debug{color:var(--text3);}
+.log-key{color:var(--accent);}
+.log-val{color:var(--green);}
+.log-str{color:var(--green);}
+.log-num{color:var(--orange);}
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--green);color:var(--green);background:rgba(62,207,142,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 20 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-why">Why Structure Matters</a>
+  <a href="#s-anatomy">Log Anatomy</a>
+  <a href="#s-levels">Log Levels</a>
+  <a href="#s-context">Context & Fields</a>
+  <a href="#s-sampling">Log Sampling</a>
+  <a href="#s-aggregation">Aggregation</a>
+  <a href="#s-querying">Querying Logs</a>
+  <a href="#s-cost">Cost & Volume</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day20/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day20/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 20 · Structured Logging</div>
+  <h1>Your logs exist.<br>The question is whether<br><em>they're actually useful.</em></h1>
+  <p class="hero-sub">Unstructured logs are a timeline of strings. Structured logs are a queryable database of events. The difference between "grep for the error" and "show me all failed payments over $500 in the last hour grouped by payment method" is whether you logged a string or a document.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>~55 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>Winston · Pino · Loki · Log levels · Sampling</div>
+  </div>
+</div>
+
+<!-- S1: WHY -->
+<div class="section" id="s-why">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why unstructured logs fail at scale</h2>
+
+  <p>A log line like <code>Payment failed for user 12345: card declined</code> is readable. It's human-friendly. It's also nearly useless at scale. You can't ask "how many payments failed in the last hour?" without parsing strings. You can't filter by payment method without regex. You can't aggregate by user plan tier without joining to another system. You can grep, and that's about it.</p>
+
+  <p>Structured logging treats each log entry as a <strong>document</strong> with typed fields. Instead of a string, you emit an object: <code>{"level":"error","event":"payment.failed","user_id":12345,"amount_cents":4999,"reason":"card_declined","payment_method":"visa"}</code>. Now you can query, filter, aggregate, and alert on any field — without parsing strings at query time.</p>
+
+  <h3>The cost of unstructured logs at 10K req/s</h3>
+  <p>At 10,000 requests per second, each emitting 5 log lines, you have 50,000 log lines per second. To answer "how many 5xx errors in the last 5 minutes from mobile clients?", an unstructured log system needs to parse 15 million log lines. A structured log system needs to query an index. The difference is seconds versus milliseconds, and it's why teams with high-traffic services move to structured logging.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>Logs are a search problem, not a storage problem</strong>
+      <p>Teams often focus on how to store logs cheaply. The real constraint is how to find the right log line when you're debugging at 3am. A log that's cheap to store but expensive to search is worse than a log that costs more but lets you find the error in 30 seconds. Design your log structure for the queries you'll run under pressure.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Unstructured vs structured -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Unstructured vs structured — same event, very different queryability</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showLogCompare('unstructured')">Unstructured logs</button>
+      <button class="viz-btn" onclick="showLogCompare('structured')">Structured logs</button>
+      <button class="viz-btn" onclick="showLogCompare('query_unstruct')">Query unstructured (grep)</button>
+      <button class="viz-btn" onclick="showLogCompare('query_struct')">Query structured (LogQL)</button>
+    </div>
+    <div id="log-compare-output" class="mono-out" style="min-height:180px">Select a view above.</div>
+  </div>
+</div>
+
+<!-- S2: ANATOMY -->
+<div class="section" id="s-anatomy">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Anatomy of a well-structured log entry</h2>
+
+  <p>Every log entry should be a self-contained document. Someone reading it cold — no context, 3am, incident in progress — should be able to understand what happened, where, and why without needing to cross-reference other systems.</p>
+
+  <h3>Required fields on every log entry</h3>
+  <ul>
+    <li><strong>timestamp:</strong> ISO 8601 with millisecond precision. <code>"2024-01-15T14:32:01.234Z"</code>. Always UTC, never local time. Log aggregators sort by timestamp; local time zones cause ordering chaos across distributed services.</li>
+    <li><strong>level:</strong> The severity. <code>error</code>, <code>warn</code>, <code>info</code>, <code>debug</code>. Lowercase string. This is the primary filter in every log query.</li>
+    <li><strong>message:</strong> A short, human-readable description of what happened. Static string where possible — the variable data goes in fields. <code>"payment.charge.failed"</code> not <code>"Payment failed for user 12345"</code>.</li>
+    <li><strong>service:</strong> The name of the service that emitted this log. Indispensable in a distributed system where logs from 12 services are aggregated into one stream.</li>
+    <li><strong>traceId / spanId:</strong> From Day 19. The correlation keys that connect this log line to its trace.</li>
+  </ul>
+
+  <h3>The message field: static strings are searchable, interpolated strings are not</h3>
+  <p>This is the most common structural mistake. <code>"Payment failed for user 12345 with card ending 4567"</code> is a unique string — it will never appear twice. You can't aggregate it, count it, or alert on it as a category. <code>"payment.charge.failed"</code> appears every time a payment fails — you can count it, trend it, alert on it.</p>
+  <p>The variable data — user ID, card, amount, error — goes in <strong>fields</strong>, not the message. The message names the event. The fields describe the instance.</p>
+</div>
+
+<!-- VIZ 2: Log anatomy builder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Log entry anatomy — build a well-structured log</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showAnatomyScenario('payment_fail')">Payment failure</button>
+      <button class="viz-btn" onclick="showAnatomyScenario('slow_query')">Slow database query</button>
+      <button class="viz-btn" onclick="showAnatomyScenario('auth_fail')">Auth failure</button>
+      <button class="viz-btn" onclick="showAnatomyScenario('request')">HTTP request</button>
+    </div>
+    <div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text3)">BAD — unstructured:</div>
+    <div id="anatomy-bad" class="mono-out" style="margin-bottom:16px;border-color:rgba(240,96,96,.3);font-size:12px"></div>
+    <div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text3)">GOOD — structured:</div>
+    <div id="anatomy-good" class="mono-out" style="border-color:rgba(62,207,142,.3);font-size:12px"></div>
+    <div id="anatomy-why" style="margin-top:12px;font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3);line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- S3: LEVELS -->
+<div class="section" id="s-levels">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Log levels: what each means and when to use it</h2>
+
+  <p>Log levels are a filtering mechanism. Every log aggregator lets you filter by level — but only if your team uses levels consistently. A codebase where everything is <code>info</code> or everything is <code>error</code> has no effective filtering.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Level</th><th>Meaning</th><th>Who cares</th><th>Example</th><th>Production volume</th></tr></thead>
+      <tbody>
+        <tr><td>fatal</td><td>Process cannot continue. Will crash or restart.</td><td>On-call immediately</td><td>Database connection pool exhausted on startup</td><td>Should never happen</td></tr>
+        <tr><td>error</td><td>Operation failed. User or system impacted.</td><td>On-call within minutes</td><td>Payment charge failed, unhandled exception</td><td>Low — alert if spikes</td></tr>
+        <tr><td>warn</td><td>Unexpected but handled. May indicate a growing problem.</td><td>Review in business hours</td><td>Retry attempt #2, rate limit approaching, deprecated API called</td><td>Low-medium</td></tr>
+        <tr><td>info</td><td>Normal operation. Significant events worth recording.</td><td>Engineers debugging</td><td>Request received, payment completed, user logged in</td><td>Medium — every request</td></tr>
+        <tr><td>debug</td><td>Detailed diagnostic. Disabled in production.</td><td>Developer during local work</td><td>Cache key computed, function entered, variable value</td><td>High — never in prod</td></tr>
+        <tr><td>trace</td><td>Most verbose. Every step.</td><td>Developer during active debugging</td><td>Entering function X with args Y</td><td>Extreme — local only</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The error vs warn distinction</h3>
+  <p><strong>error</strong> means something broke that a user or system can observe. A payment failed. An API returned 500. An exception propagated to the user. These warrant alerting. <strong>warn</strong> means something unexpected happened but was handled — a retry succeeded, a fallback was used, a deprecated codepath was triggered. These warrant monitoring trends but not immediate alerts.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Error-level inflation kills alerting</strong>
+      <p>When everything is logged at <code>error</code>, alerts fire constantly and get ignored. When engineers add <code>logger.error()</code> for things that are actually warnings, the signal-to-noise ratio collapses. Fix: treat error-level as "this should alert someone right now." If you'd be annoyed to get paged for it at 2am, it's a warn, not an error.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 3: Level picker -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Log level selector — what level for this event?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showLevel('payment_declined')">Card declined by bank</button>
+      <button class="viz-btn" onclick="showLevel('retry_success')">Retry #2 succeeded</button>
+      <button class="viz-btn" onclick="showLevel('db_down')">DB connection lost</button>
+      <button class="viz-btn" onclick="showLevel('user_login')">User logged in</button>
+      <button class="viz-btn" onclick="showLevel('deprecated')">Deprecated API called</button>
+      <button class="viz-btn" onclick="showLevel('cache_miss')">Cache miss</button>
+      <button class="viz-btn" onclick="showLevel('unhandled')">Unhandled exception</button>
+      <button class="viz-btn" onclick="showLevel('slow_query')">Query took 2.4s</button>
+    </div>
+    <div id="level-output" class="mono-out" style="font-size:12px;min-height:100px">Select an event above.</div>
+  </div>
+</div>
+
+<!-- S4: CONTEXT -->
+<div class="section" id="s-context">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Context and fields: what to log with every request</h2>
+
+  <p>A log line is only useful in context. "Payment failed" is noise. "Payment failed for user usr_123, plan=pro, amount=₹4,999, method=visa, reason=insufficient_funds, attempt=2" is actionable. The fields you attach to a log entry determine whether you can answer the question "who was affected and why" without making a second query.</p>
+
+  <h3>The logger context pattern</h3>
+  <p>Rather than repeating context on every log call, create a child logger with the request context bound to it. Every subsequent log call on that child logger includes the bound fields automatically — user ID, order ID, trace ID, request ID — without the caller having to remember to include them.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Child logger pattern — bind context once, log cleanly everywhere</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> pino <span class="kw">from</span> <span class="str">'pino'</span>;
+
+<span class="kw">const</span> baseLogger = <span class="fn">pino</span>({
+  level: process.env.LOG_LEVEL || <span class="str">'info'</span>,
+  base: {
+    service: <span class="str">'checkout-service'</span>,
+    version: process.env.APP_VERSION,
+    env:     process.env.NODE_ENV,
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  formatters: {
+    level: (label) => ({ level: label }),  <span class="cm">// string not number</span>
+  },
+});
+
+<span class="cm">// Request middleware — create child logger with request context</span>
+app.<span class="fn">use</span>((req, res, next) => {
+  req.log = baseLogger.<span class="fn">child</span>({
+    requestId: req.headers[<span class="str">'x-request-id'</span>] || <span class="fn">generateId</span>(),
+    method:    req.method,
+    path:      req.route?.path || req.path,  <span class="cm">// route pattern, not full URL</span>
+    userAgent: req.headers[<span class="str">'user-agent'</span>],
+    ip:        req.ip,
+  });
+  <span class="fn">next</span>();
+});
+
+<span class="cm">// Auth middleware — enrich with user context</span>
+app.<span class="fn">use</span>(<span class="kw">async</span> (req, res, next) => {
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">verifyToken</span>(req.headers.authorization);
+  req.user = user;
+  req.log = req.log.<span class="fn">child</span>({   <span class="cm">// layer more context onto the existing child</span>
+    userId:   user.id,
+    userPlan: user.plan,
+    orgId:    user.orgId,
+  });
+  <span class="fn">next</span>();
+});
+
+<span class="cm">// In your route handler — clean call sites, rich output</span>
+app.<span class="fn">post</span>(<span class="str">'/checkout'</span>, <span class="kw">async</span> (req, res) => {
+  req.log.<span class="fn">info</span>({ orderId }, <span class="str">'checkout.started'</span>);
+
+  <span class="kw">try</span> {
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processPayment</span>(req.body);
+    req.log.<span class="fn">info</span>({
+      orderId:       result.orderId,
+      amountCents:   result.amount,
+      paymentMethod: result.method,
+      durationMs:    result.duration,
+    }, <span class="str">'checkout.completed'</span>);
+    res.<span class="fn">json</span>(result);
+  } <span class="kw">catch</span> (err) {
+    req.log.<span class="fn">error</span>({
+      err,            <span class="cm">// pino serialises Error.message + stack automatically</span>
+      orderId,
+      amountCents: req.body.amount,
+    }, <span class="str">'checkout.failed'</span>);
+    res.<span class="fn">status</span>(<span class="num">500</span>).<span class="fn">json</span>({ error: <span class="str">'checkout_failed'</span> });
+  }
+});
+
+<span class="cm">// Output for req.log.info({orderId}, 'checkout.started'):</span>
+<span class="cm">// {</span>
+<span class="cm">//   "level": "info",</span>
+<span class="cm">//   "time": "2024-01-15T14:32:01.234Z",</span>
+<span class="cm">//   "service": "checkout-service",</span>
+<span class="cm">//   "requestId": "req_abc123",</span>
+<span class="cm">//   "userId": "usr_456",</span>
+<span class="cm">//   "userPlan": "pro",</span>
+<span class="cm">//   "orgId": "org_789",</span>
+<span class="cm">//   "method": "POST",</span>
+<span class="cm">//   "path": "/checkout",</span>
+<span class="cm">//   "orderId": "ord_xyz",</span>
+<span class="cm">//   "msg": "checkout.started"</span>
+<span class="cm">// }</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 4: Context field builder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Context fields — what to include and why</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showContext('minimum')">Minimum viable</button>
+      <button class="viz-btn" onclick="showContext('request')">HTTP request</button>
+      <button class="viz-btn" onclick="showContext('business')">Business event</button>
+      <button class="viz-btn" onclick="showContext('error')">Error event</button>
+      <button class="viz-btn" onclick="showContext('background')">Background job</button>
+    </div>
+    <div id="context-output" class="mono-out" style="font-size:12px;min-height:140px">Select a context type above.</div>
+  </div>
+</div>
+
+<!-- S5: SAMPLING -->
+<div class="section" id="s-sampling">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Log sampling: not every log line needs to survive</h2>
+
+  <p>At 10,000 requests per second with 5 log lines per request, you generate 50,000 log lines per second — 4.3 billion per day. Storing all of them is expensive. More importantly, the vast majority are identical successful requests that you'll never look at. Log sampling reduces volume while preserving visibility where it matters.</p>
+
+  <h3>What to never sample away</h3>
+  <ul>
+    <li><strong>Errors and warnings:</strong> Always keep every error and warning log line. These are the minority and the most important.</li>
+    <li><strong>Audit trail events:</strong> User login, permission changes, data exports, payment transactions. These often have compliance requirements.</li>
+    <li><strong>Slow operations:</strong> Any request over your P99 threshold is worth keeping — it represents a user who had a bad experience.</li>
+  </ul>
+
+  <h3>What's safe to sample</h3>
+  <p>High-volume happy-path logs: successful health checks (these are the noisiest and most useless logs in most systems), routine request logs for healthy endpoints with normal latency, debug logs that were accidentally left on. Sampling 1-10% of successful request logs while keeping 100% of errors dramatically reduces volume without hiding problems.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Dynamic log sampling — based on level and request characteristics</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// Sampling middleware — reduces high-volume healthy-path logs</span>
+<span class="kw">function</span> <span class="fn">shouldLog</span>(level: <span class="ty">string</span>, req: Request, res: Response): <span class="ty">boolean</span> {
+  <span class="cm">// Always log errors and warnings</span>
+  <span class="kw">if</span> ([<span class="str">'error'</span>, <span class="str">'warn'</span>, <span class="str">'fatal'</span>].includes(level)) <span class="kw">return true</span>;
+
+  <span class="cm">// Always log slow requests (> 500ms)</span>
+  <span class="kw">const</span> duration = Date.<span class="fn">now</span>() - req.startTime;
+  <span class="kw">if</span> (duration > <span class="num">500</span>) <span class="kw">return true</span>;
+
+  <span class="cm">// Always log non-2xx responses</span>
+  <span class="kw">if</span> (res.statusCode >= <span class="num">300</span>) <span class="kw">return true</span>;
+
+  <span class="cm">// Never log health check endpoints (extremely noisy)</span>
+  <span class="kw">if</span> (req.path === <span class="str">'/healthz'</span> || req.path === <span class="str">'/readyz'</span>) <span class="kw">return false</span>;
+
+  <span class="cm">// Sample 10% of healthy info logs</span>
+  <span class="kw">return</span> Math.<span class="fn">random</span>() < <span class="num">0.10</span>;
+}
+
+<span class="cm">// Response logging with sampling</span>
+app.<span class="fn">use</span>((req, res, next) => {
+  <span class="kw">const</span> startTime = Date.<span class="fn">now</span>();
+  res.<span class="fn">on</span>(<span class="str">'finish'</span>, () => {
+    <span class="kw">const</span> duration = Date.<span class="fn">now</span>() - startTime;
+    <span class="kw">const</span> level = res.statusCode >= <span class="num">500</span> ? <span class="str">'error'</span>
+                : res.statusCode >= <span class="num">400</span> ? <span class="str">'warn'</span>
+                : <span class="str">'info'</span>;
+    <span class="kw">if</span> (!<span class="fn">shouldLog</span>(level, req, res)) <span class="kw">return</span>;  <span class="cm">// skip</span>
+    req.log[level]({
+      statusCode: res.statusCode,
+      durationMs: duration,
+      bytes:      res.get(<span class="str">'content-length'</span>),
+    }, <span class="str">'http.request.completed'</span>);
+  });
+  <span class="fn">next</span>();
+});</pre>
+  </div>
+</div>
+
+<!-- VIZ 5: Sampling calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Log volume calculator — before and after sampling</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Requests per second: <span id="rps-val" style="color:var(--accent)">1000</span></label>
+        <input type="range" class="viz-slider" id="rps-slider" min="100" max="50000" step="100" value="1000" oninput="calcLogVolume()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Log lines per request: <span id="lpr-val" style="color:var(--accent)">5</span></label>
+        <input type="range" class="viz-slider" id="lpr-slider" min="1" max="20" value="5" oninput="calcLogVolume()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Error rate: <span id="err-val" style="color:var(--accent)">2%</span></label>
+        <input type="range" class="viz-slider" id="err-slider" min="0" max="20" step="0.5" value="2" oninput="calcLogVolume()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Happy path sample rate: <span id="sr-val" style="color:var(--accent)">10%</span></label>
+        <input type="range" class="viz-slider" id="sr-slider" min="1" max="100" value="10" oninput="calcLogVolume()">
+      </div>
+    </div>
+    <div id="volume-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S6: AGGREGATION -->
+<div class="section" id="s-aggregation">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Log aggregation: where logs go and how to ship them</h2>
+
+  <p>In a distributed system, logs from 20 service instances need to flow into a single queryable store. Log aggregation is the pipeline that collects, routes, and indexes them. The common patterns:</p>
+
+  <h3>The collection pipeline</h3>
+  <p><strong>Application → stdout → container runtime → log shipper → aggregator → storage.</strong> Services write to stdout (never to files — containers are ephemeral). The container runtime (Docker, Kubernetes) captures stdout. A log shipper (Fluent Bit, Promtail, Fluentd) picks up the container logs and forwards them. The aggregator (Loki, Elasticsearch, Datadog) indexes and stores them.</p>
+
+  <p><strong>Why stdout:</strong> Writing to files inside a container ties logs to that container's lifecycle. When the container dies, logs die with it. Stdout is captured by the runtime, persisted independently, and visible via <code>kubectl logs</code> even after the pod restarts.</p>
+
+  <h3>The popular stacks</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stack</th><th>Shipper</th><th>Aggregator</th><th>Best for</th><th>Cost model</th></tr></thead>
+      <tbody>
+        <tr><td>PLG (Grafana)</td><td>Promtail / Alloy</td><td>Grafana Loki</td><td>Teams already on Grafana/Prometheus</td><td>Very cheap (stores compressed, indexes labels only)</td></tr>
+        <tr><td>ELK/EFK</td><td>Filebeat / Fluent Bit</td><td>Elasticsearch</td><td>Full-text search needs, mature ecosystem</td><td>Expensive at scale (indexes everything)</td></tr>
+        <tr><td>Datadog Logs</td><td>Datadog Agent</td><td>Datadog</td><td>Full-stack observability in one platform</td><td>Per-GB ingested + retention</td></tr>
+        <tr><td>CloudWatch</td><td>AWS Agent</td><td>CloudWatch Logs</td><td>AWS-native, Lambda logs</td><td>Per-GB ingested + storage + queries</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>Grafana Loki is the cost-efficient default for most teams</strong>
+      <p>Loki doesn't index log content — it indexes labels (service name, level, environment). Log content is stored compressed and scanned at query time with LogQL. This makes it dramatically cheaper than Elasticsearch (no per-field indexing), but slower for full-text search across unspecified fields. For structured logs where you know which fields you'll query, Loki's label-based model is extremely efficient. Start with Loki; move to Elasticsearch only if you need full-text search across arbitrary fields.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 6: Aggregation pipeline -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Log aggregation stacks — architecture and tradeoffs</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showStack('loki')">Grafana Loki (PLG)</button>
+      <button class="viz-btn" onclick="showStack('elk')">Elasticsearch (ELK)</button>
+      <button class="viz-btn" onclick="showStack('datadog')">Datadog Logs</button>
+      <button class="viz-btn" onclick="showStack('cloudwatch')">CloudWatch</button>
+    </div>
+    <div id="stack-output" class="mono-out" style="font-size:12px;min-height:160px">Select a stack above.</div>
+  </div>
+</div>
+
+<!-- S7: QUERYING -->
+<div class="section" id="s-querying">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Querying logs: LogQL patterns for real incidents</h2>
+
+  <p>Grafana Loki uses LogQL — a query language modelled on PromQL. Understanding a handful of patterns covers 90% of incident investigation queries. The two stages: label selectors (which log streams to look at) and filter/parse expressions (what to do with those lines).</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">LogQL patterns — the queries you'll actually run</span><span class="code-block-lang">LOGQL</span></div>
+    <pre><span class="cm">## Basic: find errors in checkout service</span>
+{service="checkout-service"} |= "error"
+
+<span class="cm">## Better: parse JSON and filter by structured field</span>
+{service="checkout-service"}
+  | json
+  | level="error"
+  | line_format "{{.time}} {{.msg}} user={{.userId}} order={{.orderId}}"
+
+<span class="cm">## Count errors per minute (for alerting)</span>
+count_over_time(
+  {service="checkout-service"} | json | level="error" [1m]
+)
+
+<span class="cm">## Rate of payment failures (metric from logs)</span>
+rate(
+  {service="checkout-service"} | json | msg="payment.charge.failed" [5m]
+)
+
+<span class="cm">## Find all logs for a specific trace</span>
+{service=~"checkout-service|payment-service|inventory-service"}
+  | json
+  | traceId="4bf92f3577b34da6a3ce929d0e0e4736"
+
+<span class="cm">## Slow requests: duration > 2000ms</span>
+{service="checkout-service"}
+  | json
+  | durationMs > 2000
+  | line_format "{{.time}} {{.durationMs}}ms {{.path}} user={{.userId}}"
+
+<span class="cm">## Payment failures by reason in last hour</span>
+sum by (reason) (
+  count_over_time(
+    {service="checkout-service"}
+    | json
+    | msg="payment.charge.failed" [1h]
+  )
+)
+
+<span class="cm">## Error rate percentage</span>
+sum(rate({service="checkout-service"} | json | level="error" [5m]))
+  /
+sum(rate({service="checkout-service"} | json [5m]))
+  * 100</pre>
+  </div>
+</div>
+
+<!-- VIZ 7: Query builder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">LogQL query builder — common incident investigation patterns</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showQuery('find_errors')">Find errors (last 5min)</button>
+      <button class="viz-btn" onclick="showQuery('trace_lookup')">Look up a trace ID</button>
+      <button class="viz-btn" onclick="showQuery('slow_requests')">Slow requests</button>
+      <button class="viz-btn" onclick="showQuery('error_rate')">Error rate over time</button>
+      <button class="viz-btn" onclick="showQuery('user_journey')">Single user journey</button>
+      <button class="viz-btn" onclick="showQuery('group_by')">Group failures by reason</button>
+    </div>
+    <div id="query-output" class="mono-out" style="font-size:12px;min-height:160px">Select a query pattern above.</div>
+  </div>
+</div>
+
+<!-- S8: COST -->
+<div class="section" id="s-cost">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Log volume and cost control</h2>
+
+  <p>Log ingestion costs money — Datadog, Elasticsearch, and CloudWatch all charge per GB ingested and stored. At high traffic, uncontrolled logging becomes a significant cost. The levers for control:</p>
+
+  <ul>
+    <li><strong>Log level in production:</strong> Set production log level to <code>info</code>. Debug logs should never reach production. A service accidentally left at debug level can generate 10-50× normal log volume.</li>
+    <li><strong>Health check suppression:</strong> Kubernetes liveness and readiness probes hit health check endpoints every 5-10 seconds. That's 6-12 log lines per minute per pod that you will never look at. Never log health check requests at info level. Return 200 silently or filter them out in your log shipper before they reach storage.</li>
+    <li><strong>Retention tiers:</strong> Keep 7 days of logs at full resolution, 30 days of error-only logs, 90 days of nothing (or cheap cold storage). Most debugging happens within 24 hours. 90-day log retention at full volume is usually compliance theatre, not operational necessity.</li>
+    <li><strong>Compression:</strong> JSON logs compress extremely well (5-10× ratio with gzip). Most log shippers compress before shipping. If yours doesn't, enable it.</li>
+  </ul>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Never log request/response bodies in production</strong>
+      <p>Logging full HTTP request and response bodies seems useful during development. In production it's a compliance disaster and a cost explosion. Request bodies contain passwords, tokens, PII, and payment data. Response bodies can be megabytes. Log the metadata — status code, duration, content-length — never the body. If you need request body logging for debugging, do it for specific endpoints for specific time windows, then turn it off.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 8: Cost control -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Log cost calculator — where volume comes from and how to reduce it</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Requests per second: <span id="c-rps-val" style="color:var(--accent)">1000</span></label>
+        <input type="range" class="viz-slider" id="c-rps" min="100" max="50000" step="100" value="1000" oninput="calcCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Log line size (bytes): <span id="c-size-val" style="color:var(--accent)">400B</span></label>
+        <input type="range" class="viz-slider" id="c-size" min="100" max="5000" step="100" value="400" oninput="calcCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">K8s pods (health checks 2/min each): <span id="c-pods-val" style="color:var(--accent)">20</span></label>
+        <input type="range" class="viz-slider" id="c-pods" min="1" max="200" value="20" oninput="calcCost()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Log lines per request: <span id="c-lpr-val" style="color:var(--accent)">5</span></label>
+        <input type="range" class="viz-slider" id="c-lpr" min="1" max="20" value="5" oninput="calcCost()">
+      </div>
+    </div>
+    <div id="cost-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- PROD REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+
+  <h3>Pino is faster than Winston — by a lot</h3>
+  <p>Pino (Node.js) benchmarks at ~5× faster than Winston for JSON logging. At high throughput, logging is measurable overhead — Pino achieves this by doing minimal work in the hot path (serialisation happens asynchronously in a worker thread). If you're on Node.js and performance matters, use Pino. If you're on an early-stage service where configuration flexibility matters more than throughput, Winston is fine.</p>
+
+  <h3>Correlation IDs are not the same as trace IDs</h3>
+  <p>Many teams have <code>X-Request-ID</code> headers for correlating logs within a single service. Trace IDs (from Day 19) correlate across services. You need both: the request ID for "find all logs from this specific HTTP request to this service" and the trace ID for "find all logs from this request across every service it touched." Don't conflate them.</p>
+
+  <h3>Structured logging in multiple languages</h3>
+  <p>If your system has services in Python (structlog), Java (Logback + logstash-logback-encoder), and Go (zap or zerolog), the challenge is consistent field names. A log with <code>userId</code> in one service and <code>user_id</code> in another breaks cross-service log queries. Document and enforce a field naming convention — it's one of those boring things that matters enormously during incidents.</p>
+
+  <h3>Log-based alerts: set them up before you need them</h3>
+  <p>In Grafana, you can create alerts directly from LogQL queries — "alert if error rate exceeds X per minute." Set up alerts for <code>level=error</code> rate spikes before your first incident, not during it. The alert setup takes 10 minutes and will save hours during the first real outage.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Logging inside tight loops will destroy performance</h3>
+  <p>A <code>logger.debug()</code> inside a loop processing 10,000 items generates 10,000 log calls even if the log level is set to <code>info</code>. Most loggers still pay the cost of evaluating arguments even when the level is suppressed. Check if your logger supports level checking before argument construction (Pino does this with <code>logger.isLevelEnabled('debug')</code>) or wrap loops in level checks manually.</p>
+
+  <h3>Log shipping has backpressure problems</h3>
+  <p>When your log aggregator is slow or unavailable, the log buffer in your shipper fills up. Most shippers then either drop logs (data loss) or block application threads waiting for the buffer to drain (performance impact). Know which your shipper does and configure appropriately. Fluent Bit defaults to dropping on overflow; Promtail queues on disk up to a configurable limit. Neither failure mode is obvious without testing it.</p>
+
+  <h3>Sensitive data in logs is a compliance and security problem</h3>
+  <p>It's surprisingly easy to accidentally log a full request body containing a password, log an error message that contains a credit card number, or log a JWT token in an authorization header. Establish a review checklist for new log statements. Use a sanitisation function for objects before logging: strip known sensitive fields, truncate long strings, redact patterns that look like card numbers or tokens.</p>
+
+  <h3>Production log levels need a runtime toggle</h3>
+  <p>The scenario: you're debugging an intermittent production issue and need debug logs. Deploying a new build to change the log level takes 10 minutes and may not reproduce the issue. The solution: support runtime log level changes via an admin endpoint or environment variable reload, so you can temporarily raise the log level on one pod for 5 minutes and then restore it — without a deploy.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Setting up structured logging for a service</h2>
+  <p class="ds-sub">Do these in order before shipping to production.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Choose a logger with native JSON output</div>
+        <div class="ds-detail">Node.js: Pino (performance) or Winston (flexibility). Python: structlog. Java: Logback + logstash-logback-encoder. Go: zap or zerolog. The logger must emit JSON natively — not formatted strings that you manually parse. If your current logger uses string templates (<code>"Payment failed for %s"</code>), replace it.
+          <br><span class="ds-tag ds-tag-info">Pino for Node.js performance · structlog for Python</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Define base fields: service, version, env on every log</div>
+        <div class="ds-detail">Configure your logger's base metadata: <code>service</code>, <code>version</code>, <code>env</code>. These go on every single log line automatically without any call-site changes. Without them, every log query starts with "which service is this from?" — a question you should never have to ask.
+          <br><span class="ds-tag ds-tag-ok">base fields save minutes per incident investigation</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Create a request-scoped child logger with traceId</div>
+        <div class="ds-detail">In request middleware: create a child logger with <code>requestId</code>, <code>method</code>, <code>path</code>, and <code>traceId</code>. Attach it to <code>req.log</code>. Every subsequent log call in the request handler uses <code>req.log</code> — the request context is always present, never forgotten. Add user context after auth middleware resolves.
+          <br><span class="ds-tag ds-tag-ok">child logger = context once, everywhere</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Agree on message naming convention: event.action not sentences</div>
+        <div class="ds-detail">Messages should be dot-separated event identifiers: <code>payment.charge.started</code>, <code>payment.charge.completed</code>, <code>payment.charge.failed</code>. Not sentences. Not interpolated strings. This convention lets you search for all payment events with a prefix match and makes log counts meaningful. Document it and enforce it in code review.
+          <br><span class="ds-tag ds-tag-stop">interpolated messages = uncountable, unsearchable noise</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Suppress health check logs and set level to info in production</div>
+        <div class="ds-detail">Filter out <code>/healthz</code> and <code>/readyz</code> request logs — they're noise that inflates volume with zero debugging value. Set production log level to <code>info</code>. Verify no service is accidentally running at <code>debug</code> in production (debug level can 10× log volume). Check log aggregator cost per day after this step — the difference is usually dramatic.
+          <br><span class="ds-tag ds-tag-warn">health check logs are the most expensive useless logs you have</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Set up a log-based alert for error rate before shipping</div>
+        <div class="ds-detail">In Grafana/Datadog/CloudWatch: create an alert that fires when <code>level=error</code> log rate exceeds your baseline by 2× for 5 minutes. This alert is free to create and will fire before your metrics-based alerts in many incident scenarios — logs are closer to the application than infrastructure metrics. Do it now, not during the first incident.
+          <br><span class="ds-tag ds-tag-ok">log alerts fire earlier than metric alerts</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Finding the bug in 90 seconds vs 3 hours — the same log, structured</div>
+    <div style="font-size:13px;color:var(--text2)">Live log query lab · LogQL exercises · alert setup walkthrough</div>
+  </div>
+  <a href="/day20/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Pino production config, Loki + Promtail setup, sanitisation patterns</div>
+    <div style="font-size:13px;color:var(--text2)">Complete Pino config · Loki Docker Compose · PII scrubbing · field conventions</div>
+  </div>
+  <a href="/day20/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Structured logging checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">JSN</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">JSON output</div><p style="font-size:12.5px;color:var(--text3);margin:0">Every log line is valid JSON. No string formatting. Fields are typed: numbers as numbers, booleans as booleans.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">CTX</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Request context</div><p style="font-size:12.5px;color:var(--text3);margin:0">Every log line has: service, requestId, traceId, userId. Set once in middleware, not repeated at call sites.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">MSG</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Static messages</div><p style="font-size:12.5px;color:var(--text3);margin:0">Messages are event identifiers: payment.charge.failed, not "Payment failed for user 123." Variable data in fields.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">LVL</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Correct levels</div><p style="font-size:12.5px;color:var(--text3);margin:0">error = user impacted, alert now. warn = handled but unexpected. info = normal ops. debug = never in prod.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">HLT</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">No health logs</div><p style="font-size:12.5px;color:var(--text3);margin:0">/healthz and /readyz requests are not logged. They generate thousands of useless lines per pod per day.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">ALT</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Log-based alert</div><p style="font-size:12.5px;color:var(--text3);margin:0">Alert fires when error log rate spikes. Set up before the first incident, not during it.</p></div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s){if(s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Log compare
+var LOG_COMPARE = {
+  unstructured: '# Unstructured logs — 5 events, 5 different formats\n\n[2024-01-15 14:32:01] INFO: Request received from 192.168.1.100\n[2024-01-15 14:32:01] Payment processing started for order #45678\n[14:32:02.341] ERROR Payment failed - card declined for user john@example.com\n2024-01-15T14:32:02Z WARN retry attempt 2 for order 45678\n14:32:02 [checkout-svc] Checkout completed (or failed?) for usr 12345\n\nProblems:\n  • 5 different timestamp formats\n  • No consistent field names\n  • Variables embedded in strings\n  • Level casing inconsistent (INFO, ERROR, WARN)\n  • "completed (or failed?)" — ambiguous\n  • Email address in the log (PII leak!)\n\nTo find: "how many payments failed today by card type?"\n  → grep for "failed" → parse each match differently → count manually\n  → 30 minutes of work. Often wrong.',
+
+  structured: '# Structured logs — same 5 events, consistent format\n\n{"time":"2024-01-15T14:32:01.100Z","level":"info","service":"checkout","msg":"http.request.received","requestId":"req_abc","method":"POST","path":"/checkout","ip":"192.168.1.100","userId":"usr_123"}\n{"time":"2024-01-15T14:32:01.234Z","level":"info","service":"checkout","msg":"payment.charge.started","requestId":"req_abc","orderId":"ord_45678","amountCents":4999,"userId":"usr_123","traceId":"4bf92f..."}\n{"time":"2024-01-15T14:32:02.341Z","level":"error","service":"checkout","msg":"payment.charge.failed","requestId":"req_abc","orderId":"ord_45678","reason":"card_declined","paymentMethod":"visa","userId":"usr_123","traceId":"4bf92f..."}\n{"time":"2024-01-15T14:32:02.410Z","level":"warn","service":"checkout","msg":"payment.charge.retry","requestId":"req_abc","orderId":"ord_45678","attempt":2,"traceId":"4bf92f..."}\n{"time":"2024-01-15T14:32:02.890Z","level":"error","service":"checkout","msg":"payment.charge.failed","requestId":"req_abc","orderId":"ord_45678","reason":"card_declined","attempt":2,"traceId":"4bf92f..."}\n\nProperties:\n  ✓ Identical timestamp format (ISO 8601 UTC)\n  ✓ Consistent field names across all events\n  ✓ Variables in fields, not embedded in strings\n  ✓ No PII (userId not email)\n  ✓ Trace ID connects to distributed trace',
+
+  query_unstruct: '# Querying unstructured logs — grep-based archaeology\n\nQ: How many payments failed in the last hour by card type?\n\n  grep "payment failed" /var/log/checkout/*.log \\\n    | grep "$(date +%H)" \\\n    | grep -oP \'card: \\K\\w+\' \\\n    | sort | uniq -c\n\nProblems:\n  • Only works if the log format is consistent (it isn\'t)\n  • "payment failed" matches partial strings unexpectedly\n  • grep doesn\'t understand JSON fields\n  • "card type" might be in different positions in different messages\n  • One malformed line breaks the pipeline\n  • Takes 2-5 minutes to run over a day of logs\n  • Result accuracy: maybe 70%\n\nQ: Show me all logs for a specific user in the last 5 minutes?\n  → No way to do this without knowing exactly how the username\n     appears in every log message from every service.',
+
+  query_struct: '# Querying structured logs — LogQL (Grafana Loki)\n\nQ: How many payments failed in the last hour by card type?\n\n  sum by (paymentMethod) (\n    count_over_time(\n      {service="checkout"}\n      | json\n      | msg="payment.charge.failed"\n      [1h]\n    )\n  )\n  \n  Result: { visa: 47, mastercard: 23, amex: 8 }\n  Time to run: < 1 second.\n\nQ: All logs for user usr_123 in the last 5 minutes?\n  {service=~"checkout|payment|inventory"}\n  | json | userId="usr_123"\n  → Instant. Across all services.\n\nQ: Failed payments over $100 from mobile clients?\n  {service="checkout"}\n  | json\n  | msg="payment.charge.failed"\n  | amountCents > 10000\n  | userAgent =~ ".*Mobile.*"\n  → Still instant. Same syntax.\n\nStructured logs are a queryable database.',
+};
+function showLogCompare(k){document.getElementById('log-compare-output').textContent=LOG_COMPARE[k];}
+
+// VIZ 2: Anatomy
+var ANATOMY = {
+  payment_fail: {
+    bad: 'console.error(`Payment failed for user ${user.email} amount ${amount/100} reason: ${err.message}`)\n// Output: "Payment failed for user john@example.com amount 49.99 reason: card_declined"',
+    good: 'logger.error({\n  orderId,\n  userId: user.id,      // ID not email (PII)\n  amountCents: amount,  // integer cents, not formatted string\n  paymentMethod,\n  reason: err.code,     // machine-readable code\n  attempt,\n  err,                  // pino serialises stack trace automatically\n}, "payment.charge.failed");\n\n// Output:\n{\n  "level": "error",\n  "msg": "payment.charge.failed",\n  "orderId": "ord_123",\n  "userId": "usr_456",\n  "amountCents": 4999,\n  "paymentMethod": "visa",\n  "reason": "card_declined",\n  "attempt": 1,\n  "err": { "message": "card_declined", "stack": "..." },\n  "traceId": "4bf92f...",\n  "time": "2024-01-15T14:32:02.341Z"\n}',
+    why: '✓ msg is "payment.charge.failed" — static, countable, alertable\n✓ userId not email — no PII in logs\n✓ amountCents as integer — queryable (amount > 10000)\n✓ reason as code — groupable (sum by reason)\n✓ attempt as number — trendable (average retries per failure)\n✗ Bad: email in log = PII leak, interpolated string = uncountable',
+  },
+  slow_query: {
+    bad: 'console.log(`Query took ${duration}ms: ${query}`)\n// Output: "Query took 2341ms: SELECT * FROM orders WHERE user_id=\'usr_123\' AND ..."',
+    good: 'logger.warn({\n  durationMs: duration,\n  queryName: "orders.findByUser",  // NOT the full query\n  db: "ticketdb",\n  table: "orders",\n  rowsExamined: stats.rowsExamined,\n  rowsReturned: stats.rowsReturned,\n  indexUsed: stats.indexName || null,\n}, "db.query.slow");\n\n// Output:\n{\n  "level": "warn",\n  "msg": "db.query.slow",\n  "durationMs": 2341,\n  "queryName": "orders.findByUser",\n  "db": "ticketdb",\n  "table": "orders",\n  "rowsExamined": 184201,\n  "rowsReturned": 12,\n  "indexUsed": null\n}',
+    why: '✓ durationMs as number — queryable (durationMs > 2000)\n✓ rowsExamined vs rowsReturned — reveals table scan instantly\n✓ indexUsed: null — tells you exactly why it\'s slow\n✗ Bad: full SQL query string may contain PII in WHERE clause\n✗ Bad: interpolated string "took 2341ms" is not aggregatable',
+  },
+  auth_fail: {
+    bad: 'console.warn(`Login failed for ${email}: ${reason} (attempt ${count})`)\n// Output: "Login failed for john@example.com: bad_password (attempt 3)"',
+    good: 'logger.warn({\n  userId: user?.id || null,   // null if user doesn\'t exist\n  reason,                     // "invalid_password", "account_locked"\n  attempt,\n  ip: req.ip,\n  userAgent: req.headers[\'user-agent\'],\n  // NO email — use userId for correlation\n}, "auth.login.failed");\n\n// Output:\n{\n  "level": "warn",\n  "msg": "auth.login.failed",\n  "userId": null,        // user doesn\'t exist\n  "reason": "user_not_found",\n  "attempt": 1,\n  "ip": "192.168.1.100",\n  "userAgent": "Mozilla/5.0..."\n}',
+    why: '✓ Static message "auth.login.failed" — count brute force attempts\n✓ reason as code — alert on "account_locked" spike\n✓ ip field — detect distributed brute force\n✓ userId null when user doesn\'t exist — don\'t reveal enumeration\n✗ Bad: email in log = user enumeration vector if logs are leaked',
+  },
+  request: {
+    bad: 'console.log(`${req.method} ${req.url} ${res.statusCode} ${duration}ms`)\n// Output: "POST /checkout?userId=123&token=abc123 200 342ms"',
+    good: 'logger.info({\n  method:     req.method,\n  path:       req.route?.path || req.path,  // /checkout not /checkout?userId=123\n  statusCode: res.statusCode,\n  durationMs: duration,\n  bytes:      res.get(\'content-length\'),\n  // NO query params — may contain sensitive data\n}, "http.request.completed");\n\n// Output:\n{\n  "level": "info",\n  "msg": "http.request.completed",\n  "method": "POST",\n  "path": "/checkout",       // route pattern, not URL\n  "statusCode": 200,\n  "durationMs": 342,\n  "bytes": 1240\n}',
+    why: '✓ path is route pattern (/checkout) not URL — queryable, groupable\n✓ statusCode as integer — filter 5xx instantly\n✓ durationMs as number — P99 analysis without parsing\n✗ Bad: URL with query params may contain tokens, PII, secrets\n✗ Bad: "POST /checkout 200 342ms" string — parse every query',
+  },
+};
+function showAnatomyScenario(k){
+  var a=ANATOMY[k];
+  document.getElementById('anatomy-bad').textContent=a.bad;
+  document.getElementById('anatomy-good').textContent=a.good;
+  document.getElementById('anatomy-why').textContent=a.why;
+}
+
+// VIZ 3: Levels
+var LEVELS = {
+  payment_declined: 'EVENT: Card declined by the bank (e.g. insufficient funds)\n\nCorrect level: WARN — not ERROR\n\nReasoning:\n  A card decline is an expected, handled outcome — not a bug.\n  Your code handled it correctly: declined the charge, returned\n  a user-friendly message, didn\'t take the user\'s money.\n  The user needs to use a different card. That\'s a product concern.\n\n  ERROR would mean: your code threw an exception, the charge is\n  in an unknown state, or the user got a 500 response.\n\nLog entry:\n  logger.warn({ orderId, reason: "insufficient_funds",\n    paymentMethod: "visa" }, "payment.charge.declined");\n\nIf this becomes ERROR: your alerts fire every time a card is\ndeclined — which is ~5-15% of payment attempts. That\'s alert fatigue.',
+
+  retry_success: 'EVENT: HTTP retry attempt #2 succeeded after #1 failed\n\nCorrect level: WARN\n\nReasoning:\n  The operation eventually succeeded — the user got what they wanted.\n  But the fact that a retry was needed is worth knowing about:\n  it indicates transient instability in the downstream service.\n  Trend it: if retry rate is increasing, investigate before it gets worse.\n\nLog entry:\n  logger.warn({ orderId, attempt: 2,\n    durationMs: totalDuration }, "payment.charge.succeeded_with_retry");\n\n  // Also useful: log the first failure at warn too\n  logger.warn({ orderId, attempt: 1,\n    err }, "payment.charge.attempt_failed");',
+
+  db_down: 'EVENT: Lost connection to primary database\n\nCorrect level: FATAL or ERROR\n\nReasoning:\n  This is existential. The service cannot function without the database.\n  Every subsequent request will fail until connection is restored.\n  On-call needs to be paged immediately.\n\n  FATAL if the process will (or should) exit — let the orchestrator\n  restart it and reconnect.\n  ERROR if you have connection pool retry logic and may self-heal.\n\nLog entry:\n  logger.fatal({ db: "primary", host: "db.prod.internal",\n    retryCount: 5, err }, "db.connection.lost");\n\nThis should trigger an immediate page, not a "review in the morning" alert.',
+
+  user_login: 'EVENT: User successfully logged in\n\nCorrect level: INFO\n\nReasoning:\n  Normal, expected, successful operation. Worth recording for:\n    • Security audit trail\n    • User support investigations ("the user says they can\'t log in — last login?")\n    • Anomaly detection (logins from new countries)\n  But not a cause for concern on its own.\n\nLog entry:\n  logger.info({ userId: user.id, ip: req.ip,\n    authMethod: "password" }, "auth.login.succeeded");\n\nNote: for compliance (GDPR, SOC2), successful auth events\nare typically required in audit logs. This is a case where\neven with sampling, you should keep 100% of auth events.',
+
+  deprecated: 'EVENT: A deprecated API endpoint was called\n\nCorrect level: WARN\n\nReasoning:\n  Not an error — the request is being handled.\n  But you want to know: who is still calling this endpoint\n  so you can notify them before you remove it.\n\nLog entry:\n  logger.warn({ endpoint: "/api/v1/orders",\n    userId: req.user?.id,\n    client: req.headers[\'user-agent\'] },\n    "api.deprecated.called");\n\nUse this to build a report: which deprecated APIs are still being\ncalled and by which clients. Send deprecation notices.',
+
+  cache_miss: 'EVENT: Cache miss on seat availability lookup\n\nCorrect level: DEBUG (or omit entirely)\n\nReasoning:\n  Cache misses are a normal part of cache operation — especially\n  after cold starts or cache evictions.\n  Individual misses are not worth recording at info.\n  What\'s worth monitoring: the miss RATE (via metrics), not individual misses.\n\n  If you log every cache miss at info level on a 1000 req/s service\n  with a 20% miss rate, that\'s 200 log lines/second of noise.\n\nDo this instead:\n  // Metric, not log\n  cacheHitCounter.inc({ hit: false, cache: "seat_availability" });\n\n  // Log only if specifically debugging\n  if (logger.isLevelEnabled("debug")) {\n    logger.debug({ key, ttl: 0 }, "cache.miss");\n  }',
+
+  unhandled: 'EVENT: Unhandled exception reached the Express error middleware\n\nCorrect level: ERROR\n\nReasoning:\n  A request reached your error handler without being caught by\n  any business logic — something unexpected happened.\n  A user may have received a 500 response.\n  Needs investigation.\n\nLog entry:\n  // Express error middleware\n  app.use((err, req, res, next) => {\n    req.log.error({\n      err,\n      requestId: req.id,\n      path: req.path,\n      userId: req.user?.id,\n    }, "http.request.error.unhandled");\n    res.status(500).json({ error: "internal_server_error" });\n  });\n\nAlert threshold: more than 5 per minute = something is wrong.',
+
+  slow_query: 'EVENT: Database query took 2.4 seconds (normal P99 = 80ms)\n\nCorrect level: WARN (30× slower than normal)\n\nReasoning:\n  The query succeeded — no user-visible error.\n  But 30× slower than normal indicates something is wrong:\n  missing index, table lock, statistics stale, or query plan change.\n  Worth investigating before it becomes an error.\n\nLog entry:\n  logger.warn({\n    durationMs: 2400,\n    threshold: 500,           // what "slow" means for this query\n    queryName: "seats.find",\n    rowsExamined: 240000,\n    rowsReturned: 4,\n    indexUsed: null,          // ← tells you why it\'s slow\n  }, "db.query.slow");\n\nUse this to alert: if slow query count exceeds 10/min,\nan index may have been dropped or a table scan introduced.',
+};
+function showLevel(k){document.getElementById('level-output').textContent=LEVELS[k];}
+
+// VIZ 4: Context
+var CONTEXT = {
+  minimum: 'MINIMUM VIABLE — every log must have these\n\n{\n  "time":    "2024-01-15T14:32:01.234Z",  // ISO 8601 UTC, milliseconds\n  "level":   "info",                       // string, lowercase\n  "service": "checkout-service",           // which service\n  "msg":     "payment.charge.started",     // static event identifier\n  "version": "1.4.2",                      // which build\n  "env":     "production"                  // which environment\n}\n\nWithout these:\n  ✗ Can\'t filter by service in multi-service stream\n  ✗ Can\'t correlate error with deploy that caused it (version)\n  ✗ Can\'t filter out staging logs from production queries\n\nSet these in your base logger config — they go on every\nlog line automatically without any call-site changes.',
+
+  request: 'HTTP REQUEST CONTEXT — add in request middleware\n\n{\n  ...base_fields,\n  "requestId":  "req_abc123",       // unique per request for correlation\n  "method":     "POST",\n  "path":       "/checkout",        // route pattern, NOT /checkout?token=xyz\n  "ip":         "192.168.1.100",    // for rate limiting investigation\n  "userAgent":  "Mozilla/5.0...",   // for client-type analysis\n  "durationMs": 342,                // how long the request took (add on response)\n  "statusCode": 200,                // HTTP response code (add on response)\n  "traceId":    "4bf92f...",        // trace correlation (Day 19)\n  "spanId":     "00f067..."         // span correlation\n}\n\nAdd this in Express middleware via req.log = baseLogger.child({...}).\nAll downstream log calls use req.log — context is always present.',
+
+  business: 'BUSINESS EVENT CONTEXT — what matters for this operation\n\n// For a payment event:\n{\n  ...request_context,\n  "orderId":       "ord_45678",\n  "userId":        "usr_123",     // ID, never email or name\n  "userPlan":      "pro",         // for per-tier analysis\n  "amountCents":   4999,          // integer cents, not "£49.99"\n  "currency":      "GBP",\n  "paymentMethod": "visa",        // for failure analysis by method\n  "attempt":       1,             // retry number\n  "eventId":       "evt_789",     // which event was being booked\n  "seatCount":     2              // for group booking analysis\n}\n\nRule: include any field you would group by, filter by, or\naggregate in a query. If you\'d want to ask "how many failed\npayments for visa users on the pro plan?" — those fields\nmust be on the log line.',
+
+  error: 'ERROR EVENT CONTEXT — everything needed for post-mortem\n\n{\n  ...business_context,\n  "err": {\n    "message": "ETIMEDOUT",         // error message\n    "type":    "TimeoutError",       // error class\n    "stack":   "at checkout.js:42", // stack trace\n    "code":    "ETIMEDOUT"          // error code\n  },\n  "durationMs": 3001,              // how long before timeout\n  "attempt":    3,                 // which retry this was\n  "circuitState": "OPEN",          // circuit breaker state\n  "upstream":   "stripe-api",      // which dependency failed\n  "httpStatus": null               // null = never got a response\n}\n\nPino serialises Error objects automatically:\n  logger.error({ err }, "payment.failed");\n  // err.message and err.stack are included\n\nWhen an error fires at 3am, the log must answer:\n  What failed? Where? For whom? How long? What state?',
+
+  background: 'BACKGROUND JOB CONTEXT — no request, different correlation\n\n{\n  ...base_fields,\n  "jobId":     "job_abc123",       // unique job identifier\n  "jobType":   "invoice.generate", // what type of job\n  "jobQueue":  "billing",          // which queue\n  "traceId":   "4bf92f...",        // the trace from the enqueueing request\n  "enqueuedAt":"2024-01-15T14:00Z",// when was it queued\n  "attempt":    1,                  // retry count for failed jobs\n  "orgId":      "org_789",          // which organisation\n  "recordCount":1240                // how many records processed\n}\n\nNote: traceId here should be the trace from the HTTP request\nthat enqueued this job (Day 19: store trace context in job payload).\nThis connects the background job\'s logs to the original user request.',
+};
+function showContext(k){document.getElementById('context-output').textContent=CONTEXT[k];}
+
+// VIZ 5: Volume
+function calcLogVolume(){
+  var rps=parseInt(document.getElementById('rps-slider').value);
+  var lpr=parseInt(document.getElementById('lpr-slider').value);
+  var err=parseFloat(document.getElementById('err-slider').value)/100;
+  var sr=parseInt(document.getElementById('sr-slider').value)/100;
+  document.getElementById('rps-val').textContent=rps.toLocaleString();
+  document.getElementById('lpr-val').textContent=lpr;
+  document.getElementById('err-val').textContent=(err*100)+'%';
+  document.getElementById('sr-val').textContent=(sr*100)+'%';
+
+  var totalPerSec=rps*lpr;
+  var errLinesPerSec=rps*err*lpr;
+  var healthPerSec=rps*0.01; // ~1% health check traffic assumption
+  var happyPerSec=totalPerSec-errLinesPerSec-healthPerSec;
+  var sampledHappy=happyPerSec*sr;
+  var finalPerSec=errLinesPerSec+sampledHappy; // health check = suppressed
+  var reduction=(1-finalPerSec/totalPerSec)*100;
+
+  var bytesPerLine=400;
+  var rawGbDay=totalPerSec*bytesPerLine*86400/1e9;
+  var sampledGbDay=finalPerSec*bytesPerLine*86400/1e9;
+
+  var lokiCostMonth=sampledGbDay*30*0.50; // rough Loki cost
+  var ddCostMonth=sampledGbDay*30*2.50;  // rough Datadog cost
+
+  document.getElementById('volume-output').innerHTML=[
+    'Without sampling:',
+    '  Log lines/sec:    '+totalPerSec.toLocaleString()+' ('+rps.toLocaleString()+' req × '+lpr+' lines)',
+    '  Data/day:         '+(rawGbDay<1?(rawGbDay*1024).toFixed(0)+'MB':rawGbDay.toFixed(1)+'GB'),
+    '',
+    'With smart sampling (errors: 100%, health checks: suppressed, rest: '+Math.round(sr*100)+'%):',
+    '  Error lines/sec:  '+Math.round(errLinesPerSec).toLocaleString()+' (always kept)',
+    '  Health check:     suppressed (save '+Math.round(healthPerSec)+' lines/sec)',
+    '  Happy path:       '+Math.round(sampledHappy).toLocaleString()+'/sec ('+Math.round(sr*100)+'% of '+Math.round(happyPerSec).toLocaleString()+')',
+    '  Final lines/sec:  <span style="color:var(--green);font-weight:700">'+Math.round(finalPerSec).toLocaleString()+'</span> ('+Math.round(reduction)+'% reduction)',
+    '  Data/day:         '+(sampledGbDay<1?(sampledGbDay*1024).toFixed(0)+'MB':sampledGbDay.toFixed(1)+'GB'),
+    '',
+    'Monthly cost estimate (after sampling):',
+    '  Grafana Loki:  ~$'+lokiCostMonth.toFixed(0),
+    '  Datadog Logs:  ~$'+ddCostMonth.toFixed(0),
+  ].join('\n');
+}
+
+// VIZ 6: Stack
+var STACKS = {
+  loki: 'GRAFANA LOKI (PLG STACK)\n\nArchitecture:\n  App (stdout) → Promtail/Alloy → Grafana Loki → Grafana UI\n\nHow Loki stores logs:\n  • Labels: { service="checkout", level="error", env="prod" }\n    → indexed, fast to filter\n  • Log content: compressed and stored as-is (not indexed)\n    → scanned at query time with LogQL\n\nWhy it\'s cheap:\n  Elasticsearch indexes every field → high write cost, high storage\n  Loki indexes only labels → very low cost, query scans compressed blocks\n\nCost estimate: ~$0.50/GB/month (vs Elasticsearch ~$5/GB/month)\n\nBest for:\n  ✓ Teams already using Grafana/Prometheus\n  ✓ High-volume logs where cost matters\n  ✓ JSON logs with known query patterns\n  ✓ Kubernetes native (Promtail reads pod logs automatically)\n\nLimitation:\n  Slow for arbitrary full-text search across many log streams\n  Log content must match a pattern; no inverted index\n\nSetup: docker compose with Loki + Promtail = ~30 minutes',
+
+  elk: 'ELASTICSEARCH (ELK/EFK STACK)\n\nArchitecture:\n  App → Filebeat/Fluent Bit → Logstash (optional) → Elasticsearch → Kibana\n\nHow Elasticsearch stores logs:\n  • Inverted index on every field → very fast arbitrary search\n  • Every field is indexed → high storage cost\n  • Mappings must be correct or searches fail silently\n\nBest for:\n  ✓ Full-text search across arbitrary fields\n  ✓ Complex log analytics\n  ✓ Teams with existing ELK expertise\n  ✓ Compliance use cases requiring specific query patterns\n\nLimitations:\n  ✗ Expensive: indexing all fields at high volume is costly\n  ✗ Operational complexity: cluster management, index lifecycle\n  ✗ Mapping explosions: too many unique field names cause issues\n\nCost: ~$3-5/GB/month in managed form (Elastic Cloud, AWS OpenSearch)\n  At 100GB/day = $9,000-15,000/month\n\nRecommendation: only if you need full-text search across fields\nyou can\'t predict at log design time.',
+
+  datadog: 'DATADOG LOGS\n\nArchitecture:\n  App → Datadog Agent → Datadog (SaaS)\n\nBenefits:\n  ✓ Fully managed — no infrastructure to run\n  ✓ Deep integration with Datadog APM (traces + logs in one UI)\n  ✓ Log-based metrics: create metrics from log queries\n  ✓ Log anomaly detection built-in\n  ✓ Powerful parsing and enrichment pipelines\n\nCost model:\n  Ingestion: ~$0.10-0.25/GB\n  Retention: priced by GB × days\n  100GB/day × 15 days = ~$1,500-3,750/month\n  Can get expensive quickly at high volume\n\nCost control in Datadog:\n  • Exclusion filters: drop specific log patterns before ingestion\n  • Log-to-metric: generate metrics from logs, don\'t store the logs\n  • Flex Logs: cheaper tier for logs you rarely query\n\nBest for:\n  ✓ Teams already paying for Datadog APM/metrics\n  ✓ Teams wanting one platform for all observability\n  ✗ Teams trying to minimise observability spend',
+
+  cloudwatch: 'AWS CLOUDWATCH LOGS\n\nArchitecture:\n  App → CloudWatch Logs Agent / Lambda → Log Groups → CloudWatch Insights\n\nBenefits:\n  ✓ Zero setup for Lambda (automatic)\n  ✓ Native to AWS ecosystem\n  ✓ CloudWatch Insights for ad-hoc log queries (SQL-like)\n  ✓ Log-to-metric with CloudWatch Metric Filters\n\nCost model:\n  Ingestion: $0.50/GB\n  Storage: $0.03/GB/month\n  Queries: $0.005 per GB scanned\n  100GB/day × 30 days = $1,500 ingestion + $90 storage/month\n  Queries at scale get expensive ($0.005/GB × 3TB = $15 per query!)\n\nLimitations:\n  ✗ CloudWatch Insights query language is limited vs Loki/Elasticsearch\n  ✗ Cross-account log queries are complex\n  ✗ Query costs on large datasets add up fast\n  ✗ Vendor lock-in — hard to export historical logs\n\nBest for:\n  ✓ Lambda functions (no choice — CloudWatch is automatic)\n  ✓ Early-stage AWS teams where simplicity > cost\n  ✓ Teams that primarily need operational logs, not analytics',
+};
+function showStack(k){document.getElementById('stack-output').textContent=STACKS[k];}
+
+// VIZ 7: Queries
+var QUERIES = {
+  find_errors: '# Find all errors in checkout service, last 5 minutes\n\n{service="checkout-service"}\n  | json\n  | level="error"\n  | line_format "{{.time}} [{{.msg}}] user={{.userId}} order={{.orderId}} err={{.err.message}}"\n\n# Result: human-readable error summary\n# 14:32:02 [payment.charge.failed] user=usr_123 order=ord_456 err=ETIMEDOUT\n# 14:32:45 [payment.charge.failed] user=usr_789 order=ord_012 err=card_declined\n\n# Count errors per minute (for alerting rule):\ncount_over_time(\n  {service="checkout-service"} | json | level="error" [1m]\n)',
+
+  trace_lookup: '# Find all logs for a specific trace across ALL services\n# (The trace ID from Day 19 — paste it in from Jaeger)\n\n{service=~"checkout-service|payment-service|inventory-service|auth-service"}\n  | json\n  | traceId="4bf92f3577b34da6a3ce929d0e0e4736"\n  | line_format "{{.time}} [{{.service}}] {{.level}} {{.msg}}"\n\n# Result: every log line from every service for this one request\n# 14:32:01.100 [checkout-service] info  http.request.received\n# 14:32:01.234 [checkout-service] info  payment.charge.started\n# 14:32:01.280 [payment-service]  info  stripe.charge.initiated\n# 14:32:04.771 [payment-service]  warn  stripe.response.slow\n# 14:32:04.780 [checkout-service] error payment.charge.failed\n\n# This is the complement to the trace waterfall — same request,\n# different view: all log context instead of timing.',
+
+  slow_requests: '# Find all slow requests (> 500ms) in the last 30 minutes\n\n{service="checkout-service"}\n  | json\n  | durationMs > 500\n  | line_format "{{.time}} {{.durationMs}}ms {{.path}} user={{.userId}} status={{.statusCode}}"\n\n# Sort by slowest first (in Grafana: add | sort by durationMs desc)\n\n# Count slow requests by endpoint:\nsum by (path) (\n  count_over_time(\n    {service="checkout-service"}\n    | json\n    | durationMs > 500 [5m]\n  )\n)',
+
+  error_rate: '# Error rate as a percentage over time\n# Use this in a Grafana panel or alert rule\n\n# Numerator: error count per minute\nsum(rate(\n  {service="checkout-service"}\n  | json\n  | level="error"\n  [1m]\n))\n\n# Denominator: total request count per minute\nsum(rate({service="checkout-service"} | json [1m]))\n\n# Combined error rate %:\nsum(rate({service="checkout-service"} | json | level="error" [1m]))\n  /\nsum(rate({service="checkout-service"} | json [1m]))\n  * 100\n\n# Alert: when this exceeds 5% for 5 consecutive minutes',
+
+  user_journey: '# Find complete journey for user usr_123 in last hour\n# (Useful when user reports a problem)\n\n{service=~".+"}\n  | json\n  | userId="usr_123"\n  | __error__=""\n\n# This returns:\n# Every log line from every service that processed a request\n# for this user in the last hour — across checkout, payment,\n# inventory, auth, notifications\n\n# Sort chronologically to reconstruct what happened:\n# | line_format "{{.time}} [{{.service}}] {{.msg}}"\n# | sort by time asc\n\n# If the user says "my booking at 14:30 didn\'t go through"\n# you now have the complete timeline in one query.',
+
+  group_by: '# Group payment failures by reason in the last 24 hours\n\nsum by (reason) (\n  count_over_time(\n    {service="checkout-service"}\n    | json\n    | msg="payment.charge.failed"\n    [24h]\n  )\n)\n\n# Result:\n# card_declined: 847\n# insufficient_funds: 234\n# expired_card: 156\n# do_not_honor: 89\n# ETIMEDOUT: 12   ← this one needs investigation\n\n# Extend: group by payment method AND reason:\nsum by (paymentMethod, reason) (\n  count_over_time(\n    {service="checkout-service"}\n    | json\n    | msg="payment.charge.failed"\n    [24h]\n  )\n)',
+};
+function showQuery(k){document.getElementById('query-output').textContent=QUERIES[k];}
+
+// VIZ 8: Cost
+function calcCost(){
+  var rps=parseInt(document.getElementById('c-rps').value);
+  var sz=parseInt(document.getElementById('c-size').value);
+  var pods=parseInt(document.getElementById('c-pods').value);
+  var lpr=parseInt(document.getElementById('c-lpr').value);
+  document.getElementById('c-rps-val').textContent=rps.toLocaleString();
+  document.getElementById('c-size-val').textContent=sz+'B';
+  document.getElementById('c-pods-val').textContent=pods;
+  document.getElementById('c-lpr-val').textContent=lpr;
+
+  var appLinesPerSec=rps*lpr;
+  var healthLinesPerSec=pods*2/60; // 2 probes/min per pod, /60 for per-sec
+  var totalPerSec=appLinesPerSec+healthLinesPerSec;
+  var rawGbDay=totalPerSec*sz*86400/1e9;
+
+  // After optimisations
+  var noHealthPerSec=appLinesPerSec; // drop health checks
+  var sampledPerSec=noHealthPerSec*0.15; // 10% happy + all errors (~15% effective)
+  var sampledGbDay=sampledPerSec*sz*86400/1e9;
+  var reduction=(1-sampledGbDay/rawGbDay)*100;
+
+  document.getElementById('cost-output').innerHTML=[
+    'Volume breakdown (before any optimisation):',
+    '  App logs:        '+appLinesPerSec.toLocaleString()+' lines/sec  ('+rps.toLocaleString()+' req × '+lpr+' lines)',
+    '  Health checks:   '+Math.round(healthLinesPerSec)+' lines/sec  ('+pods+' pods × 2 probes/min)',
+    '  Total:           '+Math.round(totalPerSec).toLocaleString()+' lines/sec',
+    '  Raw data/day:    '+(rawGbDay<1?(rawGbDay*1024).toFixed(0)+'MB':rawGbDay.toFixed(1)+'GB'),
+    '  Datadog cost/mo: ~$'+(rawGbDay*30*2.50).toFixed(0),
+    '',
+    'After: suppress health checks + 10% sample of happy path:',
+    '  Final lines/sec: '+Math.round(sampledPerSec).toLocaleString()+' ('+Math.round(reduction)+'% reduction)',
+    '  Data/day:        '+(sampledGbDay<1?(sampledGbDay*1024).toFixed(0)+'MB':sampledGbDay.toFixed(1)+'GB'),
+    '  Loki cost/mo:    ~$'+(sampledGbDay*30*0.50).toFixed(0),
+    '  Datadog cost/mo: ~$'+(sampledGbDay*30*2.50).toFixed(0),
+    '',
+    'Biggest wins:',
+    '  Health check suppression saves: '+Math.round(healthLinesPerSec*sz*86400/1e9*30*2.5)+' $/month (Datadog)',
+    '  Log level=info (vs debug):      could save 50-80% of app volume',
+    '  Happy-path sampling (10%):      saves ~85% of healthy request logs',
+  ].join('\n');
+}
+
+// Init
+showLogCompare('unstructured');
+showAnatomyScenario('payment_fail');
+showLevel('payment_declined');
+showContext('minimum');
+calcLogVolume();
+showStack('loki');
+showQuery('find_errors');
+calcCost();
+</script>
+</body>
+</html>
