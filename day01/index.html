@@ -728,9 +728,9 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 
   <p>That's the <strong>HTTP request and response</strong> — your application protocol, finally running. The server receives your request, runs your code, queries your database, and sends back a response. The flight duration is your server's processing time. Everything before this was the airport. This is the only phase your backend code controls.</p>
 
-  <p><strong>Fifth: staying inside the airport.</strong> You land. You have another flight in two hours. You could go home, come back, check in again, go through passport control again, find the gate again. Or you could stay airside. Skip everything except the gate. The second journey costs a fraction of the first.</p>
+  <p><strong>Fifth: the connecting flight.</strong> You land in Dubai. In ninety minutes you board again to Mumbai. Nobody suggests you leave the airport, go home, come back through departures, check in again, clear passport control again, and find a new gate. You have a connecting flight — you stay airside. Walk to the next gate. Board. Done. The second flight costs almost nothing extra to start.</p>
 
-  <p>That's <strong>HTTP keep-alive and connection pooling</strong>. Instead of tearing down the TCP connection after each request — forcing the next request to redo DNS, TCP, and TLS from scratch — the connection stays open. The next request skips straight to sending data. On a 50ms round-trip link, this saves 100-200ms per request. I've watched teams cut API latency by 80% purely by enabling connection pooling. No server changes. No code changes. Just not going home between flights.</p>
+  <p>That's <strong>HTTP keep-alive and connection pooling</strong>. When your application needs to make multiple requests to the same server — and it almost always does — there's no reason to tear down the TCP connection after each one and rebuild it from scratch. The connection stays open. The next request skips DNS, skips the TCP handshake, skips TLS negotiation, and goes straight to sending data. On a 50ms round-trip link, each reused connection saves 100-200ms. I've watched teams cut API latency by 80% purely by enabling connection pooling. No server changes. No code changes. Just not leaving the airport between flights.</p>
 
   <div class="callout insight">
     <div class="callout-icon">✈️</div>
@@ -775,7 +775,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
       <button class="viz-btn" onclick="showAirport('tls')">🛂 Passport control → TLS</button>
       <button class="viz-btn" onclick="showAirport('tcp')">🎫 Boarding gate → TCP</button>
       <button class="viz-btn" onclick="showAirport('http')">✈️ The flight → HTTP</button>
-      <button class="viz-btn" onclick="showAirport('keepalive')">🏠 Stay in airport → Keep-alive</button>
+      <button class="viz-btn" onclick="showAirport('keepalive')">🔁 Connecting flight → Keep-alive</button>
     </div>
     <div id="airport-deeplink" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:16px;min-height:16px"></div>
 
@@ -1954,7 +1954,7 @@ You'll see DNS/TCP/TLS/TTFB for real — the numbers this page actually paid.
 
 <div class="section" id="s-closing-hook" style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
   <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
-    Every HTTP request is just another passenger. Some get delayed at the departure board — a cold DNS miss adds 100ms before a socket opens. Some get held up at passport control — TLS 1.2 costs an extra round-trip on every new connection. Some wait at the gate — TCP setup on every request because nobody enabled connection pooling. Very few are actually delayed on the plane itself.
+    Every HTTP request is just another passenger. Some get delayed at the departure board — a cold DNS miss adds 100ms before a socket opens. Some get held up at passport control — TLS 1.2 costs an extra round-trip on every new connection. Some miss their connecting flight — TCP and TLS rebuilt from scratch on every request because nobody enabled connection pooling. Very few are actually delayed on the plane itself.
   </p>
   <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:0">
     The next time someone says "our API is slow" — ask: <em style="color:var(--accent)">which checkpoint?</em>
