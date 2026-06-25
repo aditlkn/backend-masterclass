@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 19: Distributed Tracing — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--purple);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.var{color:#e5c07b;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.trace-row{display:flex;align-items:center;margin-bottom:5px;}
+.trace-svc{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);width:160px;min-width:160px;text-align:right;padding-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.trace-timeline{flex:1;position:relative;height:22px;}
+.trace-bar{position:absolute;height:18px;border-radius:3px;top:2px;display:flex;align-items:center;padding:0 5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;cursor:pointer;transition:opacity .12s;}
+.trace-bar:hover{opacity:.8;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--purple);color:var(--purple);background:rgba(168,127,255,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 19 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-why">Why Tracing Exists</a>
+  <a href="#s-anatomy">Trace Anatomy</a>
+  <a href="#s-propagation">Context Propagation</a>
+  <a href="#s-sampling">Sampling</a>
+  <a href="#s-otel">OpenTelemetry</a>
+  <a href="#s-backends">Backends</a>
+  <a href="#s-spans">Span Attributes</a>
+  <a href="#s-reading">Reading Traces</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day19/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day19/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 19 · Distributed Tracing</div>
+  <h1>The checkout took 4 seconds.<br>Which of your 12 services<br><em>was the culprit?</em></h1>
+  <p class="hero-sub">Logs tell you what happened on one service. Metrics tell you something was slow. Distributed tracing tells you the complete path a single request took across every service, exactly how long each step took, and precisely where time was lost. It's the difference between guessing and knowing.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--purple)"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>OpenTelemetry · Jaeger · Tempo · W3C TraceContext</div>
+  </div>
+</div>
+
+<!-- S1 -->
+<div class="section" id="s-why">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why logs and metrics aren't enough</h2>
+  <p>In a monolith, debugging a slow request is straightforward: grep the logs for the request ID, read them in order, find the slow query. In a distributed system with 12 services, a single user request fans out across them — the API gateway calls the auth service, which calls the user service, which calls the session store; meanwhile the gateway also calls the product service, which queries the database, which hits a replica. Logs for all of these exist, scattered across 12 different log streams with no shared structure and no way to connect them.</p>
+  <p>Metrics tell you "the checkout endpoint's P99 latency spiked to 4 seconds at 14:32." They don't tell you whether those 4 seconds were in your service, in the payment gateway, in a database query, or in a Redis call. You know something is wrong. You don't know where.</p>
+  <p>Distributed tracing solves this by attaching a <strong>trace ID</strong> to every request at the entry point and propagating it through every service call, every database query, every cache lookup. When you look up that trace ID in your tracing backend, you see the complete journey — every hop, every duration, every attribute — assembled into a single unified view.</p>
+  <h3>The three pillars of observability</h3>
+  <ul>
+    <li><strong>Logs:</strong> What happened. Unstructured events with context. Cheap to produce, expensive to query at scale.</li>
+    <li><strong>Metrics:</strong> How the system is behaving over time. Aggregated numbers: request rates, error rates, latency percentiles. Cheap to store, fast to query, but lossy — they can't tell you about an individual request.</li>
+    <li><strong>Traces:</strong> The path of a specific request through the system. High-cardinality context about individual operations. Expensive to store, but irreplaceable for root cause analysis across service boundaries.</li>
+  </ul>
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>Traces connect logs and metrics</strong>
+      <p>The trace ID becomes a universal correlation key. A metric spike → find traces from that period → click into a trace → see which span was slow → jump to logs for that service filtered by trace ID → see exactly what the service was doing. Traces are the connective tissue between all three pillars.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Observability signals — what each tells you about a slow checkout</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showSignal('logs')">Logs only</button>
+      <button class="viz-btn" onclick="showSignal('metrics')">Metrics only</button>
+      <button class="viz-btn" onclick="showSignal('traces')">Traces only</button>
+      <button class="viz-btn" onclick="showSignal('all')">All three together</button>
+    </div>
+    <div id="signal-output" class="mono-out" style="min-height:160px">Select a signal above.</div>
+  </div>
+</div>
+
+<!-- S2 -->
+<div class="section" id="s-anatomy">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Trace anatomy: traces, spans, and attributes</h2>
+  <p>A <strong>trace</strong> represents the entire journey of one request. It has a unique <strong>trace ID</strong> (128-bit, 32-char hex). Every operation creates a <strong>span</strong> — a named, timed operation with start time, end time, and attributes. Spans form a tree: the root span is created at the entry point; child spans are created by downstream calls with the calling span as their parent.</p>
+  <h3>The anatomy of a span</h3>
+  <ul>
+    <li><strong>Trace ID:</strong> Shared by all spans in the trace. The correlation key.</li>
+    <li><strong>Span ID:</strong> Unique for this operation (16-char hex).</li>
+    <li><strong>Parent span ID:</strong> Absent for the root span.</li>
+    <li><strong>Operation name:</strong> <code>checkout.payment</code>, <code>db.query</code>, <code>redis.get</code>.</li>
+    <li><strong>Start / end time:</strong> High-precision timestamps.</li>
+    <li><strong>Status:</strong> OK, ERROR, or UNSET.</li>
+    <li><strong>Attributes:</strong> Key-value pairs. <code>http.method=POST</code>, <code>db.statement=SELECT...</code>, <code>user.id=123</code>.</li>
+    <li><strong>Events:</strong> Timestamped logs within the span. "Cache miss at T+234ms", "Retry #2 at T+891ms".</li>
+  </ul>
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Span names must be low-cardinality</strong>
+      <p>Span names are used for aggregation — "how long does the payment span typically take?" If you put high-cardinality values in span names (<code>GET /orders/847291</code> instead of <code>GET /orders/{id}</code>), you get millions of unique span types and lose aggregation entirely. Keep names to route patterns or operation types. Put specific IDs in span <em>attributes</em>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Trace waterfall — click a span to inspect it</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="loadTrace('happy')">Happy path (340ms)</button>
+      <button class="viz-btn" onclick="loadTrace('slow_db')">Slow DB query (2.1s)</button>
+      <button class="viz-btn" onclick="loadTrace('payment_fail')">Payment timeout (3.4s)</button>
+      <button class="viz-btn" onclick="loadTrace('n_plus_one')">N+1 queries (1.8s)</button>
+    </div>
+    <div style="margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
+      <span id="trace-id-display">trace_id: —</span> &nbsp;·&nbsp; <span id="trace-total-display">total: —</span>
+    </div>
+    <div id="trace-waterfall" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 12px;min-height:180px"></div>
+    <div id="span-detail" class="mono-out" style="margin-top:12px;font-size:11.5px;min-height:60px;display:none"></div>
+  </div>
+</div>
+
+<!-- S3 -->
+<div class="section" id="s-propagation">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Context propagation: crossing service boundaries</h2>
+  <p>The trace ID must travel from service to service — across HTTP headers, gRPC metadata, and message queue payloads. The W3C TraceContext standard defines how:</p>
+  <p><code>traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01</code></p>
+  <p>Format: <code>version-traceID-parentSpanID-flags</code>. The flags byte controls sampling: <code>01</code> = sampled, <code>00</code> = not sampled. The parent span ID is the calling service's span — child services use this to establish the parent-child relationship.</p>
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Missing propagation = broken traces</strong>
+      <p>If Service A doesn't inject <code>traceparent</code> when calling Service B, Service B creates a new root span with no parent. You get two disconnected traces instead of one. The most common cause: manually setting headers and accidentally overwriting OTel's injected traceparent. Always merge headers, never replace them.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Context propagation — how trace ID crosses service boundaries</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPropagation('http')">HTTP call</button>
+      <button class="viz-btn" onclick="showPropagation('grpc')">gRPC call</button>
+      <button class="viz-btn" onclick="showPropagation('kafka')">Kafka message</button>
+      <button class="viz-btn" onclick="showPropagation('broken')">Broken propagation</button>
+    </div>
+    <div id="propagation-output" class="mono-out" style="font-size:12px;min-height:160px">Select a transport above.</div>
+  </div>
+</div>
+
+<!-- S4 -->
+<div class="section" id="s-sampling">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Sampling: you can't keep every trace</h2>
+  <p>At 10,000 requests per second, 100% sampling generates terabytes per day. Sampling decides which traces to keep.</p>
+  <h3>Head-based sampling</h3>
+  <p>Decision at the root span. If sampled, the <code>traceparent</code> flags byte (<code>01</code>) tells all downstream services to keep their spans. Simple, low overhead. Downside: you don't know at the start whether this trace will be interesting — you might discard an error that happens later.</p>
+  <h3>Tail-based sampling</h3>
+  <p>Collect all spans, then decide after the trace completes based on its properties — was there an error? Was it slow? Did it touch a critical path? Implemented in the OTel Collector's tail sampling processor. More intelligent but requires buffering spans in memory until the trace completes.</p>
+  <h3>Smart sampling in practice</h3>
+  <p>Start with 100% in development, 10% head-based in production plus always-keep for errors and slow requests. This captures what matters while reducing storage by 80-90%.</p>
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>Sample in the Collector, not the SDK</strong>
+      <p>Configure the OTel SDK at 100% and do sampling in the OTel Collector. This lets you change sampling policy without deploying application code, and enables tail-based sampling — impossible at the SDK level because the SDK doesn't see the completed trace.</p>
+    </div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Sampling strategies — coverage vs storage cost</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Requests per second: <span id="rps-val" style="color:var(--accent)">1000</span></label>
+        <input type="range" class="viz-slider" id="rps-slider" min="100" max="50000" step="100" value="1000" oninput="calcSampling()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Error rate: <span id="err-val" style="color:var(--accent)">2%</span></label>
+        <input type="range" class="viz-slider" id="err-slider" min="0" max="20" step="0.5" value="2" oninput="calcSampling()">
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showSampling('always_on')">100% (all traces)</button>
+      <button class="viz-btn" onclick="showSampling('head_10')">10% head-based</button>
+      <button class="viz-btn" onclick="showSampling('head_1')">1% head-based</button>
+      <button class="viz-btn" onclick="showSampling('smart')">Smart: errors + slow + 5%</button>
+    </div>
+    <div id="sampling-output" class="mono-out" style="font-size:12px;min-height:120px">Select a strategy above.</div>
+  </div>
+</div>
+
+<!-- S5 -->
+<div class="section" id="s-otel">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>OpenTelemetry: the standard instrumentation API</h2>
+  <p>OpenTelemetry (OTel) is the CNCF standard for telemetry. Instrument once with OTel, route to any backend — Jaeger, Tempo, Honeycomb, Datadog — without changing application code. The key components:</p>
+  <ul>
+    <li><strong>API:</strong> The interface your code calls. <code>tracer.startSpan()</code>, <code>span.setAttribute()</code>, <code>span.end()</code>.</li>
+    <li><strong>SDK:</strong> Implements the API. Handles sampling, batching, export.</li>
+    <li><strong>Auto-instrumentation:</strong> Automatically creates spans for HTTP, database drivers, Redis, Kafka — without any code changes.</li>
+    <li><strong>OTel Collector:</strong> A standalone process between services and backends. Handles sampling, PII scrubbing, fan-out to multiple backends.</li>
+  </ul>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">OpenTelemetry — Node.js setup and manual spans</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// instrumentation.ts — loaded BEFORE application code</span>
+<span class="kw">import</span> { NodeSDK } <span class="kw">from</span> <span class="str">'@opentelemetry/sdk-node'</span>;
+<span class="kw">import</span> { OTLPTraceExporter } <span class="kw">from</span> <span class="str">'@opentelemetry/exporter-trace-otlp-http'</span>;
+<span class="kw">import</span> { Resource } <span class="kw">from</span> <span class="str">'@opentelemetry/resources'</span>;
+<span class="kw">import</span> { SemanticResourceAttributes <span class="kw">as</span> SRA } <span class="kw">from</span> <span class="str">'@opentelemetry/semantic-conventions'</span>;
+<span class="kw">import</span> { getNodeAutoInstrumentations } <span class="kw">from</span> <span class="str">'@opentelemetry/auto-instrumentations-node'</span>;
+<span class="kw">import</span> { ParentBasedSampler, TraceIdRatioBasedSampler } <span class="kw">from</span> <span class="str">'@opentelemetry/sdk-trace-base'</span>;
+
+<span class="kw">const</span> sdk = <span class="kw">new</span> <span class="ty">NodeSDK</span>({
+  resource: <span class="kw">new</span> <span class="ty">Resource</span>({
+    [SRA.SERVICE_NAME]:    <span class="str">'checkout-service'</span>,
+    [SRA.SERVICE_VERSION]: process.env.APP_VERSION,
+    [SRA.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV,
+  }),
+  traceExporter: <span class="kw">new</span> <span class="ty">OTLPTraceExporter</span>({
+    url: <span class="str">'http://otel-collector:4318/v1/traces'</span>,
+  }),
+  sampler: <span class="kw">new</span> <span class="ty">ParentBasedSampler</span>({
+    root: <span class="kw">new</span> <span class="ty">TraceIdRatioBasedSampler</span>(<span class="num">1.0</span>), <span class="cm">// 100% — sample in Collector</span>
+  }),
+  instrumentations: [<span class="fn">getNodeAutoInstrumentations</span>()],
+  <span class="cm">// Auto-instruments: http, express, pg, redis, mongodb, kafka, grpc</span>
+});
+sdk.<span class="fn">start</span>();
+
+<span class="cm">// Manual span for custom business logic</span>
+<span class="kw">import</span> { trace, SpanStatusCode } <span class="kw">from</span> <span class="str">'@opentelemetry/api'</span>;
+<span class="kw">const</span> tracer = trace.<span class="fn">getTracer</span>(<span class="str">'checkout-service'</span>);
+
+<span class="kw">async function</span> <span class="fn">processCheckout</span>(orderId: <span class="ty">string</span>, userId: <span class="ty">string</span>) {
+  <span class="kw">return</span> tracer.<span class="fn">startActiveSpan</span>(<span class="str">'checkout.process'</span>, <span class="kw">async</span> (span) => {
+    span.<span class="fn">setAttributes</span>({ <span class="str">'order.id'</span>: orderId, <span class="str">'user.id'</span>: userId });
+    <span class="kw">try</span> {
+      <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">chargePayment</span>(orderId);
+      span.<span class="fn">setStatus</span>({ code: SpanStatusCode.OK });
+      <span class="kw">return</span> result;
+    } <span class="kw">catch</span> (err) {
+      span.<span class="fn">setStatus</span>({ code: SpanStatusCode.ERROR, message: (err <span class="kw">as</span> <span class="ty">Error</span>).message });
+      span.<span class="fn">recordException</span>(err <span class="kw">as</span> <span class="ty">Error</span>);
+      <span class="kw">throw</span> err;
+    } <span class="kw">finally</span> {
+      span.<span class="fn">end</span>();  <span class="cm">// always end the span</span>
+    }
+  });
+}</pre>
+  </div>
+</div>
+
+<!-- S6 -->
+<div class="section" id="s-backends">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Tracing backends</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Backend</th><th>Type</th><th>Storage</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td>Grafana Tempo</td><td>OSS / managed</td><td>Object storage (S3)</td><td>High volume, low cost, Grafana ecosystem</td></tr>
+        <tr><td>Jaeger</td><td>Open source</td><td>Cassandra / Elasticsearch</td><td>Teams wanting full control</td></tr>
+        <tr><td>Honeycomb</td><td>Managed SaaS</td><td>Columnar (proprietary)</td><td>High-cardinality queries, deep analysis</td></tr>
+        <tr><td>Datadog APM</td><td>Managed SaaS</td><td>Proprietary</td><td>Full-stack observability in Datadog</td></tr>
+        <tr><td>AWS X-Ray</td><td>Managed SaaS</td><td>Proprietary</td><td>AWS-native, Lambda tracing</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Recommended self-hosted stack:</strong> Grafana Tempo (traces stored in S3 at ~$0.02/GB/month) + Jaeger Query UI for the waterfall view. Much cheaper than Elasticsearch-based backends. Both speak OTLP natively.</p>
+  <p><strong>Honeycomb</strong> is the right choice when you need to query traces by arbitrary dimensions — "group slow traces by payment method and user country" — which Jaeger/Tempo don't support well.</p>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Backend selection — which fits your situation</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showBackend('startup')">Early-stage startup</button>
+      <button class="viz-btn" onclick="showBackend('selfhosted')">Self-hosted preference</button>
+      <button class="viz-btn" onclick="showBackend('aws')">AWS-native stack</button>
+      <button class="viz-btn" onclick="showBackend('highvol')">High volume (&gt;1B spans/day)</button>
+      <button class="viz-btn" onclick="showBackend('analysis')">Deep analysis needs</button>
+    </div>
+    <div id="backend-output" class="mono-out" style="font-size:12px;min-height:120px">Select a scenario above.</div>
+  </div>
+</div>
+
+<!-- S7 -->
+<div class="section" id="s-spans">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Span attributes: what to put on every span</h2>
+  <p>OTel defines semantic conventions — standard attribute names for common operations. Auto-instrumentation populates most of these. Add business context manually on the root span.</p>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Semantic conventions + business context attributes</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="cm">// HTTP server span (auto-instrumented)</span>
+{ <span class="str">'http.method'</span>: <span class="str">'POST'</span>, <span class="str">'http.route'</span>: <span class="str">'/checkout'</span>,  <span class="cm">// LOW cardinality!</span>
+  <span class="str">'http.status_code'</span>: <span class="num">200</span>, <span class="str">'net.peer.ip'</span>: <span class="str">'1.2.3.4'</span> }
+
+<span class="cm">// Database span (auto-instrumented by pg driver)</span>
+{ <span class="str">'db.system'</span>: <span class="str">'postgresql'</span>, <span class="str">'db.name'</span>: <span class="str">'ticketdb'</span>,
+  <span class="str">'db.operation'</span>: <span class="str">'SELECT'</span>, <span class="str">'db.sql.table'</span>: <span class="str">'orders'</span>,
+  <span class="str">'db.statement'</span>: <span class="str">'SELECT * FROM orders WHERE id=$1'</span> }
+
+<span class="cm">// Business context (add manually to root span)</span>
+span.<span class="fn">setAttributes</span>({
+  <span class="str">'user.id'</span>:           userId,
+  <span class="str">'user.plan'</span>:         <span class="str">'pro'</span>,
+  <span class="str">'order.id'</span>:          orderId,
+  <span class="str">'order.value_cents'</span>: <span class="num">15000</span>,
+  <span class="str">'event.id'</span>:          eventId,
+  <span class="str">'seat.tier'</span>:         <span class="str">'premium'</span>,
+});
+
+<span class="cm">// Events (structured logs within a span)</span>
+span.<span class="fn">addEvent</span>(<span class="str">'cache.miss'</span>, { <span class="str">'cache.key'</span>: <span class="str">`event:\${eventId}:seats`</span> });
+span.<span class="fn">addEvent</span>(<span class="str">'retry.attempt'</span>, { <span class="str">'retry.count'</span>: <span class="num">2</span>, <span class="str">'retry.delay_ms'</span>: <span class="num">750</span> });</pre>
+  </div>
+</div>
+
+<!-- S8 -->
+<div class="section" id="s-reading">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Reading traces: patterns that reveal problems</h2>
+  <p>A trace waterfall shows each span as a horizontal bar. Child spans are indented. Total trace duration is the root span's width. Four patterns appear repeatedly in production traces:</p>
+  <ul>
+    <li><strong>N+1 queries:</strong> Many identical spans in sequence, one per list item. Fix: batch into one query.</li>
+    <li><strong>Unnecessary sequential calls:</strong> Independent calls starting one after another. Fix: <code>Promise.all()</code> — duration drops from sum to max.</li>
+    <li><strong>Connection pool wait:</strong> Large gap before first child span. The root is doing nothing. Cause: waiting for a DB connection. Fix: increase pool size or reduce connection hold time.</li>
+    <li><strong>Fat root, thin children:</strong> Root span takes 900ms, children total 80ms. 820ms unaccounted. Cause: uninstrumented CPU work (JSON parsing, serialisation). Fix: add manual spans around suspected code.</li>
+  </ul>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Trace patterns — recognise problems in the waterfall</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPattern('n_plus_one')">N+1 queries</button>
+      <button class="viz-btn" onclick="showPattern('sequential')">Unnecessary sequential</button>
+      <button class="viz-btn" onclick="showPattern('pool_wait')">Connection pool wait</button>
+      <button class="viz-btn" onclick="showPattern('fat_root')">Uninstrumented CPU</button>
+      <button class="viz-btn" onclick="showPattern('parallel')">After fix (parallel)</button>
+    </div>
+    <div id="pattern-output" class="mono-out" style="font-size:12px;min-height:180px">Select a pattern above.</div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">OTel Collector pipelines — build one for your needs</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showCollector('basic')">Basic: app → Jaeger</button>
+      <button class="viz-btn" onclick="showCollector('tail_sampling')">Tail sampling (keep errors)</button>
+      <button class="viz-btn" onclick="showCollector('multi_backend')">Fan-out to multiple backends</button>
+      <button class="viz-btn" onclick="showCollector('scrubbing')">PII scrubbing</button>
+    </div>
+    <div id="collector-output" class="mono-out" style="font-size:12px;min-height:160px">Select a pipeline above.</div>
+  </div>
+</div>
+
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Sampling cost calculator — spans, storage, monthly cost</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Requests per second: <span id="rps2-val" style="color:var(--accent)">1000</span></label>
+        <input type="range" class="viz-slider" id="rps2-slider" min="100" max="50000" step="100" value="1000" oninput="calcStorage()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Avg spans per trace: <span id="spans-val" style="color:var(--accent)">8</span></label>
+        <input type="range" class="viz-slider" id="spans-slider" min="2" max="50" value="8" oninput="calcStorage()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Sample rate: <span id="sample-rate-val" style="color:var(--accent)">10%</span></label>
+        <input type="range" class="viz-slider" id="sample-rate-slider" min="1" max="100" value="10" oninput="calcStorage()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Span size (bytes): <span id="span-size-val" style="color:var(--accent)">500B</span></label>
+        <input type="range" class="viz-slider" id="span-size-slider" min="100" max="5000" step="100" value="500" oninput="calcStorage()">
+      </div>
+    </div>
+    <div id="storage-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- PROD -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+  <h3>Auto-instrumentation gets you 80% of the way</h3>
+  <p>OTel auto-instrumentation libraries create spans for HTTP, database queries, Redis, gRPC, and Kafka automatically. For most services this alone is useful. The remaining 20%: business context attributes on the root span, and manual spans for complex business logic.</p>
+  <h3>The trace ID belongs in every log line</h3>
+  <p>Emit the trace ID and span ID in every log line. Now logs and traces are connected: find a trace → jump to logs filtered by trace ID. Find an error log → jump to its trace. Without this connection, logs and traces are separate islands.</p>
+  <h3>15-day retention is usually enough</h3>
+  <p>Traces are primarily useful for debugging in the immediate aftermath of an incident. 15 days covers most post-incident investigations. Use metrics and logs for longer-term analysis.</p>
+</div>
+
+<!-- NOBODY -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+  <h3>Clock skew breaks trace ordering</h3>
+  <p>A child span on Service B can appear to start before the parent span on Service A if B's clock is ahead. This causes negative durations in the parent-child gap — confusing but not a code bug. It's clock drift between servers. NTP synchronisation helps but doesn't fully eliminate it.</p>
+  <h3>Async work needs explicit context serialisation</h3>
+  <p>When you enqueue a job and a worker processes it later, the trace context must travel with the job payload. Most queue libraries don't propagate trace context automatically. The worker's spans should be children of the enqueuing span — but without explicit serialisation/deserialisation in the job payload, the worker starts a fresh disconnected root trace.</p>
+  <h3>Tracing async work is harder than synchronous calls</h3>
+  <p>Always serialise the trace context into job payloads: <code>{ ...payload, _traceContext: propagator.inject({}) }</code>. In the worker: extract and restore the context before creating any spans.</p>
+</div>
+
+<!-- DECISION -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Adding tracing to a service</h2>
+  <p class="ds-sub">Do these in order. Each step builds on the previous.</p>
+  <div class="ds-steps">
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">1</div><div class="ds-body"><div class="ds-title">Choose a backend first</div><div class="ds-detail">Self-hosted on budget: Grafana Tempo + Jaeger UI. Managed, need deep queries: Honeycomb. Already on Datadog: Datadog APM. The backend doesn't affect instrumentation code — you're using OTel either way.<br><span class="ds-tag ds-tag-info">Tempo for cost · Honeycomb for query power</span></div></div></div>
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">2</div><div class="ds-body"><div class="ds-title">Deploy the OTel Collector before instrumenting</div><div class="ds-detail">Collector is the receiver. Services send to Collector; Collector sends to backend. Having it running before you instrument means traces start flowing immediately. Without it, SDK export errors silently drop spans.<br><span class="ds-tag ds-tag-ok">Collector first, then instrument services</span></div></div></div>
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">3</div><div class="ds-body"><div class="ds-title">Enable auto-instrumentation — don't write manual spans yet</div><div class="ds-detail">Install OTel SDK with auto-instrumentation. Verify traces appear in your backend. Start at 100% sampling to confirm everything works before tuning. <code>getNodeAutoInstrumentations()</code> gives you HTTP, DB, Redis, Kafka spans instantly.<br><span class="ds-tag ds-tag-ok">auto-instrument first, verify, then add custom spans</span></div></div></div>
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">4</div><div class="ds-body"><div class="ds-title">Add business context to root spans</div><div class="ds-detail">Enrich root spans: user.id, org.id, plan tier, order IDs, entity IDs. This makes traces searchable by business dimension. Without business context, traces are technical artifacts nobody outside engineering can use.<br><span class="ds-tag ds-tag-ok">business context makes traces useful to everyone</span></div></div></div>
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">5</div><div class="ds-body"><div class="ds-title">Add trace ID to every log line</div><div class="ds-detail">Connect traces to logs: emit <code>traceId</code> and <code>spanId</code> in every log message. Now a trace links to logs, and logs link to traces. The two systems become one unified debugging tool.<br><span class="ds-tag ds-tag-stop">traces without log correlation are half as useful</span></div></div></div>
+    <div class="ds-step"><div class="ds-line"></div><div class="ds-num">6</div><div class="ds-body"><div class="ds-title">Configure smart sampling in the Collector</div><div class="ds-detail">Once confirmed working: always keep errors and traces over 1s, sample 10% of everything else. Reduces storage ~90% while keeping all interesting traces. Revisit thresholds quarterly as traffic grows.<br><span class="ds-tag ds-tag-warn">don't sample too aggressively early — you'll miss things</span></div></div></div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Checkout taking 4 seconds — trace reveals cache miss + N+1</div>
+    <div style="font-size:13px;color:var(--text2)">Reading a real trace · finding the bottleneck · fixing with evidence</div>
+  </div>
+  <a href="/day19/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">OTel Collector config, Tempo + Jaeger stack, trace-log correlation</div>
+    <div style="font-size:13px;color:var(--text2)">Complete collector.yaml · Docker Compose setup · Winston correlation</div>
+  </div>
+  <a href="/day19/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Distributed tracing checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">PRP</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Propagation works</div><p style="font-size:12.5px;color:var(--text3);margin:0">traceparent header is injected on every outbound call. Verify child service spans appear in the parent's trace.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">BIZ</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Business context</div><p style="font-size:12.5px;color:var(--text3);margin:0">Root span has user.id, order.id, entity IDs. Makes traces searchable by business dimension, not just technical.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">LOG</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Trace ID in logs</div><p style="font-size:12.5px;color:var(--text3);margin:0">Every log line emits traceId + spanId. Jump from trace to logs and back. Without this, they're disconnected.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">ERR</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Errors always kept</div><p style="font-size:12.5px;color:var(--text3);margin:0">Sampling never discards error traces. Always-sample-on-error in Collector. You need these when debugging.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">LOW</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Low-cardinality names</div><p style="font-size:12.5px;color:var(--text3);margin:0">Span names: route patterns (/orders/{id}), not values. IDs go in attributes. Never in names.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">COL</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Collector deployed</div><p style="font-size:12.5px;color:var(--text3);margin:0">OTel Collector between services and backend. Enables backend switching, tail sampling, PII scrubbing without deploys.</p></div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 120, active = null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s) { if (s.offsetTop <= pos) active = s.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, {passive:true});
+
+var SIGNALS = {
+  logs: 'LOGS ONLY\n\n[checkout-service 14:32:01] POST /checkout started — user=usr_123\n[checkout-service 14:32:01] Calling payment service...\n[checkout-service 14:32:05] Payment response received\n[checkout-service 14:32:05] POST /checkout 200 OK — duration=3847ms\n\nWhat you can see:\n  ✓ Checkout took 3.8 seconds\n  ✓ The payment call was involved\n  ✗ How long did the payment call itself take?\n  ✗ Was it payment or the DB behind payment?\n  ✗ Where in those 3.8s was the time spent?\n\nYou know WHAT happened. Not WHERE.',
+
+  metrics: 'METRICS ONLY\n\nDashboard at 14:32:\n  checkout_duration_p99:  3847ms  (spike from normal 340ms)\n  payment_calls_total:    1423    (normal)\n  payment_error_rate:     0.2%   (normal — no errors!)\n  checkout_error_rate:    0%\n\nWhat you can see:\n  ✓ Checkout P99 is at 4s (bad)\n  ✓ Payment isn\'t erroring\n  ✗ Is payment slow? Inventory? DB?\n  ✗ Which requests are affected?\n  ✗ What was happening inside those 3.8 seconds?\n\nYou know HOW BAD it is. Not WHERE the time went.',
+
+  traces: 'TRACES ONLY\n\nTrace: 4bf92f3577b34da6a3ce929d0e0e4736 (3847ms)\n\n  checkout-service       [████████████████████████████████] 3847ms\n    auth.validate        [█]                                  32ms\n    inventory.reserve    [████]                              180ms\n      db.query           [███]                               160ms\n    payment.charge       [████████████████████████]         3540ms  ← HERE\n      http.post stripe   [████████████████████████]         3538ms\n    notification.send    [█]                                  45ms\n\nWhat you can see:\n  ✓ payment.charge took 3540ms — this is the problem\n  ✓ The HTTP call to Stripe itself took 3538ms — not our code\n  ✓ inventory was fine (180ms)\n  ✓ auth and notification were not involved\n  ✓ Exact start/end of every operation\n\nYou know exactly WHERE the time went.',
+
+  all: 'ALL THREE TOGETHER — complete picture\n\nMetric alert: checkout P99 spikes to 3.8s at 14:32\n  → Click "View example trace" on the metric chart\n\nTrace: 4bf92f3577b34da6...\n  → Waterfall shows payment.charge = 3540ms\n  → Attribute: payment.provider=stripe, http.status_code=200\n  → Slow but no error — Stripe responding slowly, not failing\n  → Click "View logs for this span"\n\nLogs filtered by traceId=4bf92f..., service=checkout:\n  [14:32:01] Stripe API call: POST /v1/charges\n  [14:32:04] Stripe API response: 200 OK (3537ms)\n  → Stripe status page: degraded API at 14:30-15:15\n\nRoot cause in 90 seconds:\n  Stripe API degraded. Circuit breaker timeout was 10s, not 3s.\n  Fix: reduce Stripe timeout to 3s and add circuit breaker.\n\nAll three signals connected by the trace ID.'
+};
+function showSignal(k) { document.getElementById('signal-output').textContent = SIGNALS[k]; }
+
+var TRACES = {
+  happy: { id:'4bf92f3577b34da6a3ce929d0e0e4736', total:'340ms', spans:[
+    {name:'checkout-service',start:0,dur:340,color:'#5b8fff',detail:'Root span\nTotal: 340ms · Status: OK\nhttp.method: POST · http.route: /checkout\nuser.id: usr_123 · order.id: ord_456'},
+    {name:'  auth.validate',start:2,dur:28,color:'#a87fff',detail:'Auth token validation\n28ms — normal\ncache.hit: true'},
+    {name:'  inventory.reserve',start:32,dur:95,color:'#3ecf8e',detail:'Reserve seats\n95ms — normal\nseat.count: 2 · event.id: evt_789'},
+    {name:'    db.SELECT seats',start:38,dur:82,color:'#3ecf8e',detail:'SELECT seat FROM seats WHERE event_id=$1\n82ms — normal\ndb.rows_returned: 2',dim:true},
+    {name:'  payment.charge',start:130,dur:160,color:'#f5a623',detail:'Charge via Stripe\n160ms — normal\npayment.method: card · amount_cents: 15000'},
+    {name:'    http.POST stripe',start:133,dur:155,color:'#f5a623',detail:'Outbound HTTP to api.stripe.com\n155ms — normal Stripe P99\nhttp.status_code: 200',dim:true},
+    {name:'  db.UPDATE orders',start:295,dur:24,color:'#5b8fff',detail:'UPDATE orders SET status=confirmed\n24ms — normal'},
+    {name:'  notification.send',start:320,dur:12,color:'#505a78',detail:'Queue email (fire-and-forget)\n12ms push time'},
+  ]},
+  slow_db: { id:'a3ce929d0e0e47364bf92f3577b34da6', total:'2100ms', spans:[
+    {name:'checkout-service',start:0,dur:2100,color:'#5b8fff',detail:'Root span\nTotal: 2100ms\nStatus: OK (no error returned to user)'},
+    {name:'  auth.validate',start:2,dur:28,color:'#a87fff',detail:'28ms — unaffected'},
+    {name:'  inventory.reserve',start:32,dur:1870,color:'#f06060',detail:'⚠ 1870ms — almost all time spent here\nSlow due to db.SELECT inside'},
+    {name:'    db.SELECT seats',start:38,dur:1860,color:'#f06060',detail:'⚠ SLOW — 1860ms (normal: 80ms = 23× slower)\nSELECT seat FROM seats WHERE event_id=$1\n\nLikely causes:\n  • Missing index or index not used (table scan)\n  • Lock wait (another transaction holding rows)\n  • Query plan change (stale statistics)\n\nNext: EXPLAIN ANALYZE on this query.',dim:true},
+    {name:'  payment.charge',start:1910,dur:155,color:'#f5a623',detail:'155ms — unaffected (runs after inventory)'},
+    {name:'  db.UPDATE orders',start:2070,dur:18,color:'#5b8fff',detail:'18ms — normal'},
+  ]},
+  payment_fail: { id:'b34da64bf92f3577a3ce929d0e0e4736', total:'3400ms', spans:[
+    {name:'checkout-service',start:0,dur:3400,color:'#f06060',detail:'⚠ ERROR TRACE\n3400ms · Status: ERROR\nerror.message: Payment timeout after 3 retries'},
+    {name:'  auth.validate',start:2,dur:28,color:'#a87fff',detail:'28ms — unaffected'},
+    {name:'  inventory.reserve',start:32,dur:95,color:'#3ecf8e',detail:'95ms — unaffected'},
+    {name:'  payment [attempt 1]',start:130,dur:1000,color:'#f06060',detail:'⚠ TIMEOUT at 1000ms\nRetry #1 of 3 · Status: ERROR\nerror.type: TimeoutError'},
+    {name:'    http.POST stripe',start:132,dur:998,color:'#f06060',detail:'Timed out — no response from Stripe\nStripe API degraded',dim:true},
+    {name:'  payment [attempt 2]',start:1280,dur:1000,color:'#f06060',detail:'⚠ TIMEOUT retry #2\nBackoff: 150ms jitter'},
+    {name:'    http.POST stripe',start:1282,dur:998,color:'#f06060',detail:'Timed out again',dim:true},
+    {name:'  payment [attempt 3]',start:2530,dur:800,color:'#f06060',detail:'⚠ TIMEOUT retry #3\nCircuit breaker should open now'},
+    {name:'  fallback: queued',start:3340,dur:55,color:'#505a78',detail:'Circuit open fallback:\nOrder queued for async retry\nUser notified by email'},
+  ]},
+  n_plus_one: { id:'ce929d0e0e47364bf92f3577b34da6a3', total:'1820ms', spans:[
+    {name:'checkout-service',start:0,dur:1820,color:'#f5a623',detail:'⚠ N+1 QUERY PATTERN\n1820ms · 12 product lookups (1 per cart item)\nFix: SELECT * FROM products WHERE id IN (...)\nExpected after fix: ~340ms'},
+    {name:'  GET /cart/items',start:32,dur:42,color:'#3ecf8e',detail:'Returns 12 cart item IDs\nCode then loops and fetches each product\n\nFix:\n  const ids = cartItems.map(i => i.productId)\n  const products = await db.query(\n    "SELECT * FROM products WHERE id = ANY($1)", [ids]\n  )'},
+    {name:'  db.SELECT id=1',start:76,dur:18,color:'#f5a623',detail:'18ms each × 12 = 216ms just for products\nThis is N+1: 1 list + N individual queries'},
+    {name:'  db.SELECT id=2',start:96,dur:19,color:'#f5a623',detail:'Same query, different id'},
+    {name:'  db.SELECT id=3',start:117,dur:17,color:'#f5a623',detail:'Same query, different id'},
+    {name:'  db.SELECT id=4',start:136,dur:21,color:'#f5a623',detail:'Same query, different id'},
+    {name:'  ... 8 more queries',start:159,dur:160,color:'#505a78',detail:'8 more identical SELECT queries\nTotal: 12 queries for 12 products'},
+    {name:'  payment.charge',start:320,dur:165,color:'#3ecf8e',detail:'165ms — unaffected'},
+  ]},
+};
+
+var currentTrace = null;
+function loadTrace(key) {
+  currentTrace = TRACES[key];
+  var t = currentTrace;
+  document.getElementById('trace-id-display').textContent = 'trace_id: ' + t.id;
+  document.getElementById('trace-total-display').textContent = 'total: ' + t.total;
+  var wf = document.getElementById('trace-waterfall');
+  wf.innerHTML = '';
+  var totalMs = parseInt(t.total);
+  var W = wf.offsetWidth - 175;
+  t.spans.forEach(function(span) {
+    var row = document.createElement('div');
+    row.className = 'trace-row';
+    var svc = document.createElement('div');
+    svc.className = 'trace-svc';
+    svc.textContent = span.name;
+    svc.style.fontSize = span.dim ? '10px' : '11px';
+    var tl = document.createElement('div');
+    tl.className = 'trace-timeline';
+    var bar = document.createElement('div');
+    bar.className = 'trace-bar';
+    bar.style.left = (span.start / totalMs * W) + 'px';
+    bar.style.width = Math.max(4, span.dur / totalMs * W) + 'px';
+    bar.style.background = span.color;
+    bar.style.opacity = span.dim ? '0.55' : '1';
+    bar.textContent = span.dur + 'ms';
+    bar.onclick = (function(s) { return function() {
+      var el = document.getElementById('span-detail');
+      el.textContent = s.detail || s.name;
+      el.style.display = 'block';
+    }; })(span);
+    tl.appendChild(bar);
+    row.appendChild(svc);
+    row.appendChild(tl);
+    wf.appendChild(row);
+  });
+  document.getElementById('span-detail').style.display = 'none';
+}
+
+var PROPAGATION = {
+  http: 'HTTP CONTEXT PROPAGATION\n\nService A → Service B:\n\nService A (OTel auto-injects header):\n  outbound request headers:\n    traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\n    //              version  traceId(32)            parentSpanId(16) flags\n\nService B receives the call:\n  const ctx = propagator.extract(context.active(), req.headers);\n  context.with(ctx, () => {\n    const span = tracer.startSpan("process-request");\n    // span.traceId === same as Service A ✓\n    // span.parentId === Service A\'s span ID ✓\n  });\n\nWith OTel auto-instrumentation:\n  → Injection: automatic when using instrumented axios/http.request\n  → Extraction: automatic in Express/Fastify middleware\n  → You write none of this — it just works\n\nVerify: curl -v your-service → check traceparent in outbound requests',
+
+  grpc: 'gRPC CONTEXT PROPAGATION\n\ngRPC uses "metadata" (equivalent to HTTP headers)\nSame traceparent header, different transport layer.\n\nClient (OTel auto-injects):\n  const metadata = new grpc.Metadata();\n  // OTel injects: metadata.set("traceparent", "00-...")\n  stub.checkout(request, metadata, callback);\n\nServer (OTel auto-extracts):\n  server.addService(CheckoutService, {\n    checkout(call, callback) {\n      // OTel extracts from call.metadata → active context\n      // Spans created here are automatically children ✓\n    }\n  });\n\ngRPC Deadline propagation:\n  gRPC deadlines propagate automatically — this is the\n  "pass deadlines not timeouts" pattern (Day 18).\n  TraceContext carries the trace.\n  gRPC metadata carries the deadline.',
+
+  kafka: 'KAFKA CONTEXT PROPAGATION\n\nKafka does NOT auto-propagate context. You must handle it.\n\nProducer (inject manually):\n  const headers = {};\n  propagator.inject(context.active(), {\n    set: (_, key, value) => { headers[key] = value; }\n  });\n  await producer.send({\n    topic: "orders",\n    messages: [{ key: orderId, value: JSON.stringify(payload),\n      headers: headers  // ← trace context here\n    }]\n  });\n\nConsumer (extract manually):\n  const ctx = propagator.extract(context.active(), {\n    get: (_, key) => msg.headers[key]?.toString(),\n    keys: () => Object.keys(msg.headers),\n  });\n  return context.with(ctx, async () => {\n    const span = tracer.startActiveSpan("process.order");\n    await processOrder(msg.value);\n    span.end();\n  });\n\nResult: producer trace and consumer trace are linked\nas ONE trace, even if hours separate them.',
+
+  broken: 'BROKEN PROPAGATION — the most common tracing bug\n\nSymptom: traces stop at service boundaries.\nJaeger shows a trace for Service A, and a separate\nunconnected trace for Service B with no parent.\n\nCause 1: manually setting headers overwrites traceparent\n  // BUG: this replaces ALL headers, including traceparent\n  const response = await fetch(url, {\n    headers: { "Content-Type": "application/json" }\n  });\n  // OTel had injected traceparent, but it was overwritten ↑\n\n  // FIX: merge headers\n  const otelHeaders = {};\n  propagator.inject(context.active(), { set:(h,k,v) => h[k]=v }, otelHeaders);\n  const response = await fetch(url, {\n    headers: { "Content-Type": "application/json", ...otelHeaders }\n  });\n\nCause 2: OTel SDK not loaded before require()\n  // BUG: import express before OTel is loaded\n  import express from "express"  // ← loaded before OTel\n  import "./instrumentation"     // ← OTel loaded too late\n\n  // FIX: instrumentation.ts must be first\n  import "./instrumentation"     // ← load OTel first\n  import express from "express"  // ← then everything else\n\nDiagnosis: curl -v your-service — check if outbound requests\nhave the traceparent header.',
+};
+function showPropagation(k) { document.getElementById('propagation-output').textContent = PROPAGATION[k]; }
+
+var currentRps = 1000, currentErr = 2;
+function calcSampling() {
+  currentRps = parseInt(document.getElementById('rps-slider').value);
+  currentErr = parseFloat(document.getElementById('err-slider').value);
+  document.getElementById('rps-val').textContent = currentRps.toLocaleString();
+  document.getElementById('err-val').textContent = currentErr + '%';
+}
+function showSampling(s) {
+  calcSampling();
+  var rps = currentRps, err = currentErr / 100;
+  var errPerSec = Math.round(rps * err);
+  var traced, note, col;
+  if (s === 'always_on') { traced = rps; note = 'All traces kept.'; col = 'var(--red)'; }
+  else if (s === 'head_10') { traced = Math.round(rps * 0.1); note = '10% head-based. Error traces: also 10% (90% of errors discarded!).'; col = 'var(--orange)'; }
+  else if (s === 'head_1') { traced = Math.round(rps * 0.01); note = '1% head-based. Almost all errors discarded.'; col = 'var(--red)'; }
+  else { traced = Math.round(rps * 0.05) + errPerSec; note = '5% base + 100% errors. Smart coverage.'; col = 'var(--green)'; }
+  var gbDay = traced * 8 * 500 * 86400 / (1024*1024*1024);
+  document.getElementById('sampling-output').innerHTML = [
+    'Traces kept/sec:  <span style="color:' + col + ';font-weight:700">' + traced.toLocaleString() + '</span>  (of ' + rps.toLocaleString() + ' total)',
+    'Spans/sec:        ' + (traced * 8).toLocaleString() + '  (@ 8 spans/trace)',
+    'Data/day:         ' + (gbDay < 1 ? (gbDay*1024).toFixed(0)+'MB' : gbDay.toFixed(1)+'GB'),
+    'Tempo cost/month: ~$' + (gbDay * 30 * 0.023).toFixed(2),
+    '', note,
+    s === 'head_1' ? '\n⚠ 1% means ~99% of errors are discarded. Use smart sampling instead.' : '',
+    s === 'smart' ? '\n✓ Best balance: captures all errors + slow traces + 5% of happy path.' : '',
+  ].filter(Boolean).join('\n');
+}
+
+var BACKENDS = {
+  startup: 'EARLY-STAGE STARTUP\n\nRecommendation: Grafana Cloud free tier or self-hosted Tempo\n\nGrafana Cloud free: 50GB traces/month — enough for early stage\nSelf-hosted: Tempo + Jaeger UI on existing infra = ~$0\n\nStart: 100% sampling (low traffic, data is tiny)\nFocus: get propagation right, add business context, connect to logs\n\nDon\'t: optimise sampling until you\'re >100 req/s\nUpgrade path: Grafana Cloud → self-hosted Tempo as you scale',
+
+  selfhosted: 'SELF-HOSTED PREFERENCE\n\nRecommendation: Grafana Tempo + Jaeger Query + OTel Collector\n\nArchitecture:\n  Services → OTel Collector → Grafana Tempo (S3 storage)\n                            → Jaeger Query UI (waterfall view)\n\nStorage cost: S3 at $0.023/GB/month\n  10GB/day = $7/month. Much cheaper than Elasticsearch.\n\nLimitation: search by trace ID, service, tags only.\n  No full-text attribute search (Honeycomb does this).\n\nOps requirements:\n  OTel Collector: 1 CPU, 512MB per 10K spans/sec\n  Grafana Tempo: scales with S3 (effectively serverless)',
+
+  aws: 'AWS-NATIVE STACK\n\nRecommendation: Grafana Tempo on AWS (not X-Ray)\n\nAWS X-Ray:\n  Pros: zero-ops, native Lambda, CloudWatch integration\n  Cons: expensive at scale, proprietary format, limited OTel support\n\nBetter option: Grafana Tempo on AWS\n  Storage: Tempo uses S3 natively ($0.023/GB/month)\n  Query: Grafana Cloud or self-hosted\n  OTel: full support, vendor-neutral\n  Cost: 5-10× cheaper than X-Ray at scale\n\nFor Lambda specifically:\n  X-Ray has the best Lambda cold-start instrumentation.\n  Use X-Ray for Lambda, OTel+Tempo for services on ECS/EKS.',
+
+  highvol: 'HIGH VOLUME (>1B spans/day)\n\nRecommendation: Grafana Tempo + aggressive tail sampling\n\nAt 1B spans/day:\n  All traces: ~500GB/day (500B/span)\n  10% sampling: 50GB/day\n  Smart tail sampling: 5-15GB/day\n\nTempo at scale:\n  Distributor → Ingester → S3 → Querier\n  All horizontally scalable.\n\nTail sampling config (OTel Collector):\n  Keep: all errors, all >2s traces, 0.1% of everything else\n  Result: 1-5% of spans kept → 5-25GB/day\n\nAlternative: Honeycomb for analysis-heavy workloads\n  Higher cost but much faster querying on high-cardinality data',
+
+  analysis: 'DEEP ANALYSIS NEEDS\n\nRecommendation: Honeycomb\n\nWhat Honeycomb does differently:\n  Columnar storage — every span attribute is independently queryable\n  BubbleUp — statistical comparison of error vs normal traces\n    "What\'s different about slow traces vs fast ones?"\n    Surfaces: datacenter=us-west, os=Android, version=2.1.3\n\nQueries only Honeycomb handles well:\n  "Group traces where checkout >2s by payment method and country"\n  "Find traces where db.rows_examined > 10000 AND cache.hit=false"\n\nIn Jaeger/Tempo: search by service, operation name, tags (limited)\nIn Honeycomb: every attribute indexed and queryable\n\nCost: per-event pricing\n  ~300M events/month → check honeycomb.io/pricing',
+};
+function showBackend(k) { document.getElementById('backend-output').textContent = BACKENDS[k]; }
+
+var PATTERNS = {
+  n_plus_one: 'N+1 QUERY — waterfall signature\n\n  ┌───────────────────────────────────────────────────────────┐\n  │ root-handler                                  [1200ms]   │\n  │   GET /cart (returns 12 items)                  [40ms]   │\n  │   db.SELECT WHERE id=1                          [15ms]   │\n  │   db.SELECT WHERE id=2                          [14ms]   │\n  │   db.SELECT WHERE id=3                          [16ms]   │\n  │   ... 9 more identical spans...                [~130ms]  │\n  └───────────────────────────────────────────────────────────┘\n\nSignature: many identical spans in sequence, one per list item.\n\nFix:\n  // Before: loop calling db.findById(id) 12 times\n  // After:\n  const products = await db.query(\n    "SELECT * FROM products WHERE id = ANY($1)", [ids]\n  );  // 1 query instead of 12\n\nAfter fix: db.SELECT WHERE id IN (1..12) [20ms]  ← all at once',
+
+  sequential: 'UNNECESSARY SEQUENTIAL CALLS — waterfall signature\n\n  ┌───────────────────────────────────────────────────────────┐\n  │ checkout-service                              [600ms]    │\n  │   inventory.check                             [120ms]    │\n  │                  payment.validate             [180ms]    │\n  │                              user.getProfile   [90ms]    │\n  └───────────────────────────────────────────────────────────┘\n\nAll three START AFTER the previous ends. But they\'re independent!\n\nFix:\n  // Before: sequential await\n  const inv = await inventory.check(items);\n  const pay = await payment.validate(card);\n  const usr = await user.getProfile(userId);\n\n  // After: parallel\n  const [inv, pay, usr] = await Promise.all([\n    inventory.check(items),\n    payment.validate(card),\n    user.getProfile(userId),\n  ]);\n  // Duration: max(120, 180, 90) = 180ms  (not 390ms)\n  // 54% faster.',
+
+  pool_wait: 'CONNECTION POOL WAIT — waterfall signature\n\n  ┌───────────────────────────────────────────────────────────┐\n  │ checkout-service                              [750ms]    │\n  │   [gap 350ms — root span doing nothing]                  │\n  │                    db.SELECT orders           [80ms]     │\n  │                                 db.UPDATE     [24ms]     │\n  └───────────────────────────────────────────────────────────┘\n\nLarge gap before first child span. Root is waiting.\n\nCauses:\n  • Connection pool exhausted — waiting for a free connection\n  • Slow connection establishment (no pool pre-warming)\n  • Uninstrumented synchronous init code\n\nDiagnosis: add a manual span:\n  const poolSpan = tracer.startSpan("db.pool.acquire");\n  const conn = await pool.connect();\n  poolSpan.end();  // if this shows 350ms: pool is exhausted\n\nFix: increase pool size (Day 11), or reduce connection hold time.',
+
+  fat_root: 'UNINSTRUMENTED CPU — fat root, thin children\n\n  ┌───────────────────────────────────────────────────────────┐\n  │ checkout-service                              [900ms]    │\n  │   db.query                  [80ms]                       │\n  │                redis.get    [3ms]                        │\n  │   [~817ms gap — WHERE IS THIS TIME?]                     │\n  └───────────────────────────────────────────────────────────┘\n\nRoot: 900ms. Children total: 83ms. 817ms unaccounted.\n\nCauses:\n  • JSON parsing of large response bodies\n  • Synchronous CPU computation\n  • Framework or middleware overhead not instrumented\n\nFix: add manual spans around suspected code:\n  const parseSpan = tracer.startSpan("json.parse");\n  const data = JSON.parse(largeResponse);\n  parseSpan.end();\n  // → reveals exactly where CPU time goes',
+
+  parallel: 'AFTER FIX — parallel calls\n\n  Before (sequential, 600ms):\n  ┌───────────────────────────────────────────────────────────┐\n  │ checkout-service                              [600ms]    │\n  │   inventory.check                             [120ms]    │\n  │                  payment.validate             [180ms]    │\n  │                              user.getProfile   [90ms]    │\n  └───────────────────────────────────────────────────────────┘\n\n  After (Promise.all, 220ms):\n  ┌───────────────────────────────────────────────────────────┐\n  │ checkout-service                              [220ms]    │\n  │   inventory.check                 [120ms]                │\n  │   payment.validate                     [180ms]           │\n  │   user.getProfile              [90ms]                    │\n  └───────────────────────────────────────────────────────────┘\n\nAll three start simultaneously.\nDuration = max(120, 180, 90) + ~40ms overhead = 220ms\n63% faster. The trace revealed this immediately.',
+};
+function showPattern(k) { document.getElementById('pattern-output').textContent = PATTERNS[k]; }
+
+var COLLECTORS = {
+  basic: '# otel-collector-config.yaml — basic setup\nreceivers:\n  otlp:\n    protocols:\n      grpc: { endpoint: 0.0.0.0:4317 }\n      http: { endpoint: 0.0.0.0:4318 }\n\nprocessors:\n  batch:\n    timeout: 1s\n    send_batch_size: 1024\n\nexporters:\n  jaeger:\n    endpoint: jaeger:14250\n    tls: { insecure: true }\n\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [jaeger]',
+
+  tail_sampling: '# otel-collector-config.yaml — tail sampling\nreceivers:\n  otlp:\n    protocols: { grpc: {}, http: {} }\n\nprocessors:\n  tail_sampling:\n    decision_wait: 10s       # buffer for 10s until trace complete\n    num_traces: 100000       # buffer up to 100K traces in memory\n    policies:\n      - name: keep-errors\n        type: status_code\n        status_code: { status_codes: [ERROR] }\n      - name: keep-slow\n        type: latency\n        latency: { threshold_ms: 1000 }\n      - name: keep-5pct\n        type: probabilistic\n        probabilistic: { sampling_percentage: 5 }\n\nexporters:\n  otlp:\n    endpoint: grafana-tempo:4317\n    tls: { insecure: true }\n\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [tail_sampling]\n      exporters: [otlp]',
+
+  multi_backend: '# otel-collector-config.yaml — fan-out\nreceivers:\n  otlp:\n    protocols: { grpc: {}, http: {} }\n\nprocessors:\n  batch: {}\n\nexporters:\n  otlp/tempo:\n    endpoint: grafana-tempo:4317\n    tls: { insecure: true }\n  otlp/honeycomb:\n    endpoint: api.honeycomb.io:443\n    headers:\n      x-honeycomb-team: "${HONEYCOMB_API_KEY}"\n      x-honeycomb-dataset: "production"\n  datadog:\n    api:\n      key: "${DATADOG_API_KEY}"\n      site: "datadoghq.com"\n\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [otlp/tempo, otlp/honeycomb]\n\n# Switch backends: change exporters list, no app code changes',
+
+  scrubbing: '# otel-collector-config.yaml — PII scrubbing (GDPR/HIPAA)\nreceivers:\n  otlp:\n    protocols: { grpc: {}, http: {} }\n\nprocessors:\n  transform:\n    error_mode: ignore\n    trace_statements:\n      - context: span\n        statements:\n          # Remove email from attributes\n          - delete_key(attributes, "user.email")\n          # Keep last 4 digits of card, remove full number\n          - set(attributes["payment.card_last4"],\n              Substring(attributes["payment.card_number"], 12, 4))\n          - delete_key(attributes, "payment.card_number")\n          # Hash IP addresses\n          - set(attributes["net.peer.ip"],\n              Sha256(attributes["net.peer.ip"]))\n  batch: {}\n\nexporters:\n  otlp:\n    endpoint: grafana-tempo:4317\n    tls: { insecure: true }\n\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [transform, batch]  # transform before batch!\n      exporters: [otlp]',
+};
+function showCollector(k) { document.getElementById('collector-output').textContent = COLLECTORS[k]; }
+
+function calcStorage() {
+  var rps = parseInt(document.getElementById('rps2-slider').value);
+  var spans = parseInt(document.getElementById('spans-slider').value);
+  var sr = parseInt(document.getElementById('sample-rate-slider').value);
+  var sz = parseInt(document.getElementById('span-size-slider').value);
+  document.getElementById('rps2-val').textContent = rps.toLocaleString();
+  document.getElementById('spans-val').textContent = spans;
+  document.getElementById('sample-rate-val').textContent = sr + '%';
+  document.getElementById('span-size-val').textContent = sz + 'B';
+  var sampledRps = rps * sr / 100;
+  var spansPerSec = sampledRps * spans;
+  var gbDay = spansPerSec * sz * 86400 / (1024*1024*1024);
+  var gbMonth = gbDay * 30;
+  var col = gbDay > 100 ? 'var(--red)' : gbDay > 20 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('storage-output').innerHTML = [
+    'Sampled RPS:     ' + sampledRps.toLocaleString() + ' traces/s  (' + sr + '% of ' + rps.toLocaleString() + ')',
+    'Spans/sec:       ' + spansPerSec.toLocaleString() + '  (' + spans + ' spans/trace)',
+    'Data/day:        <span style="color:' + col + ';font-weight:700">' + (gbDay < 1 ? (gbDay*1024).toFixed(0)+'MB' : gbDay.toFixed(1)+'GB') + '</span>',
+    'Data/month:      ' + (gbMonth < 1 ? (gbMonth*1024).toFixed(0)+'MB' : gbMonth.toFixed(0)+'GB'),
+    '',
+    'Monthly cost estimate:',
+    '  Grafana Tempo (S3):  $' + (gbMonth * 0.023).toFixed(2),
+    '  Honeycomb:           $' + (spansPerSec * 86400 * 30 * 0.000001 * 0.7).toFixed(0) + ' (est)',
+    '',
+    gbDay > 100 ? '<span style="color:var(--red)">⚠ High. Use tail sampling to get below 20GB/day.</span>' : '<span style="color:var(--green)">✓ Manageable. Tempo on S3 is cost-effective here.</span>',
+  ].join('\n');
+}
+
+showSignal('logs');
+loadTrace('happy');
+showPropagation('http');
+calcSampling(); showSampling('smart');
+showBackend('startup');
+showPattern('n_plus_one');
+showCollector('basic');
+calcStorage();
+</script>
+</body>
+</html>

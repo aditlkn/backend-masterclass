@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 19 Deep Dive: OTel Collector, Tempo + Jaeger, Trace-Log Correlation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2);}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+.deep-section h3{font-size:16px;font-weight:600;color:var(--text);margin:36px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day19" class="back-link">&#8592; Day 19: Distributed Tracing</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 19 · Distributed Tracing · Deep Dive</div>
+  <h1>OTel Collector config,<br>Tempo + Jaeger stack,<br>&amp; <em>trace-log correlation</em></h1>
+  <p>The main lesson covered concepts and patterns. This page covers the production setup: a complete OTel Collector configuration with tail sampling, a Docker Compose stack running Grafana Tempo + Jaeger Query + the Collector, and Winston logger configuration that emits trace IDs in every log line so traces and logs are always connected.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Complete OTel Collector config</span><span class="deep-topic-sub">— tail sampling, PII scrubbing, Tempo export, metrics from spans</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">Docker Compose: Tempo + Jaeger + Collector</span><span class="deep-topic-sub">— runnable self-hosted tracing stack, zero cloud dependency</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Trace-log correlation with Winston</span><span class="deep-topic-sub">— emit traceId + spanId in every log, connect the two systems</span></div>
+  </div>
+</div>
+
+<!-- Section 1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Complete OTel Collector config:<br><em>tail sampling, scrubbing, multi-export</em></h2>
+  <p class="lead">The OTel Collector is the architectural hub of your tracing stack. It receives spans from all services, applies sampling logic, scrubs PII, and exports to one or more backends. This config covers a production setup: tail-based sampling that keeps all errors and slow traces, PII scrubbing for GDPR compliance, and export to both Tempo (storage) and Jaeger Query (UI).</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">otel-collector-config.yaml — production setup</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># otel-collector-config.yaml</span>
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins: ["https://app.example.com"]
+
+processors:
+  <span class="cm"># 1. Enrich spans with resource attributes from environment</span>
+  resourcedetection:
+    detectors: [env, system, docker]
+    timeout: 5s
+
+  <span class="cm"># 2. PII scrubbing — run BEFORE sampling so scrubbing is universal</span>
+  transform:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_key(attributes, "user.email")
+          - delete_key(attributes, "user.phone")
+          - set(attributes["payment.card_last4"],
+              Substring(attributes["payment.card_number"], 12, 4))
+          - delete_key(attributes, "payment.card_number")
+          - replace_pattern(attributes["db.statement"],
+              "password\\s*=\\s*'[^']+'", "password='[REDACTED]'")
+
+  <span class="cm"># 3. Tail sampling — decide AFTER trace completes</span>
+  tail_sampling:
+    decision_wait: 15s        <span class="cm"># wait 15s for trace to complete</span>
+    num_traces: 50000         <span class="cm"># buffer up to 50K in-flight traces</span>
+    expected_new_traces_per_sec: 100
+    policies:
+      <span class="cm"># ALWAYS keep: error traces</span>
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+
+      <span class="cm"># ALWAYS keep: slow traces (>1 second)</span>
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 1000
+
+      <span class="cm"># ALWAYS keep: specific user for debugging</span>
+      - name: keep-debug-users
+        type: string_attribute
+        string_attribute:
+          key: user.id
+          values: ["usr_debug_001"]
+          enabled_regex_matching: false
+
+      <span class="cm"># Keep 10% of everything else</span>
+      - name: keep-10pct
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+  <span class="cm"># 4. Batch before exporting</span>
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+exporters:
+  <span class="cm"># Grafana Tempo — primary storage (S3-backed)</span>
+  otlp/tempo:
+    endpoint: grafana-tempo:4317
+    tls:
+      insecure: true
+
+  <span class="cm"># Jaeger — for Query UI (Jaeger reads from Tempo via plugin)</span>
+  <span class="cm"># Or export directly to Jaeger Collector:</span>
+  jaeger:
+    endpoint: jaeger-collector:14250
+    tls:
+      insecure: true
+
+  <span class="cm"># Prometheus — metrics derived from spans</span>
+  <span class="cm"># Creates: trace_span_duration_milliseconds histogram per service+operation</span>
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: otel
+    send_timestamps: true
+    metric_expiration: 180m
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679  <span class="cm"># debug UI at /debug/tracez</span>
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resourcedetection, transform, tail_sampling, batch]
+      exporters: [otlp/tempo, jaeger]
+  telemetry:
+    logs:
+      level: warn  <span class="cm"># Collector's own logs</span>
+    metrics:
+      address: 0.0.0.0:8888  <span class="cm"># Collector self-metrics (spans processed, dropped, etc.)</span></pre>
+  </div>
+</div>
+
+<!-- Section 2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Docker Compose:<br><em>runnable self-hosted tracing stack</em></h2>
+  <p class="lead">A complete local and production-ready tracing stack: OTel Collector receives spans, Grafana Tempo stores them in a local volume (swap for S3 in production), Jaeger Query provides the search and waterfall UI, and Grafana provides dashboards. Copy and run.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">docker-compose.tracing.yaml — complete runnable stack</span><span class="code-block-lang">YAML</span></div>
+    <pre>version: "3.8"
+
+services:
+  <span class="cm"># ── OTel Collector ──────────────────────────────────────────────</span>
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/config.yaml
+    ports:
+      - "4317:4317"    <span class="cm"># OTLP gRPC (from services)</span>
+      - "4318:4318"    <span class="cm"># OTLP HTTP (from services)</span>
+      - "8888:8888"    <span class="cm"># Collector metrics (scrape with Prometheus)</span>
+      - "8889:8889"    <span class="cm"># Span-derived metrics</span>
+      - "13133:13133"  <span class="cm"># Health check</span>
+      - "55679:55679"  <span class="cm"># zPages debug UI</span>
+    depends_on:
+      - grafana-tempo
+
+  <span class="cm"># ── Grafana Tempo (trace storage) ────────────────────────────────</span>
+  grafana-tempo:
+    image: grafana/tempo:2.4.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo.yaml
+      - tempo-data:/var/tempo
+    ports:
+      - "4317"   <span class="cm"># OTLP gRPC receiver (from Collector)</span>
+      - "3200"   <span class="cm"># Tempo Query API</span>
+
+  <span class="cm"># ── Jaeger (trace UI + search) ───────────────────────────────────</span>
+  jaeger-query:
+    image: jaegertracing/jaeger-query:1.54
+    environment:
+      - SPAN_STORAGE_TYPE=grpc-plugin
+      - GRPC_STORAGE_SERVER=grafana-tempo:7777  <span class="cm"># Tempo's Jaeger plugin port</span>
+      - LOG_LEVEL=warn
+    ports:
+      - "16686:16686"  <span class="cm"># Jaeger UI → http://localhost:16686</span>
+    depends_on:
+      - grafana-tempo
+
+  <span class="cm"># ── Grafana (dashboards + trace search) ─────────────────────────</span>
+  grafana:
+    image: grafana/grafana:10.3.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"    <span class="cm"># Grafana UI → http://localhost:3000</span>
+    depends_on:
+      - grafana-tempo
+
+volumes:
+  tempo-data:
+  grafana-data:
+
+<span class="cm"># ── tempo-config.yaml (minimal) ──────────────────────────────────</span>
+<span class="cm"># server:</span>
+<span class="cm">#   http_listen_port: 3200</span>
+<span class="cm"># distributor:</span>
+<span class="cm">#   receivers:</span>
+<span class="cm">#     otlp:</span>
+<span class="cm">#       protocols: { grpc: {}, http: {} }</span>
+<span class="cm"># storage:</span>
+<span class="cm">#   trace:</span>
+<span class="cm">#     backend: local  # swap for s3 in production</span>
+<span class="cm">#     local:</span>
+<span class="cm">#       path: /var/tempo</span>
+<span class="cm">#</span>
+<span class="cm"># Run: docker compose -f docker-compose.tracing.yaml up</span>
+<span class="cm"># UI:  http://localhost:16686  (Jaeger)</span>
+<span class="cm">#      http://localhost:3000   (Grafana)</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify the stack is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Collector healthy: <code>curl http://localhost:13133/health/status</code> — should return <code>{"status":"Server available"}</code></span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Spans arriving: check <code>http://localhost:55679/debug/tracez</code> — shows spans being received and processed</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Traces in Jaeger: open <code>http://localhost:16686</code>, select your service, click "Find Traces" — traces should appear within 15 seconds of the tail sampling window</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Propagation confirmed: in Jaeger, click a trace and verify it shows spans from multiple services in the same trace tree, not as separate disconnected traces</span></div>
+  </div>
+</div>
+
+<!-- Section 3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Trace-log correlation with Winston:<br><em>every log line gets a trace ID</em></h2>
+  <p class="lead">The bridge between traces and logs is the trace ID in every log line. When you find a slow trace in Jaeger, you want to jump directly to the logs for that trace — filtered by trace ID, not by timestamp guessing. This Winston configuration emits the active trace ID and span ID in every log message automatically.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Winston trace-log correlation — automatic trace ID injection</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> winston <span class="kw">from</span> <span class="str">'winston'</span>;
+<span class="kw">import</span> { trace, context } <span class="kw">from</span> <span class="str">'@opentelemetry/api'</span>;
+
+<span class="cm">// Winston format that injects active trace context into every log</span>
+<span class="kw">const</span> traceContextFormat = winston.format((info) => {
+  <span class="kw">const</span> span = trace.<span class="fn">getActiveSpan</span>();
+  <span class="kw">if</span> (span) {
+    <span class="kw">const</span> ctx = span.<span class="fn">spanContext</span>();
+    info.traceId = ctx.traceId;  <span class="cm">// 32-char hex string</span>
+    info.spanId  = ctx.spanId;   <span class="cm">// 16-char hex string</span>
+    info.traceFlags = ctx.traceFlags;  <span class="cm">// 1 = sampled, 0 = not</span>
+  }
+  <span class="kw">return</span> info;
+})();
+
+<span class="kw">export const</span> logger = winston.<span class="fn">createLogger</span>({
+  level: process.env.LOG_LEVEL || <span class="str">'info'</span>,
+  format: winston.format.<span class="fn">combine</span>(
+    traceContextFormat,         <span class="cm">// inject trace context first</span>
+    winston.format.<span class="fn">timestamp</span>(),
+    winston.format.<span class="fn">errors</span>({ stack: <span class="kw">true</span> }),
+    winston.format.<span class="fn">json</span>(),     <span class="cm">// structured JSON output</span>
+  ),
+  defaultMeta: {
+    service: process.env.SERVICE_NAME || <span class="str">'unknown-service'</span>,
+    version: process.env.APP_VERSION,
+    env:     process.env.NODE_ENV,
+  },
+  transports: [
+    <span class="kw">new</span> winston.transports.<span class="ty">Console</span>({
+      silent: process.env.NODE_ENV === <span class="str">'test'</span>,
+    }),
+  ],
+});
+
+<span class="cm">// Usage — trace ID is injected automatically</span>
+logger.<span class="fn">info</span>(<span class="str">'Processing checkout'</span>, { orderId, userId });
+<span class="cm">// Output:</span>
+<span class="cm">// {</span>
+<span class="cm">//   "level": "info",</span>
+<span class="cm">//   "message": "Processing checkout",</span>
+<span class="cm">//   "orderId": "ord_456",</span>
+<span class="cm">//   "userId": "usr_123",</span>
+<span class="cm">//   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",  ← trace correlation</span>
+<span class="cm">//   "spanId": "00f067aa0ba902b7",</span>
+<span class="cm">//   "service": "checkout-service",</span>
+<span class="cm">//   "timestamp": "2024-01-15T14:32:01.234Z"</span>
+<span class="cm">// }</span>
+
+<span class="cm">// In Datadog / Grafana Loki / Elasticsearch:</span>
+<span class="cm">// Filter logs by: traceId = "4bf92f3577b34da6a3ce929d0e0e4736"</span>
+<span class="cm">// → See ALL log lines for that specific request across all services</span>
+
+<span class="cm">// Error logging — stack trace also gets trace ID</span>
+<span class="kw">try</span> {
+  <span class="kw">await</span> <span class="fn">processPayment</span>(orderId);
+} <span class="kw">catch</span> (err) {
+  logger.<span class="fn">error</span>(<span class="str">'Payment failed'</span>, {
+    err,          <span class="cm">// winston.format.errors() extracts stack trace</span>
+    orderId,
+    attemptCount: <span class="num">3</span>,
+  });
+  <span class="cm">// {</span>
+  <span class="cm">//   "level": "error",</span>
+  <span class="cm">//   "message": "Payment failed",</span>
+  <span class="cm">//   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",  ← same trace</span>
+  <span class="cm">//   "err": { "message": "Timeout", "stack": "..." }</span>
+  <span class="cm">// }</span>
+}</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify trace-log correlation is working</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Every log line has traceId: make a request, check the log output — <code>traceId</code> field should be present and non-null in every line generated during that request.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Same traceId across services: make a request that calls two services, compare their log outputs — the traceId should be identical in both.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Logs outside a request have no traceId: a background job or startup log should have <code>traceId: undefined</code> — not a stale ID from a previous request.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">In your log aggregator (Loki, Datadog, Elasticsearch): filter by a traceId from Jaeger — you should see all log lines from that request across all services.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
