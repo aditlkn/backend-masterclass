@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day 1: HTTP Deep Dive — Backend Masterclass</title>
+<title>Day 1: HTTP — Every Request is a Passenger — Backend Masterclass</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
 
@@ -666,9 +666,9 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 <!-- ─── TOC ─── -->
 <nav class="toc" id="toc">
   <div class="toc-label">Backend Masterclass</div>
-  <div class="toc-day">Day 01 / 30</div>
+  <div class="toc-day">Day 01 / 31</div>
   <a href="#hero">Overview</a>
-  <a href="#s-model">The Mental Model</a>
+  <a href="#s-model">The Airport Analogy</a>
   <a href="#s-lifecycle">Request Lifecycle</a>
   <a href="#s-versions">HTTP/1.1 vs 2 vs 3</a>
   <a href="#s-tls">TLS Handshake</a>
@@ -690,8 +690,8 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 <!-- HERO -->
 <div class="hero" id="hero">
   <div class="hero-eyebrow">Week 1 &bull; Day 1 &bull; Networking &amp; APIs</div>
-  <h1>HTTP is <em>not</em> what<br>you think it is</h1>
-  <p class="hero-sub">You've been making HTTP requests since day one. You probably think you understand it. This lesson is about the gap between the abstraction you've been using and the protocol your production systems actually run on — and why that gap costs you latency, reliability, and sleep.</p>
+  <h1>Every HTTP request<br>is a passenger.<br><em>Here's their journey.</em></h1>
+  <p class="hero-sub">You've been making HTTP requests since day one. But have you ever thought about what they actually go through? Before a single byte of your application gets transmitted, your request travels through systems you've never thought about — and every one of them adds time. This is the story of that journey.</p>
   <div class="hero-meta">
     <div class="hero-meta-item"><div class="hero-meta-dot"></div> ~60 min read</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div> 6 interactive demos</div>
@@ -699,30 +699,84 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
   </div>
 </div>
 
-<!-- ─── SECTION 1: MENTAL MODEL ─── -->
+<!-- ─── SECTION 1: ANALOGY ─── -->
 <div class="section" id="s-model">
   <div class="section-eyebrow">Section 01</div>
-  <h2>The mental model most engineers are missing</h2>
+  <h2>The airport analogy — and why it makes everything click</h2>
 
-  <p>Here's a confession: for the first few years of my career I thought of HTTP as basically a function call. You send a request, you get a response. The network is the wire in between. That model is fine until the day you're debugging why your API is taking 800ms when the database query is only 20ms — and you realise you have no idea what's happening in those other 780ms.</p>
+  <p>Imagine you're at an international airport. You want to fly somewhere. Between you and your seat on the plane, you go through a series of checkpoints — each one mandatory, each one adding time, each one serving a specific purpose. Skip any of them and you don't get on the plane.</p>
 
-  <p>HTTP is not a single thing. It's a <strong>layered stack of protocols</strong>, each of which adds cost, and each of which you can optimise independently. When a client makes a request to your server, here's what actually happens at minimum:</p>
+  <p>Now think about what happens when your application makes an HTTP request. Between your code calling <code>fetch()</code> and the server receiving your data, the request goes through its own series of mandatory checkpoints. Skip any of them and the request doesn't arrive.</p>
+
+  <p>The airport analogy isn't just a cute metaphor. It's precise. Hold it in your head as we walk through each phase — and every concept in this lesson will slot straight into the picture.</p>
+
+  <h3>The passenger's journey, step by step</h3>
+
+  <p><strong>First: check-in and the departure board.</strong> You arrive at the airport, look up at the departure board, and find your gate. You don't know gate B47 exists until you look it up. In HTTP terms, this is <strong>DNS resolution</strong> — your code knows the name <code>api.payments.com</code> but has no idea which IP address to connect to. It asks the DNS system, which is the airport's departure board: "which server is handling api.payments.com right now?" The answer comes back with a TTL — how long to trust this information before checking again. Just like a gate assignment can change, IP addresses can change, and the TTL controls how long you can assume your information is still valid.</p>
+
+  <p><strong>Second: passport control.</strong> Before you reach the gate, you go through passport control. An officer verifies who you are, checks you haven't been blacklisted, and stamps your entry. In HTTP terms, this is <strong>TLS</strong> — the security handshake that verifies the server is actually who it claims to be (via its certificate, signed by a trusted authority), and negotiates the encryption keys that will protect everything that follows. A forged certificate is like a fake passport — TLS catches it before your data ever gets transmitted.</p>
+
+  <p><strong>Third: the boarding gate.</strong> Passport control done, you walk to the gate. An agent scans your boarding pass — <code>B47, seat 23C, economy</code> — and logs your departure. In HTTP terms, this is the <strong>TCP connection</strong> — the three-way handshake that establishes the channel between you and the server. The boarding pass is your request with its headers: method, URL, content type, authorization token. Cookies are your frequent flyer card — they travel with you automatically and give you a different experience based on who you are.</p>
+
+  <p><strong>Fourth: the flight itself.</strong> You're in the air. Data is moving. This is the <strong>HTTP request and response</strong> — your application protocol, finally running. Everything before this was protocol overhead. The flight duration is your server's processing time. Everything else was the airport.</p>
+
+  <p><strong>Fifth: keep-alive is staying inside the airport.</strong> Here's the insight that changes how most engineers think about HTTP performance: what if, instead of going home after each flight and coming back through passport control for every new journey, you stayed inside the airport? You'd skip passport control, skip the departure board, skip the check-in queue. The next flight would be just the gate and the plane.</p>
+
+  <p>This is exactly what <strong>HTTP keep-alive and connection pooling</strong> do. Instead of tearing down the TCP connection after each request and rebuilding it from scratch (DNS → TCP → TLS → HTTP each time), the connection stays open. The next request skips straight to the application data — no DNS lookup, no TCP handshake, no TLS negotiation. On a 50ms round-trip link, this saves 100-200ms per request. I've watched teams cut their API latency by 80% purely by enabling connection pooling. Nothing else changed.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">✈️</div>
+    <div class="callout-inner">
+      <strong>Where the analogy breaks — and why that matters</strong>
+      <p>Every analogy has limits, and knowing the limits makes the concept sharper. At a real airport, the gate agent doesn't generate a correlation ID — a unique reference number that travels with your request through every downstream system so you can trace exactly what happened to it. HTTP does. At a real airport, passport control can't decide to send 5% of passengers to a different destination. An API gateway can route 5% of requests to a canary deployment for testing. The airport is a perfect mental model for <em>what</em> happens; it breaks down for the programmable, observable, dynamic parts of HTTP that make it powerful as an application protocol. Keep that distinction.</p>
+    </div>
+  </div>
+
+  <h3>Now replace the airport with servers</h3>
+
+  <p>Here's the translation. Every time your code calls <code>fetch('https://api.payments.com/v1/charge')</code>:</p>
 
   <ul>
-    <li><strong>DNS resolution</strong> — the hostname gets resolved to an IP. This is a round-trip to a DNS resolver that can add anywhere from 0ms (cached) to 200ms (cold, remote resolver).</li>
-    <li><strong>TCP connection</strong> — a 3-way handshake before a single byte of HTTP is sent. Minimum one round-trip time (RTT).</li>
-    <li><strong>TLS handshake</strong> — if HTTPS (and it should always be HTTPS), add one or two more RTTs before the first encrypted byte.</li>
-    <li><strong>HTTP request/response</strong> — only now does your actual application protocol run.</li>
+    <li><strong>Departure board → DNS resolution:</strong> Your OS asks "what IP is api.payments.com?" A DNS resolver answers with an IP and a TTL. Cold miss: 50-200ms. Cached: 0ms. Connection pooling: irrelevant — the pool already knows.</li>
+    <li><strong>Passport control → TLS handshake:</strong> The server proves its identity with a certificate. Both sides negotiate encryption keys. TLS 1.3 costs 1 round-trip. TLS 1.2 costs 2. Session resumption: 0. Your nginx config determines which.</li>
+    <li><strong>Gate scan → TCP handshake:</strong> Three packets — SYN, SYN-ACK, ACK — establish the reliable channel. Exactly 1 round-trip time. At 40ms RTT: 40ms just for this step.</li>
+    <li><strong>The flight → HTTP request/response:</strong> Your application protocol. The server processes your request and responds. This is the only phase your backend code controls. Everything else is infrastructure.</li>
+    <li><strong>Staying in the airport → connection pooling:</strong> Reuse the established connection. Skip DNS, TCP, and TLS for every subsequent request. One pool, many requests, dramatic latency reduction.</li>
   </ul>
 
-  <p>On a mobile device in India hitting a server in Mumbai, each RTT might be 40-80ms. That means before your server has processed a single byte, you've potentially spent <strong>200-400ms in protocol overhead</strong>. Your 5ms handler is irrelevant.</p>
+  <p>On a mobile device in India hitting a server in Mumbai, each round-trip is 40-80ms. That means before your server has processed a single byte, you've potentially spent <strong>200-400ms in protocol overhead</strong>. Your 5ms handler is irrelevant to the user if the airport took 350ms.</p>
 
   <div class="callout insight">
     <div class="callout-icon">💡</div>
     <div class="callout-inner">
-      <strong>The mental model shift</strong>
-      <p>Stop thinking about HTTP latency as "server processing time." Start thinking about it as: DNS + TCP + TLS + Server + Transfer. Each term is independently measurable and independently optimisable. Most backend engineers only ever optimise the "Server" term.</p>
+      <strong>The mental model that changes your debugging forever</strong>
+      <p>Stop thinking about HTTP latency as "server processing time." Start thinking: <strong>DNS + TCP + TLS + Server + Transfer</strong>. Each term is independently measurable and independently optimisable. Most backend engineers only ever optimise the Server term — because it's the only one in their code. The other four are where the biggest wins usually hide. The <code>curl -w</code> timing breakdown in Section 2 shows you exactly how to measure each one in 10 seconds.</p>
     </div>
+  </div>
+</div>
+
+<!-- VIZ: Airport → HTTP mapping (replaces old waterfall builder as opening interactive) -->
+<div class="viz-box" id="viz-airport">
+  <div class="viz-header">
+    <span class="viz-title">Airport → HTTP — click a checkpoint to see the translation</span>
+    <span class="viz-badge">INTERACTIVE</span>
+  </div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="viz-btn active" onclick="showAirport('dns')">🔭 Departure board → DNS</button>
+      <button class="viz-btn" onclick="showAirport('tls')">🛂 Passport control → TLS</button>
+      <button class="viz-btn" onclick="showAirport('tcp')">🎫 Boarding gate → TCP</button>
+      <button class="viz-btn" onclick="showAirport('http')">✈️ The flight → HTTP</button>
+      <button class="viz-btn" onclick="showAirport('keepalive')">🏠 Stay in airport → Keep-alive</button>
+    </div>
+
+    <!-- visual diagram area -->
+    <div id="airport-diagram" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;min-height:140px;display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:center">
+      <div id="airport-left" style="text-align:right;padding-right:16px;font-size:14px;line-height:1.9;color:var(--text2)"></div>
+      <div id="airport-arrow" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px"></div>
+      <div id="airport-right" style="padding-left:16px;font-size:14px;line-height:1.9;color:var(--text2)"></div>
+    </div>
+    <div id="airport-explain" style="font-size:13px;color:var(--text2);line-height:1.8;padding:12px 16px;background:var(--bg3);border-radius:6px"></div>
   </div>
 </div>
 
@@ -732,7 +786,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     <span class="viz-badge">VISUAL</span>
   </div>
   <div class="viz-body">
-    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Each button adds the next phase. Watch total latency build up — and notice how much overhead exists before your server even runs.</p>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Each button adds the next phase. Watch total latency build — notice how much overhead exists before your server code runs.</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px">
       <button class="viz-btn" onclick="wfAdd('dns')">+ DNS</button>
       <button class="viz-btn" onclick="wfAdd('tcp')">+ TCP</button>
@@ -747,6 +801,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     <div id="wf-insight" style="margin-top:10px;font-size:12.5px;color:var(--text3);min-height:20px;line-height:1.6"></div>
   </div>
 </div>
+
 
 <!-- ─── SECTION 2: REQUEST LIFECYCLE ─── -->
 <div class="section" id="s-lifecycle">
@@ -3012,6 +3067,74 @@ window.addEventListener('scroll', function() {
     a.classList.toggle('active', href === active);
   });
 }, { passive: true });
+
+
+
+// ════════════════════════════════════════════════════
+// Airport → HTTP analogy viz
+// ════════════════════════════════════════════════════
+var AIRPORT_DATA = {
+  dns: {
+    left: ['You arrive at the airport', 'Look at the departure board', '"Where is gate B47?"', 'Board displays: B47, Terminal 2', 'Good for 60 minutes (TTL)'],
+    right: ['fetch("https://api.payments.com/v1/charge")', 'DNS resolution: "what IP?"', 'Resolver answers: 93.184.216.34', 'Cached for TTL seconds', '→ Next call may skip this entirely'],
+    arrow: ['hostname', '→', 'IP address'],
+    explain: '<strong style="color:var(--accent)">Departure board → DNS resolution.</strong> Your code knows the name <code>api.payments.com</code> but not the IP address. DNS is the airport's departure board — it translates names to destinations. A cold DNS miss (no cache) adds 50-200ms before you've even opened a connection. <strong>Connection pooling eliminates this entirely</strong> for repeat requests — the pool already knows the IP, like a frequent flyer who knows the airport layout by heart.'
+  },
+  tls: {
+    left: ['Passport officer checks your identity', 'Verifies it against trusted authority (Interpol)', 'Stamps your passport', 'Now you're authenticated', 'Everything inside is secure'],
+    right: ['Server sends its certificate', 'Your client checks: trusted CA signed this?', 'Keys exchanged, encryption established', 'Identity verified ✓', 'All subsequent data encrypted'],
+    arrow: ['identity', '↔', 'verified'],
+    explain: '<strong style="color:var(--purple)">Passport control → TLS handshake.</strong> Before data flows, the server proves it is who it claims to be, using a certificate signed by a trusted authority (like a passport signed by a government). Both sides then negotiate encryption keys. TLS 1.3 does this in 1 round-trip; TLS 1.2 takes 2. Session resumption (frequent flyer fast-track) brings it to 0. <strong>An invalid certificate is a fake passport</strong> — TLS catches it before your data is exposed.'
+  },
+  tcp: {
+    left: ['Agent scans your boarding pass', '"23C, economy, B47"', 'Logged in the system', 'You're officially in the queue', 'Gate is now reserved for you'],
+    right: ['Client → SYN (I want to connect)', 'Server → SYN-ACK (acknowledged, here's my number)', 'Client → ACK (confirmed, connection open)', 'TCP channel established', 'Exactly 1 round-trip time'],
+    arrow: ['SYN', '↔', 'ACK'],
+    explain: '<strong style="color:var(--green)">Boarding gate → TCP handshake.</strong> Three packets establish the reliable channel: SYN, SYN-ACK, ACK. This costs exactly 1 round-trip time — at 40ms RTT, that's 40ms just for the handshake, before a byte of your application data moves. HTTP headers are your boarding pass: method, URL, content-type, authorization token. Cookies are your frequent flyer card — they travel with you automatically and change what experience you get.'
+  },
+  http: {
+    left: ['You board, find seat 23C', 'Plane takes off', 'You're in the air — data moving', 'Flight duration = journey time', 'Arrive at destination'],
+    right: ['POST /v1/charge HTTP/2', 'Server processes your request', 'Database queries, business logic', 'Server time = your code's contribution', '200 OK — response received'],
+    arrow: ['request', '→', 'response'],
+    explain: '<strong style="color:var(--orange)">The flight → HTTP request/response.</strong> Finally — your application protocol runs. This is the only phase your backend code controls. The flight duration is your server processing time. <strong>Everything before this was the airport.</strong> In a real profiling session: a server taking 22ms to process a request looks great in isolation — but if DNS + TCP + TLS cost 180ms, the user experienced 202ms and your "fast" server was only 11% of it.'
+  },
+  keepalive: {
+    left: ['After landing, you stay airside', 'Skip passport control for next flight', 'Skip departure board (you know the gates)', 'Walk straight to next gate', 'Flight 2, 3, 4 cost far less'],
+    right: ['Connection stays open after response', 'Request 2: skip DNS, TCP, TLS', 'Go straight to HTTP data', 'At 40ms RTT: saves 80-160ms per request', '10 requests → 800-1600ms saved'],
+    arrow: ['pooled', '♻', 'reused'],
+    explain: '<strong style="color:var(--green)">Staying airside → HTTP keep-alive & connection pooling.</strong> Instead of tearing down the connection after each request and rebuilding from scratch, the connection stays open. Every subsequent request skips DNS, TCP, and TLS — going straight to data. This single change has cut API latency by 80% at companies where connections were being created per-request. The first request pays the airport cost. Every subsequent request pays only the flight cost. <strong>This is why connection pooling is the highest-leverage HTTP optimisation available.</strong>'
+  }
+};
+
+function showAirport(key) {
+  document.querySelectorAll('.viz-btn').forEach(function(b) {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('showAirport')) {
+      b.classList.toggle('active', b.getAttribute('onclick').includes("'" + key + "'"));
+    }
+  });
+  var d = AIRPORT_DATA[key];
+  if (!d) return;
+
+  var colors = { dns:'var(--accent)', tls:'var(--purple)', tcp:'var(--green)', http:'var(--orange)', keepalive:'var(--green)' };
+  var col = colors[key];
+
+  document.getElementById('airport-left').innerHTML =
+    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px">✈️ AIRPORT</div>' +
+    d.left.map(function(l) { return '<div>' + l + '</div>'; }).join('');
+
+  document.getElementById('airport-arrow').innerHTML =
+    '<div style="color:' + col + ';font-size:11px;font-weight:600">' + d.arrow[0] + '</div>' +
+    '<div style="font-size:20px;color:' + col + '">' + d.arrow[1] + '</div>' +
+    '<div style="color:' + col + ';font-size:11px;font-weight:600">' + d.arrow[2] + '</div>';
+
+  document.getElementById('airport-right').innerHTML =
+    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px">🌐 HTTP</div>' +
+    d.right.map(function(l) { return '<div style="color:' + col + '">' + l + '</div>'; }).join('');
+
+  document.getElementById('airport-explain').innerHTML = d.explain;
+}
+
+showAirport('dns');
 
 
 // ════════════════════════════════════════════════════
