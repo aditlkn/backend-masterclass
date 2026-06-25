@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 21 Deep Dive: BullMQ Setup, KEDA Autoscaling, Queue Monitoring</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:24px;}
+.deep-topics{display:flex;flex-direction:column;gap:8px;}
+.deep-topic{display:flex;align-items:center;gap:12px;font-size:13px;}
+.deep-topic-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);min-width:24px;}
+.deep-topic-title{font-weight:500;color:var(--text);}
+.deep-topic-sub{color:var(--text3);font-size:12px;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.deep-section .lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day21" class="back-link">&#8592; Day 21: Async Job Queues</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 21 · Async Job Queues · Deep Dive</div>
+  <h1>BullMQ production setup,<br>KEDA autoscaling,<br>&amp; <em>queue monitoring</em></h1>
+  <p>The main lesson covered concepts: sync vs async, job lifecycle, patterns, idempotency, retries, DLQ, and worker scaling. This page is the implementation: a complete BullMQ three-tier queue setup with typed workers, KEDA configuration for Kubernetes autoscaling based on queue depth, and a Grafana dashboard for queue health monitoring.</p>
+  <div class="deep-topics">
+    <div class="deep-topic"><span class="deep-topic-num">01</span><span class="deep-topic-title">Complete BullMQ three-tier setup</span><span class="deep-topic-sub">— typed queues, workers, error handling, Redis AOF config</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">02</span><span class="deep-topic-title">KEDA autoscaling for workers</span><span class="deep-topic-sub">— scale worker pods based on queue depth, per-queue HPA</span></div>
+    <div class="deep-topic"><span class="deep-topic-num">03</span><span class="deep-topic-title">Queue monitoring and alerting</span><span class="deep-topic-sub">— BullMQ Board, custom metrics, Grafana dashboard queries</span></div>
+  </div>
+</div>
+
+<!-- S1 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Complete BullMQ three-tier setup:<br><em>typed queues, workers, error handling</em></h2>
+  <p class="lead">A production BullMQ setup has more moving parts than the basic examples suggest: typed job payloads, the UnrecoverableError pattern for DLQ routing, graceful shutdown to avoid mid-job crashes on deploy, and Redis configured for durability. This is the full setup.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">queues.ts — typed queue definitions, three-tier architecture</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Queue, QueueEvents, UnrecoverableError } <span class="kw">from</span> <span class="str">'bullmq'</span>;
+<span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
+
+<span class="cm">// Redis connection — shared across all queues</span>
+<span class="kw">export const</span> redis = <span class="kw">new</span> Redis({
+  host: process.env.REDIS_HOST || <span class="str">'localhost'</span>,
+  port: <span class="num">6379</span>,
+  maxRetriesPerRequest: <span class="kw">null</span>,  <span class="cm">// required by BullMQ</span>
+  enableReadyCheck: <span class="kw">false</span>,       <span class="cm">// required by BullMQ</span>
+});
+
+<span class="cm">// Typed job payload interfaces</span>
+<span class="kw">interface</span> <span class="ty">BookingConfirmationJob</span> {
+  bookingId: <span class="ty">string</span>;
+  userId:    <span class="ty">string</span>;
+  <span class="cm">// Deliberately minimal: worker fetches fresh data using these IDs</span>
+}
+
+<span class="kw">interface</span> <span class="ty">TicketPDFJob</span> {
+  bookingId:       <span class="ty">string</span>;
+  templateVersion: <span class="ty">string</span>;
+}
+
+<span class="kw">interface</span> <span class="ty">PartnerWebhookJob</span> {
+  partnerId:       <span class="ty">string</span>;
+  event:           <span class="ty">string</span>;
+  idempotencyKey:  <span class="ty">string</span>;
+  payload:         <span class="ty">Record</span>&lt;<span class="ty">string</span>, <span class="ty">unknown</span>&gt;;
+}
+
+<span class="kw">interface</span> <span class="ty">NewsletterJob</span> {
+  campaignId: <span class="ty">string</span>;
+  userIds:    <span class="ty">string</span>[];  <span class="cm">// batch of 100 users per job</span>
+}
+
+<span class="cm">// CRITICAL queue — confirmation emails, payment retries, SLA webhooks</span>
+<span class="kw">export const</span> criticalQueue = <span class="kw">new</span> Queue&lt;<span class="ty">BookingConfirmationJob</span> | <span class="ty">PartnerWebhookJob</span>&gt;(
+  <span class="str">'critical'</span>,
+  {
+    connection: redis,
+    defaultJobOptions: {
+      attempts:  <span class="num">5</span>,
+      backoff: { type: <span class="str">'exponential'</span>, delay: <span class="num">1000</span> },
+      removeOnComplete: { count: <span class="num">5000</span>, age: <span class="num">3600</span> },  <span class="cm">// keep 1h or 5000</span>
+      removeOnFail: <span class="kw">false</span>,  <span class="cm">// keep all failed — inspect them</span>
+    },
+  }
+);
+
+<span class="cm">// DEFAULT queue — PDFs, internal notifications, cache invalidation</span>
+<span class="kw">export const</span> defaultQueue = <span class="kw">new</span> Queue&lt;<span class="ty">TicketPDFJob</span>&gt;(
+  <span class="str">'default'</span>,
+  {
+    connection: redis,
+    defaultJobOptions: {
+      attempts: <span class="num">3</span>,
+      backoff: { type: <span class="str">'exponential'</span>, delay: <span class="num">2000</span> },
+      removeOnComplete: { count: <span class="num">1000</span> },
+      removeOnFail: <span class="kw">false</span>,
+    },
+  }
+);
+
+<span class="cm">// BULK queue — newsletters, analytics, CSV exports</span>
+<span class="kw">export const</span> bulkQueue = <span class="kw">new</span> Queue&lt;<span class="ty">NewsletterJob</span>&gt;(
+  <span class="str">'bulk'</span>,
+  {
+    connection: redis,
+    defaultJobOptions: {
+      attempts: <span class="num">2</span>,
+      backoff: { type: <span class="str">'fixed'</span>, delay: <span class="num">30000</span> },    <span class="cm">// 30s between retries</span>
+      removeOnComplete: { count: <span class="num">100</span> },
+      removeOnFail: { count: <span class="num">500</span> },  <span class="cm">// keep 500 for inspection, then drop</span>
+    },
+  }
+);
+
+<span class="cm">// ── Email worker with full error handling and graceful shutdown ──</span>
+<span class="kw">import</span> { Worker } <span class="kw">from</span> <span class="str">'bullmq'</span>;
+
+<span class="kw">const</span> emailWorker = <span class="kw">new</span> Worker(
+  <span class="str">'critical'</span>,
+  <span class="kw">async</span> (job) => {
+    <span class="kw">if</span> (job.name !== <span class="str">'booking-confirmation'</span>) <span class="kw">return</span>;  <span class="cm">// only handle this type</span>
+    <span class="kw">const</span> { userId, bookingId } = job.data <span class="kw">as</span> <span class="ty">BookingConfirmationJob</span>;
+
+    <span class="cm">// Idempotency: claim before any work</span>
+    <span class="kw">const</span> claimed = <span class="kw">await</span> redis.<span class="fn">set</span>(<span class="str">`email:sent:\${job.id}`</span>, <span class="str">'1'</span>, <span class="str">'EX'</span>, <span class="num">86400</span>, <span class="str">'NX'</span>);
+    <span class="kw">if</span> (!claimed) <span class="kw">return</span> { skipped: <span class="kw">true</span> };
+
+    <span class="cm">// Fetch fresh data (not from stale payload)</span>
+    <span class="kw">const</span> [user, booking] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+      db.<span class="fn">findUser</span>(userId),
+      db.<span class="fn">findBooking</span>(bookingId),
+    ]);
+
+    <span class="cm">// UnrecoverableError → goes to DLQ immediately, no retries</span>
+    <span class="kw">if</span> (!user)    <span class="kw">throw new</span> <span class="ty">UnrecoverableError</span>(<span class="str">`User \${userId} not found`</span>);
+    <span class="kw">if</span> (!booking) <span class="kw">throw new</span> <span class="ty">UnrecoverableError</span>(<span class="str">`Booking \${bookingId} not found`</span>);
+
+    <span class="kw">try</span> {
+      <span class="kw">await</span> sendgrid.<span class="fn">send</span>({ to: user.email, ...buildEmailTemplate(booking) });
+      logger.<span class="fn">info</span>({ jobId: job.id, bookingId, userId }, <span class="str">'email.confirmation.sent'</span>);
+    } <span class="kw">catch</span> (err: <span class="kw">any</span>) {
+      <span class="kw">await</span> redis.<span class="fn">del</span>(<span class="str">`email:sent:\${job.id}`</span>);  <span class="cm">// release idempotency key on failure</span>
+      <span class="kw">if</span> (err.code === <span class="str">'INVALID_EMAIL_ADDRESS'</span>) {
+        <span class="kw">throw new</span> <span class="ty">UnrecoverableError</span>(<span class="str">`Invalid email: \${user.email}`</span>);
+      }
+      <span class="kw">throw</span> err;  <span class="cm">// retryable: network, rate limit, etc.</span>
+    }
+  },
+  {
+    connection: redis,
+    concurrency: <span class="num">20</span>,         <span class="cm">// 20 concurrent email sends per worker</span>
+    lockDuration: <span class="num">60_000</span>,    <span class="cm">// 60s lock — email send is fast</span>
+    limiter: { max: <span class="num">200</span>, duration: <span class="num">1000</span> },  <span class="cm">// 200 emails/sec global</span>
+  }
+);
+
+<span class="cm">// Graceful shutdown — finish in-flight jobs before exiting</span>
+<span class="kw">async function</span> <span class="fn">gracefulShutdown</span>() {
+  logger.<span class="fn">info</span>(<span class="str">'SIGTERM received. Draining worker...'</span>);
+  <span class="kw">await</span> emailWorker.<span class="fn">close</span>();  <span class="cm">// finish active jobs, don't pick new ones</span>
+  <span class="kw">await</span> redis.<span class="fn">quit</span>();
+  process.<span class="fn">exit</span>(<span class="num">0</span>);
+}
+process.<span class="fn">on</span>(<span class="str">'SIGTERM'</span>, gracefulShutdown);
+process.<span class="fn">on</span>(<span class="str">'SIGINT'</span>, gracefulShutdown);</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify BullMQ setup</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Jobs survive Redis restart: enable AOF (<code>appendonly yes</code> in redis.conf), add a job, restart Redis, verify job is still in the queue.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Idempotency works: manually run the same job twice (using <code>job.retry()</code>); second run should return <code>{ skipped: true }</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">UnrecoverableError goes straight to DLQ: trigger an invalid email error; verify job appears in failed state without reaching max attempts.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Graceful shutdown: send SIGTERM to worker process during active job; job should complete before process exits (not killed mid-send).</span></div>
+  </div>
+</div>
+
+<!-- S2 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>KEDA autoscaling:<br><em>scale workers on queue depth</em></h2>
+  <p class="lead">KEDA (Kubernetes Event-Driven Autoscaling) extends Kubernetes HPA to scale pods based on external metrics — including Redis list length and BullMQ queue depth. This means your worker deployment automatically scales from 1 pod at idle to 20 pods during a ticket rush, and back down when the queue drains.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">keda-scaledobject.yaml — autoscale email workers on queue depth</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># Install KEDA first: helm install keda kedacore/keda</span>
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: critical-worker-scaler
+  namespace: production
+spec:
+  scaleTargetRef:
+    name: critical-worker          <span class="cm"># name of the Deployment to scale</span>
+  minReplicaCount: 1               <span class="cm"># always at least 1 worker running</span>
+  maxReplicaCount: 20              <span class="cm"># max 20 worker pods</span>
+  pollingInterval: 10              <span class="cm"># check queue depth every 10 seconds</span>
+  cooldownPeriod: 60               <span class="cm"># wait 60s before scaling down</span>
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.production.svc.cluster.local:6379
+        listName: bull:critical:wait  <span class="cm"># BullMQ waiting list key</span>
+        listLength: "50"             <span class="cm"># scale up when >50 jobs waiting</span>
+        <span class="cm"># Each pod handles 50 jobs (concurrency:20 × ~2.5s average = 50 jobs/pod/s)</span>
+
+<span class="cm">---</span>
+
+<span class="cm"># Separate ScaledObject for bulk workers</span>
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: bulk-worker-scaler
+  namespace: production
+spec:
+  scaleTargetRef:
+    name: bulk-worker
+  minReplicaCount: 0               <span class="cm"># can scale to zero! (no idle bulk workers)</span>
+  maxReplicaCount: 5
+  pollingInterval: 30              <span class="cm"># check every 30s (bulk is less time-sensitive)</span>
+  cooldownPeriod: 300              <span class="cm"># wait 5 min before scaling down</span>
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.production.svc.cluster.local:6379
+        listName: bull:bulk:wait
+        listLength: "100"          <span class="cm"># higher threshold — bulk can queue longer</span>
+
+<span class="cm">---</span>
+
+<span class="cm"># Worker Deployment (what KEDA scales)</span>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: critical-worker
+  namespace: production
+spec:
+  replicas: 1                      <span class="cm"># KEDA overrides this</span>
+  selector:
+    matchLabels:
+      app: critical-worker
+  template:
+    metadata:
+      labels:
+        app: critical-worker
+    spec:
+      terminationGracePeriodSeconds: 120  <span class="cm"># allow 2min for job to finish</span>
+      containers:
+        - name: worker
+          image: your-registry/workers:latest
+          command: ["node", "dist/workers/critical.js"]
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef: { name: redis-secret, key: host }
+          resources:
+            requests: { memory: "256Mi", cpu: "100m" }
+            limits:   { memory: "512Mi", cpu: "500m" }</pre>
+  </div>
+</div>
+
+<!-- S3 -->
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Queue monitoring:<br><em>BullMQ Board + custom metrics</em></h2>
+  <p class="lead">BullMQ Board is the built-in dashboard for queue visibility. Beyond that, exposing queue metrics to Prometheus and building Grafana dashboards gives you alertable, historical queue health data.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">queue-metrics.ts — expose BullMQ metrics to Prometheus</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Queue } <span class="kw">from</span> <span class="str">'bullmq'</span>;
+<span class="kw">import</span> { Registry, Gauge } <span class="kw">from</span> <span class="str">'prom-client'</span>;
+
+<span class="kw">const</span> registry = <span class="kw">new</span> Registry();
+
+<span class="cm">// Gauge per queue × state</span>
+<span class="kw">const</span> queueDepthGauge = <span class="kw">new</span> Gauge({
+  name:    <span class="str">'bullmq_queue_depth'</span>,
+  help:    <span class="str">'Number of jobs in each state per queue'</span>,
+  labelNames: [<span class="str">'queue'</span>, <span class="str">'state'</span>],
+  registers: [registry],
+});
+
+<span class="kw">const</span> queues = [criticalQueue, defaultQueue, bulkQueue];
+<span class="kw">const</span> queueNames = [<span class="str">'critical'</span>, <span class="str">'default'</span>, <span class="str">'bulk'</span>];
+
+<span class="kw">async function</span> <span class="fn">collectMetrics</span>() {
+  <span class="kw">for</span> (<span class="kw">const</span> [i, queue] <span class="kw">of</span> queues.<span class="fn">entries</span>()) {
+    <span class="kw">const</span> counts = <span class="kw">await</span> queue.<span class="fn">getJobCounts</span>();
+    <span class="kw">const</span> name = queueNames[i];
+    <span class="kw">for</span> (<span class="kw">const</span> [state, count] <span class="kw">of</span> Object.<span class="fn">entries</span>(counts)) {
+      queueDepthGauge.<span class="fn">set</span>({ queue: name, state }, count);
+    }
+  }
+}
+
+<span class="cm">// Collect every 15 seconds</span>
+setInterval(collectMetrics, <span class="num">15_000</span>);
+
+<span class="cm">// Prometheus scrape endpoint</span>
+app.<span class="fn">get</span>(<span class="str">'/metrics'</span>, <span class="kw">async</span> (req, res) => {
+  res.<span class="fn">set</span>(<span class="str">'Content-Type'</span>, registry.contentType);
+  res.<span class="fn">end</span>(<span class="kw">await</span> registry.<span class="fn">metrics</span>());
+});
+
+<span class="cm">## ── Grafana dashboard queries (PromQL) ──────────────────────────</span>
+
+<span class="cm">## Panel 1: DLQ depth over time (alert threshold: 10)</span>
+<span class="cm">## bullmq_queue_depth{state="failed"}</span>
+
+<span class="cm">## Panel 2: Queue throughput (jobs/min)</span>
+<span class="cm">## rate(bullmq_queue_depth{state="completed"}[1m]) * 60</span>
+
+<span class="cm">## Panel 3: Active workers (vs jobs waiting)</span>
+<span class="cm">## bullmq_queue_depth{state="active"}</span>
+<span class="cm">## bullmq_queue_depth{state="waiting"}</span>
+
+<span class="cm">## Panel 4: Queue drain time estimate (waiting / throughput)</span>
+<span class="cm">## bullmq_queue_depth{state="waiting"}</span>
+<span class="cm">##   /</span>
+<span class="cm">## rate(bullmq_queue_depth{state="completed"}[5m]) / 60</span>
+
+<span class="cm">## ── Grafana alert rules ─────────────────────────────────────────</span>
+
+<span class="cm">## Alert 1: DLQ growing (critical — page on-call)</span>
+<span class="cm">## WHEN bullmq_queue_depth{state="failed"} > 10 FOR 5m</span>
+<span class="cm">## MESSAGE: "{{$labels.queue}} queue has {{$value}} failed jobs"</span>
+
+<span class="cm">## Alert 2: Queue backlog (warning — check within 30 min)</span>
+<span class="cm">## WHEN bullmq_queue_depth{state="waiting",queue="critical"} > 1000 FOR 10m</span>
+
+<span class="cm">## Alert 3: No workers processing (critical — workers may be down)</span>
+<span class="cm">## WHEN bullmq_queue_depth{state="waiting",queue="critical"} > 10</span>
+<span class="cm">##   AND bullmq_queue_depth{state="active",queue="critical"} == 0</span>
+<span class="cm">##   FOR 2m</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify queue monitoring</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">BullMQ Board running: <code>docker run -p 3000:3000 taskforcesh/bullboard:latest</code> — connect to your Redis and verify all three queues are visible with correct job counts.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Prometheus scrape works: <code>curl http://worker:PORT/metrics | grep bullmq</code> — all four states (waiting, active, completed, failed) should appear for each queue.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">DLQ alert fires: manually move 11 jobs to failed state; verify the Grafana alert triggers within 5 minutes.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">KEDA autoscaling: enqueue 200 jobs in the critical queue; verify worker pod count increases from 1 to ~4 within 30 seconds, and back to 1 after the queue drains.</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

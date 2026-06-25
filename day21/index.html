@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 21: Async Job Queues & Workers — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);font-weight:600;}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.ty{color:#e06c75;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+/* job queue visualizer */
+.queue-vis{display:flex;gap:4px;flex-wrap:wrap;min-height:36px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin:8px 0;}
+.job-pill{padding:3px 10px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;transition:all .3s;white-space:nowrap;}
+.job-waiting{background:rgba(91,143,255,.15);border:1px solid rgba(91,143,255,.4);color:var(--accent);}
+.job-active{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);color:var(--orange);}
+.job-done{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);color:var(--green);}
+.job-failed{background:rgba(240,96,96,.12);border:1px solid rgba(240,96,96,.3);color:var(--red);}
+.job-dead{background:rgba(80,90,120,.15);border:1px solid rgba(80,90,120,.4);color:var(--text3);}
+.decision-strip{margin:56px 0 0;}
+.decision-strip-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.decision-strip h2{font-family:'Lora',serif;font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.ds-sub{font-size:14px;color:var(--text3);margin-bottom:24px;font-family:'JetBrains Mono',monospace;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 21 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-why">Why Async</a>
+  <a href="#s-anatomy">Queue Anatomy</a>
+  <a href="#s-patterns">Job Patterns</a>
+  <a href="#s-reliability">Reliability</a>
+  <a href="#s-backoff">Retry & Backoff</a>
+  <a href="#s-dlq">Dead Letter Queue</a>
+  <a href="#s-workers">Worker Scaling</a>
+  <a href="#s-priorities">Priorities</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day21/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day21/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 3 · Day 21 · Async Job Queues & Workers</div>
+  <h1>Why is the user waiting<br>for the email to send<br><em>before checkout completes?</em></h1>
+  <p class="hero-sub">Sending a confirmation email, generating a PDF ticket, resizing an uploaded image, notifying downstream systems — none of these need to happen before your API responds. Async job queues decouple the work from the response, making your API faster, more resilient, and independently scalable.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>~55 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>8 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>BullMQ · Redis queues · DLQ · Worker scaling</div>
+  </div>
+</div>
+
+<!-- S1: WHY -->
+<div class="section" id="s-why">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>Why async: the work the user shouldn't wait for</h2>
+
+  <p>Every API response has two parts: the work that must complete before you can respond, and the work that merely needs to happen eventually. Most teams never explicitly separate these. The result: users wait for email sends, PDF generation, webhook deliveries, and analytics events — all of which have nothing to do with confirming their transaction.</p>
+
+  <p>The rule is simple: <strong>if it doesn't change the response, it doesn't belong in the request path.</strong> An email confirmation doesn't change "your ticket is booked." A PDF doesn't need to exist before you say "payment successful." A webhook to a third-party doesn't affect what you tell the user.</p>
+
+  <h3>What belongs in the async queue</h3>
+  <ul>
+    <li><strong>Notifications:</strong> Email, SMS, push notifications, Slack messages. Inherently fire-and-forget from the user's perspective.</li>
+    <li><strong>Document generation:</strong> PDFs, invoices, receipts. These take 100-500ms and can be generated after the fact, linked from the confirmation page.</li>
+    <li><strong>Downstream webhooks:</strong> Notifying partners, CRMs, analytics platforms. If Salesforce is slow, that's not the user's problem.</li>
+    <li><strong>Image and media processing:</strong> Resizing, transcoding, watermarking. Never synchronous.</li>
+    <li><strong>Bulk operations:</strong> Importing a CSV of 10,000 records, sending a newsletter to 50,000 users.</li>
+    <li><strong>Cache warming:</strong> Precomputing expensive views after data changes.</li>
+    <li><strong>Audit and compliance events:</strong> Write to your audit log asynchronously — the response shouldn't wait for this.</li>
+  </ul>
+
+  <h3>What must stay synchronous</h3>
+  <p>Payment authorisation (you need the result to confirm the transaction), inventory reservation (two users cannot book the same seat — this is a synchronous write with locking, Day 9), authentication and authorisation (obviously), and anything that changes the data the response needs to report. The decision tree: if you need the result to formulate the response, it's synchronous. If you don't, it's a candidate for async.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">💡</div>
+    <div class="callout-inner">
+      <strong>Async also improves resilience</strong>
+      <p>A synchronous email send means your checkout fails if SendGrid is down. An async queue means the email just gets delayed — the checkout succeeds, the email goes out when the provider recovers. Decoupling with a queue makes the primary user flow resilient to failures in non-critical downstream systems. Day 18's circuit breaker pattern and async queues are complementary: use circuit breakers for synchronous calls you must make, and async queues for calls you can defer.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Sync vs async -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Sync vs async — what the user waits for</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showSyncAsync('sync_before')">Before: everything synchronous</button>
+      <button class="viz-btn" onclick="showSyncAsync('async_after')">After: async queue for non-critical</button>
+      <button class="viz-btn" onclick="showSyncAsync('what_moved')">What moved to the queue</button>
+      <button class="viz-btn" onclick="showSyncAsync('failure_modes')">Failure mode comparison</button>
+    </div>
+    <div id="sync-async-output" class="mono-out" style="min-height:180px">Select a view above.</div>
+  </div>
+</div>
+
+<!-- S2: ANATOMY -->
+<div class="section" id="s-anatomy">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Queue anatomy: producers, queues, workers, jobs</h2>
+
+  <p>A job queue system has four components. Understanding each one and its responsibilities is necessary before the failure modes make sense.</p>
+
+  <p><strong>Producer:</strong> The code that creates jobs. Usually your API handler, after completing the synchronous work. The producer serialises the job payload and pushes it onto the queue. The producer should not know or care who processes the job or when — it just needs to know the job was successfully enqueued.</p>
+
+  <p><strong>Queue:</strong> The persistent store for jobs waiting to be processed. In Redis-backed queues (BullMQ, Bull), the queue is a set of Redis data structures. Jobs in the queue survive application restarts. The queue is responsible for durability, ordering, and state transitions.</p>
+
+  <p><strong>Worker:</strong> The process that pulls jobs from the queue and executes them. Workers are horizontally scalable — you run more workers when you need more throughput. Workers are independently deployable — you can update worker code without touching the API. Workers should be idempotent where possible.</p>
+
+  <p><strong>Job:</strong> A unit of work with a payload, metadata (created at, attempts, status), and a lifecycle (waiting → active → completed | failed → dead letter).</p>
+
+  <h3>Job lifecycle states</h3>
+</div>
+
+<!-- VIZ 2: Job lifecycle -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Job lifecycle — states and transitions</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="runLifecycle('happy')">Happy path</button>
+      <button class="viz-btn" onclick="runLifecycle('retry')">Fail then retry</button>
+      <button class="viz-btn" onclick="runLifecycle('exhaust')">Exhaust retries → DLQ</button>
+      <button class="viz-btn" onclick="runLifecycle('delayed')">Delayed job</button>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+      <div><span class="job-pill job-waiting">waiting</span></div>
+      <div><span class="job-pill job-active">active</span></div>
+      <div><span class="job-pill job-done">completed</span></div>
+      <div><span class="job-pill job-failed">failed</span></div>
+      <div><span class="job-pill job-dead">dead letter</span></div>
+    </div>
+    <div class="queue-vis" id="lifecycle-queue" style="min-height:44px"></div>
+    <div id="lifecycle-log" class="mono-out" style="margin-top:12px;font-size:11.5px;height:120px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- S3: PATTERNS -->
+<div class="section" id="s-patterns">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Job patterns: fire-and-forget, fan-out, chaining, scheduling</h2>
+
+  <h3>Fire-and-forget</h3>
+  <p>The simplest pattern: enqueue a job, return the response, never look at the result. Appropriate for notifications — you don't need to confirm the email sent before continuing. The downside: you have no feedback loop. If the job fails, who knows? The answer: the dead letter queue and your alerting on DLQ depth.</p>
+
+  <h3>Fan-out</h3>
+  <p>One event triggers multiple independent jobs. A ticket purchase creates: a confirmation email job, a PDF generation job, a webhook delivery job, and an analytics event job — all in parallel. Each runs independently; failure in one doesn't block the others. The API handler enqueues all four and returns immediately.</p>
+
+  <h3>Job chaining</h3>
+  <p>Jobs that must run in sequence, where each step's output feeds the next. Generating a PDF then emailing it: you can't email what hasn't been generated yet. BullMQ supports chains with <code>job.add({ ... }, { parent: previousJob })</code>. The chain fails atomically if any step fails — no partial completions.</p>
+
+  <h3>Scheduled / cron jobs</h3>
+  <p>Jobs that run on a schedule: daily report emails, weekly digest, hourly cache warm-up. BullMQ's <code>repeat</code> option uses cron syntax. The critical constraint: ensure exactly-once scheduling across multiple worker pods — if all workers have the scheduler enabled, you'll get duplicate cron jobs on deployment. Use a single designated scheduler or leader election.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">BullMQ — producer patterns</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Queue, QueueEvents } <span class="kw">from</span> <span class="str">'bullmq'</span>;
+<span class="kw">import</span> { redis } <span class="kw">from</span> <span class="str">'./redis'</span>;
+
+<span class="kw">const</span> emailQueue    = <span class="kw">new</span> <span class="ty">Queue</span>(<span class="str">'email'</span>,    { connection: redis });
+<span class="kw">const</span> pdfQueue      = <span class="kw">new</span> <span class="ty">Queue</span>(<span class="str">'pdf'</span>,      { connection: redis });
+<span class="kw">const</span> webhookQueue  = <span class="kw">new</span> <span class="ty">Queue</span>(<span class="str">'webhook'</span>,  { connection: redis });
+<span class="kw">const</span> analyticsQueue = <span class="kw">new</span> <span class="ty">Queue</span>(<span class="str">'analytics'</span>, { connection: redis });
+
+<span class="cm">// Pattern 1: Fan-out — one purchase creates 4 independent jobs</span>
+<span class="kw">async function</span> <span class="fn">onBookingConfirmed</span>(booking: Booking) {
+  <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    emailQueue.<span class="fn">add</span>(<span class="str">'booking-confirmation'</span>, {
+      to:        booking.userEmail,
+      bookingId: booking.id,
+      eventName: booking.eventName,
+      seats:     booking.seats,
+    }),
+    pdfQueue.<span class="fn">add</span>(<span class="str">'ticket-pdf'</span>, {
+      bookingId: booking.id,
+      template:  <span class="str">'ticket-v2'</span>,
+    }),
+    webhookQueue.<span class="fn">add</span>(<span class="str">'partner-notify'</span>, {
+      partnerId: booking.partnerId,
+      event:     <span class="str">'booking.confirmed'</span>,
+      payload:   booking,
+    }, {
+      attempts: <span class="num">5</span>,              <span class="cm">// more retries for webhooks</span>
+      backoff: { type: <span class="str">'exponential'</span>, delay: <span class="num">2000</span> },
+    }),
+    analyticsQueue.<span class="fn">add</span>(<span class="str">'track-purchase'</span>, {
+      event:     <span class="str">'purchase_completed'</span>,
+      userId:    booking.userId,
+      amountCents: booking.amountCents,
+    }, {
+      priority: <span class="num">10</span>,    <span class="cm">// low priority — analytics can wait</span>
+    }),
+  ]);
+}
+
+<span class="cm">// Pattern 2: Delayed job — retry payment in 30 minutes</span>
+<span class="kw">await</span> paymentQueue.<span class="fn">add</span>(<span class="str">'retry-payment'</span>, { orderId }, {
+  delay: <span class="num">30</span> * <span class="num">60</span> * <span class="num">1000</span>,  <span class="cm">// 30 minutes in ms</span>
+});
+
+<span class="cm">// Pattern 3: Scheduled cron — daily digest at 08:00 IST</span>
+<span class="kw">await</span> emailQueue.<span class="fn">add</span>(<span class="str">'daily-digest'</span>, {}, {
+  repeat: { cron: <span class="str">'0 2 * * *'</span> },  <span class="cm">// 02:00 UTC = 07:30 IST</span>
+  jobId: <span class="str">'daily-digest'</span>,         <span class="cm">// fixed ID prevents duplicates</span>
+});</pre>
+  </div>
+</div>
+
+<!-- VIZ 3: Pattern explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Job patterns — which to use for each scenario</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPattern('fanout')">Fan-out (booking confirmed)</button>
+      <button class="viz-btn" onclick="showPattern('chain')">Chain (PDF → email)</button>
+      <button class="viz-btn" onclick="showPattern('batch')">Batch (newsletter send)</button>
+      <button class="viz-btn" onclick="showPattern('scheduled')">Scheduled (cron)</button>
+      <button class="viz-btn" onclick="showPattern('rate_limited')">Rate-limited (API quota)</button>
+    </div>
+    <div id="pattern-output" class="mono-out" style="font-size:12px;min-height:160px">Select a pattern above.</div>
+  </div>
+</div>
+
+<!-- S4: RELIABILITY -->
+<div class="section" id="s-reliability">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Reliability: at-least-once delivery and idempotency</h2>
+
+  <p>Job queues guarantee <strong>at-least-once delivery</strong>, not exactly-once. A worker that crashes mid-job, a network partition during the acknowledgment, or a Redis failover can all cause a job to be redelivered and processed again. Your workers must be prepared for this.</p>
+
+  <h3>Why at-least-once, not exactly-once</h3>
+  <p>Exactly-once delivery across a distributed system requires a two-phase commit between the queue and the worker's side effects — atomically dequeuing the job and completing the work. For most job types, this is either impossible (sending an email is not a transaction) or prohibitively complex. At-least-once is the realistic guarantee: the job will be processed, but may be processed more than once.</p>
+
+  <h3>Making workers idempotent</h3>
+  <p>An idempotent worker produces the same outcome whether it runs once or ten times. For each job type, identify the side effects and design around duplicates:</p>
+  <ul>
+    <li><strong>Email sends:</strong> Check if the email was already sent for this job ID before sending. Store sent job IDs in Redis with a TTL. <code>SET email:sent:{jobId} 1 EX 86400 NX</code> — if SET returns nil, it was already sent.</li>
+    <li><strong>Database writes:</strong> Use <code>INSERT ... ON CONFLICT DO NOTHING</code> or upserts. Never use raw INSERT in a worker that might run twice.</li>
+    <li><strong>Webhook deliveries:</strong> Include an idempotency key in the webhook payload. Recipients should deduplicate by key. Include the job ID as the idempotency key.</li>
+    <li><strong>PDF generation:</strong> Check if the PDF already exists in storage before generating. Store by a deterministic key (booking ID + template version).</li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>The lock-before-process pattern</strong>
+      <p>For jobs where idempotency is hard to achieve (external API calls with no dedup support), use a distributed lock as a gate: <code>SET lock:{jobId} 1 NX EX 300</code>. If the SET succeeds, process the job. If it fails, another worker is processing it — skip or wait. Set the lock TTL to longer than your maximum job duration. This converts at-least-once into approximately-once, with a small risk of double-processing if the lock expires during a long job.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 4: Idempotency -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Idempotency patterns — making workers safe to run twice</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showIdempotency('email')">Email deduplication</button>
+      <button class="viz-btn" onclick="showIdempotency('db_write')">Database write (upsert)</button>
+      <button class="viz-btn" onclick="showIdempotency('webhook')">Webhook idempotency key</button>
+      <button class="viz-btn" onclick="showIdempotency('pdf')">File generation check</button>
+      <button class="viz-btn" onclick="showIdempotency('lock')">Distributed lock gate</button>
+    </div>
+    <div id="idempotency-output" class="mono-out" style="font-size:12px;min-height:140px">Select a job type above.</div>
+  </div>
+</div>
+
+<!-- S5: BACKOFF -->
+<div class="section" id="s-backoff">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Retry with exponential backoff: not all failures are equal</h2>
+
+  <p>When a job fails, the right response depends on why it failed. A transient network error — retry soon. A rate limit from an external API — retry after the Retry-After header says to. A business logic error (invalid data) — don't retry, move to DLQ immediately. A timeout — retry with a longer timeout. Treating all failures the same is how you hammer a recovering service with retries until it can't recover.</p>
+
+  <h3>BullMQ's backoff strategies</h3>
+  <ul>
+    <li><strong>fixed:</strong> Wait exactly N milliseconds between retries. Simple but can create thundering herds when many jobs fail simultaneously.</li>
+    <li><strong>exponential:</strong> Wait 2^attempt × baseDelay. 1st retry: 1s, 2nd: 2s, 3rd: 4s, 4th: 8s. Spreads retries over time, gives services a chance to recover.</li>
+    <li><strong>Custom:</strong> Implement your own backoff logic — read the error type, inspect the <code>Retry-After</code> header, apply different delays for different failure modes.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">BullMQ worker with typed retry logic</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Worker, Job } <span class="kw">from</span> <span class="str">'bullmq'</span>;
+
+<span class="kw">const</span> worker = <span class="kw">new</span> <span class="ty">Worker</span>(<span class="str">'email'</span>, <span class="kw">async</span> (job: Job) => {
+  <span class="kw">const</span> { to, bookingId, eventName } = job.data;
+
+  <span class="cm">// Check idempotency before doing any work</span>
+  <span class="kw">const</span> alreadySent = <span class="kw">await</span> redis.<span class="fn">set</span>(
+    <span class="str">`email:sent:\${job.id}`</span>, <span class="str">'1'</span>, <span class="str">'EX'</span>, <span class="num">86400</span>, <span class="str">'NX'</span>
+  );
+  <span class="kw">if</span> (!alreadySent) {
+    logger.<span class="fn">info</span>({ jobId: job.id }, <span class="str">'email.already_sent.skipping'</span>);
+    <span class="kw">return</span> { skipped: <span class="kw">true</span> };
+  }
+
+  <span class="kw">try</span> {
+    <span class="kw">await</span> sendgrid.<span class="fn">send</span>({ to, subject: <span class="str">`Your tickets for \${eventName}`</span>, ... });
+    logger.<span class="fn">info</span>({ jobId: job.id, to, bookingId }, <span class="str">'email.sent'</span>);
+  } <span class="kw">catch</span> (err) {
+    <span class="cm">// Clear the idempotency key on failure so next attempt can try again</span>
+    <span class="kw">await</span> redis.<span class="fn">del</span>(<span class="str">`email:sent:\${job.id}`</span>);
+
+    <span class="cm">// Don't retry on non-retryable errors</span>
+    <span class="kw">if</span> (err.code === <span class="str">'INVALID_EMAIL'</span>) {
+      <span class="kw">throw new</span> <span class="ty">UnrecoverableError</span>(<span class="str">'Invalid email address'</span>); <span class="cm">// → DLQ, no retry</span>
+    }
+
+    <span class="cm">// Rate limited — throw with retry delay hint</span>
+    <span class="kw">if</span> (err.status === <span class="num">429</span>) {
+      <span class="kw">const</span> retryAfter = parseInt(err.headers[<span class="str">'retry-after'</span>] || <span class="str">'60'</span>) * <span class="num">1000</span>;
+      job.<span class="fn">update</span>({ ...job.data, _retryDelay: retryAfter });
+      <span class="kw">throw</span> err;  <span class="cm">// BullMQ will use the configured backoff</span>
+    }
+
+    <span class="kw">throw</span> err;  <span class="cm">// Other errors: use configured backoff</span>
+  }
+}, {
+  connection: redis,
+  concurrency: <span class="num">5</span>,       <span class="cm">// process 5 jobs simultaneously per worker</span>
+  limiter: { max: <span class="num">100</span>, duration: <span class="num">1000</span> },  <span class="cm">// max 100 jobs/sec across all workers</span>
+});
+
+<span class="cm">// Queue config with retry policy</span>
+<span class="kw">const</span> emailQueue = <span class="kw">new</span> <span class="ty">Queue</span>(<span class="str">'email'</span>, {
+  connection: redis,
+  defaultJobOptions: {
+    attempts:  <span class="num">4</span>,
+    backoff: { type: <span class="str">'exponential'</span>, delay: <span class="num">2000</span> },
+    <span class="cm">// Attempts: T+0s (initial), T+2s, T+6s, T+14s, then DLQ</span>
+    removeOnComplete: { count: <span class="num">1000</span> },  <span class="cm">// keep last 1000 completed</span>
+    removeOnFail: <span class="kw">false</span>,              <span class="cm">// keep failed jobs for inspection</span>
+  },
+});</pre>
+  </div>
+</div>
+
+<!-- VIZ 5: Retry backoff visualiser -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Retry timing — how backoff spreads retry load</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Max attempts: <span id="att-val" style="color:var(--accent)">4</span></label>
+        <input type="range" class="viz-slider" id="att-slider" min="2" max="8" value="4" oninput="calcBackoff()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Base delay (ms): <span id="base-val" style="color:var(--accent)">2000ms</span></label>
+        <input type="range" class="viz-slider" id="base-slider" min="100" max="10000" step="100" value="2000" oninput="calcBackoff()">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="viz-btn" onclick="showBackoff('exponential')">Exponential</button>
+      <button class="viz-btn" onclick="showBackoff('fixed')">Fixed</button>
+      <button class="viz-btn" onclick="showBackoff('compare')">Compare strategies</button>
+    </div>
+    <div id="backoff-output" class="mono-out" style="font-size:12px;min-height:120px"></div>
+  </div>
+</div>
+
+<!-- S6: DLQ -->
+<div class="section" id="s-dlq">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>The Dead Letter Queue: where failed jobs go to wait</h2>
+
+  <p>A job that exhausts all retry attempts doesn't disappear — it moves to the Dead Letter Queue (DLQ). The DLQ is a holding area for jobs that need human attention: they couldn't be processed automatically, but the data shouldn't be lost. The DLQ is not a trash can; it's a queue of problems waiting to be diagnosed.</p>
+
+  <h3>What the DLQ tells you</h3>
+  <p>Depth and growth rate of the DLQ are critical metrics. A stable DLQ of 5 jobs might be acceptable — permanent failures like bad email addresses. A growing DLQ means a systematic problem: an API is broken, a schema changed, or your processing logic has a bug that affects a whole class of jobs.</p>
+
+  <h3>DLQ operations</h3>
+  <ul>
+    <li><strong>Inspect:</strong> Read the job payload and the failure reason. Most failures have obvious causes when you look at the error message.</li>
+    <li><strong>Retry:</strong> After fixing the underlying problem, move jobs from DLQ back to the main queue. BullMQ: <code>job.retry()</code>.</li>
+    <li><strong>Discard:</strong> Some jobs are permanently unprocessable (bad data, user deleted). Remove them after logging the event.</li>
+    <li><strong>Replay:</strong> For a class of jobs affected by a bug you've now fixed, replay all DLQ jobs through the fixed worker.</li>
+  </ul>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Alert on DLQ depth — don't let it grow silently</strong>
+      <p>The DLQ is invisible without monitoring. A worker bug that moves 10,000 jobs to the DLQ over a weekend looks fine in your API metrics (requests are still succeeding) but means 10,000 confirmation emails were never sent, 10,000 PDFs were never generated, and 10,000 webhook deliveries to your partners never happened. Alert when DLQ depth exceeds a threshold (e.g. 10 jobs). Set it up before you need it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 6: DLQ explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Dead Letter Queue — inspect, retry, discard</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showDLQ('inspect')">Inspect a DLQ job</button>
+      <button class="viz-btn" onclick="showDLQ('growing_dlq')">Growing DLQ = systemic bug</button>
+      <button class="viz-btn" onclick="showDLQ('retry_all')">Retry after fix</button>
+      <button class="viz-btn" onclick="showDLQ('alert_setup')">Alert configuration</button>
+    </div>
+    <div id="dlq-output" class="mono-out" style="font-size:12px;min-height:160px">Select a DLQ operation above.</div>
+  </div>
+</div>
+
+<!-- S7: WORKERS -->
+<div class="section" id="s-workers">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Worker scaling: concurrency, throughput, and resource limits</h2>
+
+  <p>Worker scaling has two axes: concurrency per worker process (how many jobs each worker handles simultaneously) and number of worker instances (how many worker processes are running). Getting the right combination matters — too little and jobs pile up, too much and workers exhaust their resources or overwhelm downstream services.</p>
+
+  <h3>Concurrency per worker</h3>
+  <p>For I/O-bound jobs (HTTP calls, database queries, email sends), you can run many concurrent jobs per worker because each job spends most of its time waiting. BullMQ's <code>concurrency: 20</code> means the worker pulls up to 20 jobs from the queue simultaneously and runs them concurrently. For CPU-bound jobs (image processing, PDF generation), concurrency should match your CPU count — more than that and you're just context-switching.</p>
+
+  <h3>Number of worker instances</h3>
+  <p>Scale the number of worker instances based on queue depth and job processing rate. Kubernetes horizontal pod autoscaler can scale workers based on a custom metric (KEDA supports scaling based on queue depth directly). The rule: target a queue depth that means jobs wait no longer than your acceptable delay. If jobs should process within 30 seconds and each worker handles 10 jobs/minute, and you have 100 jobs queued, you need 10 workers online.</p>
+
+  <h3>Rate limiting workers</h3>
+  <p>Workers can overwhelm downstream services. If your email queue processes 5,000 jobs and each fires a SendGrid API call, you might hit their rate limits. BullMQ's <code>limiter</code> option caps the global processing rate across all workers sharing the same Redis connection: <code>{ max: 100, duration: 1000 }</code> = 100 jobs per second total, regardless of how many workers are running.</p>
+</div>
+
+<!-- VIZ 7: Worker scaling -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Worker scaling calculator — throughput and queue drain time</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Jobs in queue: <span id="jobs-val" style="color:var(--accent)">500</span></label>
+        <input type="range" class="viz-slider" id="jobs-slider" min="10" max="10000" step="10" value="500" oninput="calcWorkers()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Job duration (ms): <span id="dur-val" style="color:var(--accent)">2000ms</span></label>
+        <input type="range" class="viz-slider" id="dur-slider" min="100" max="30000" step="100" value="2000" oninput="calcWorkers()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Concurrency per worker: <span id="conc-val" style="color:var(--accent)">10</span></label>
+        <input type="range" class="viz-slider" id="conc-slider" min="1" max="50" value="10" oninput="calcWorkers()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Worker instances: <span id="inst-val" style="color:var(--accent)">3</span></label>
+        <input type="range" class="viz-slider" id="inst-slider" min="1" max="20" value="3" oninput="calcWorkers()">
+      </div>
+    </div>
+    <div id="worker-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S8: PRIORITIES -->
+<div class="section" id="s-priorities">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Job priorities and queue separation</h2>
+
+  <p>Not all jobs are equal. A confirmation email for a just-completed £500 booking is more urgent than a weekly digest. A webhook delivery to a paying partner is more urgent than an analytics event. Two strategies for handling priority: numeric priority within a queue, and separate queues with separate workers.</p>
+
+  <h3>Numeric priority (within one queue)</h3>
+  <p>BullMQ supports job priorities where lower numbers run first. Jobs with <code>priority: 1</code> are processed before <code>priority: 10</code>. Simple and effective when you have a single logical job type with different urgency levels. Limitation: a flood of high-priority jobs can completely starve low-priority jobs.</p>
+
+  <h3>Separate queues (recommended for distinct job types)</h3>
+  <p>Separate queues with separate workers provide true isolation. The critical queue (confirmation emails) always has workers dedicated to it. A burst of analytics jobs can't delay confirmation emails because they're on different queues with different worker pools. The cost: more infrastructure to manage. Worth it for jobs with hard latency requirements.</p>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>The queue topology for most applications</strong>
+      <p>Three queues covers 90% of use cases: <strong>critical</strong> (confirmation emails, payment retries, partner webhooks — 5 workers, processed first), <strong>default</strong> (PDF generation, internal notifications — 3 workers), <strong>bulk</strong> (newsletter sends, CSV exports, analytics — 1-2 workers, can be slow). This prevents bulk operations from ever blocking critical user-facing jobs, and is easy to scale independently.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 8: Queue topology -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Queue topologies — choose the right architecture</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showTopology('single_queue')">Single queue (naive)</button>
+      <button class="viz-btn" onclick="showTopology('priority_queue')">Priority within one queue</button>
+      <button class="viz-btn" onclick="showTopology('three_tier')">Three-tier (recommended)</button>
+      <button class="viz-btn" onclick="showTopology('per_type')">Per-type queues (advanced)</button>
+    </div>
+    <div id="topology-output" class="mono-out" style="font-size:12px;min-height:160px">Select a topology above.</div>
+  </div>
+</div>
+
+<!-- PROD REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>Production reality</h2>
+
+  <h3>Redis as queue backend: durability concerns</h3>
+  <p>BullMQ uses Redis. Redis in its default configuration is not durable — a restart without AOF persistence loses all queued jobs. For production job queues, enable Redis AOF (Append-Only File) with <code>appendonly yes</code> and <code>appendfsync everysec</code>. This persists every write to disk every second, limiting loss to at most 1 second of jobs on an unclean shutdown. For zero job loss, use <code>appendfsync always</code> (slower) or use a managed Redis with AOF enabled (ElastiCache, Upstash, Redis Cloud).</p>
+
+  <h3>BullMQ vs alternatives</h3>
+  <p>BullMQ (Node.js/Redis) is the right choice for most teams starting out. For polyglot systems where workers exist in multiple languages, consider Temporal (workflow orchestration with durable execution) or a message queue like RabbitMQ or Amazon SQS that any language can consume. The tradeoff: BullMQ has the richest feature set for Node.js; SQS is operationally simpler but less feature-rich; Temporal is the most powerful but also the most complex.</p>
+
+  <h3>Job timeout: don't let workers hang forever</h3>
+  <p>A worker that picks up a job must complete it or fail it within some time limit. Without a timeout, a stuck worker holds the job in "active" state indefinitely, preventing retries. BullMQ's <code>lockDuration</code> option defines how long a worker can hold a job before it's considered abandoned and re-queued. Set it to slightly longer than your longest legitimate job duration. A job that legitimately takes 10 minutes should have <code>lockDuration: 700000</code> (70s longer than max) — not the default 30 seconds.</p>
+</div>
+
+<!-- NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 10</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Job payloads should be small references, not full objects</h3>
+  <p>It's tempting to put the entire user object, the entire order, and all related data into a job payload. Don't. Store the IDs and fetch fresh data in the worker. A payload with stale data causes subtle bugs: the email is generated with the address the user had at booking time, not at email-send time if they changed it. Fetch fresh data in the worker using the IDs in the payload. Smaller payloads also mean faster Redis operations and less memory.</p>
+
+  <h3>Worker crashes during job processing leave jobs "stuck in active"</h3>
+  <p>If a worker process crashes (out of memory, OOM kill, forced deployment) while processing a job, the job stays in "active" state. BullMQ's <code>lockDuration</code> handles this — after the lock expires, the job is considered abandoned and moved back to waiting for retry. But if your lockDuration is too long (hours), stuck jobs can sit in active for a long time before being retried. Monitor the count of jobs in "active" state — if it exceeds the number of running workers, something is stuck.</p>
+
+  <h3>Deployment causes job processing gaps</h3>
+  <p>When you deploy a new worker version, the old workers stop and new ones start. Jobs in the queue during this gap wait until new workers are up. If your deployment takes 60 seconds and you have 10 jobs arriving per second, 600 jobs queue up. Make your workers start processing quickly after boot, and use rolling deployments to keep at least some workers running at all times.</p>
+
+  <h3>Scheduled jobs and multiple worker pods don't mix without care</h3>
+  <p>If you run cron jobs from your worker process and you have 5 worker pods, each pod independently schedules the cron job — you get 5× the intended executions. Fix: use a fixed <code>jobId</code> with BullMQ's repeat (duplicate job IDs are silently ignored), or use a dedicated scheduler pod, or use a leader election lock before scheduling.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="decision-strip" id="s-sequence">
+  <div class="decision-strip-eyebrow">Decision sequence</div>
+  <h2>Should this work be async?</h2>
+  <p class="ds-sub">Work through this before adding any new async job.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Does the response need the result of this work?</div>
+        <div class="ds-detail">If yes — it must be synchronous. Auth validation, inventory reservation, payment authorisation: the response depends on the outcome. If no — it's a candidate for async. Email sends, PDF generation, webhooks, analytics: the response "order confirmed" doesn't depend on whether the email was sent yet.
+          <br><span class="ds-tag ds-tag-info">response needs result = synchronous, always</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Does the user need immediate confirmation of this specific action?</div>
+        <div class="ds-detail">Sending a newsletter: the admin submits, you say "sending in progress." That's async. Sending a password reset: the user waits for "check your email" — they expect it immediately. If the user is staring at a spinner waiting for this specific thing, keep it synchronous or make the async very fast. If they're okay with "we'll take care of it," make it async.
+          <br><span class="ds-tag ds-tag-warn">user is watching = either sync or fast async</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Is the operation idempotent, or can you make it idempotent?</div>
+        <div class="ds-detail">Non-idempotent operations in async queues are risky — at-least-once delivery means duplicates happen. Sending an email twice is annoying. Charging a card twice is catastrophic. For non-idempotent operations, add idempotency guards (dedup keys, upserts, existence checks) before moving to async. If you can't add idempotency, consider keeping it synchronous.
+          <br><span class="ds-tag ds-tag-stop">non-idempotent + async = guaranteed duplicate bugs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Which queue tier does this belong in?</div>
+        <div class="ds-detail">Critical (confirmation emails, payment retries, partner webhooks): must-process-fast, high retry count, dedicated workers. Default (PDF generation, internal alerts): should process within minutes. Bulk (newsletter, CSV export, analytics): can process over hours. Mixing bulk and critical jobs in one queue means a newsletter send can delay a booking confirmation. Separate them.
+          <br><span class="ds-tag ds-tag-ok">separate queues = separate failure domains</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">What happens if this job fails permanently?</div>
+        <div class="ds-detail">Design the DLQ handling before shipping the job type. Who gets alerted? What's the remediation? For confirmation emails: alert on-call, manually resend from DLQ. For analytics events: might be acceptable to discard. For partner webhooks: alert the partner, require manual intervention. The answer determines retry count, DLQ alert threshold, and runbook.
+          <br><span class="ds-tag ds-tag-warn">no DLQ plan = silent failures users eventually notice</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div>
+      <div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Set up DLQ monitoring and queue depth alerts before shipping</div>
+        <div class="ds-detail">Alert when DLQ depth > 10, when queue depth > 1000 (backlog building), when job failure rate > 5%. These metrics are invisible without explicit instrumentation — BullMQ doesn't alert on your behalf. BullMQ Board or your APM tool can expose these. Set them up before the first production incident, not during it.
+          <br><span class="ds-tag ds-tag-stop">unmonitored queues = problems you find out about from users</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">10,000 confirmation emails never sent — DLQ overflowed silently for 3 days</div>
+    <div style="font-size:13px;color:var(--text2)">DLQ investigation · schema mismatch bug · bulk retry walkthrough</div>
+  </div>
+  <a href="/day21/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">BullMQ full setup, KEDA autoscaling, queue monitoring dashboard</div>
+    <div style="font-size:13px;color:var(--text2)">Complete worker · KEDA config · BullMQ Board · Redis AOF setup</div>
+  </div>
+  <a href="/day21/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 12</div>
+  <h2>Async job queue checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">IDP</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Idempotent workers</div><p style="font-size:12.5px;color:var(--text3);margin:0">Every worker handles duplicate delivery safely. Dedup keys, upserts, existence checks — at-least-once delivery is guaranteed.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">DLQ</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">DLQ monitored</div><p style="font-size:12.5px;color:var(--text3);margin:0">Alert fires when DLQ depth > 10. Runbook exists for each job type. DLQ is not a trash can.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">REF</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">IDs not objects</div><p style="font-size:12.5px;color:var(--text3);margin:0">Job payloads contain IDs and minimal context. Workers fetch fresh data at processing time. No stale payload bugs.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">AOF</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Redis durability</div><p style="font-size:12.5px;color:var(--text3);margin:0">Redis AOF enabled with appendfsync everysec. Queue jobs survive a Redis restart. Tested with a manual restart.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">TMO</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Job timeouts set</div><p style="font-size:12.5px;color:var(--text3);margin:0">lockDuration set to longer than max legitimate job duration. Stuck jobs don't stay "active" forever.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">SEP</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Queues separated</div><p style="font-size:12.5px;color:var(--text3);margin:0">Critical, default, and bulk jobs on separate queues with separate worker pools. Bulk can't delay critical.</p></div>
+  </div>
+</div>
+<div style="height:80px"></div>
+</article>
+</div>
+
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero,.decision-strip').forEach(function(s){if(s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Sync vs async
+var SYNC_ASYNC={
+  sync_before:'BEFORE: Everything synchronous — user waits for all of it\n\nPOST /checkout timeline (user is waiting):\n\n  T+0ms:    Request arrives\n  T+10ms:   Auth validation ✓ (must be sync)\n  T+45ms:   Inventory reservation ✓ (must be sync)\n  T+180ms:  Payment authorisation ✓ (must be sync — need the result)\n  T+380ms:  Generate PDF ticket ← user waiting for THIS\n  T+650ms:  Send confirmation email ← and THIS\n  T+820ms:  Deliver webhook to partner ← and THIS\n  T+950ms:  Write analytics event ← and THIS\n  T+950ms:  Response: "Booking confirmed!"\n\nUser waited 950ms.\n  → 180ms was necessary (auth + inventory + payment)\n  → 770ms was unnecessary (PDF, email, webhook, analytics)\n\nIf SendGrid is slow: user waits 3-4 seconds\nIf SendGrid is down: checkout FAILS with 500',
+
+  async_after:'AFTER: Async queue for non-critical work\n\nPOST /checkout timeline:\n\n  T+0ms:    Request arrives\n  T+10ms:   Auth validation ✓\n  T+45ms:   Inventory reservation ✓\n  T+180ms:  Payment authorisation ✓\n  T+195ms:  Enqueue: pdf-generation job ← 3ms\n  T+198ms:  Enqueue: confirmation-email job ← 2ms\n  T+200ms:  Enqueue: partner-webhook job ← 2ms\n  T+202ms:  Enqueue: analytics-event job ← 1ms\n  T+203ms:  Response: "Booking confirmed!"\n\nUser waited 203ms. (79% faster)\n\nIn the background (user already gone):\n  T+500ms:  PDF generated, uploaded to S3\n  T+800ms:  Email sent via SendGrid\n  T+1200ms: Webhook delivered to partner\n  T+2000ms: Analytics event written\n\nIf SendGrid is slow: user unaffected, email just takes longer\nIf SendGrid is down: email queued, sent when it recovers',
+
+  what_moved:'WHAT MOVED TO THE QUEUE — and why each one\n\n  PDF generation → queue\n    Why: takes 100-400ms, can be generated after confirmation\n    When user needs it: download link in confirmation email (async too)\n    Failure impact: PDF link in email just says "generating..."\n\n  Confirmation email → queue\n    Why: SendGrid API call, ~100-300ms, not needed to confirm booking\n    Failure impact: user doesn\'t get email (DLQ alert → manual resend)\n    Idempotency: check if already sent for this bookingId before sending\n\n  Partner webhook → queue\n    Why: partner\'s server might be slow or down\n    Failure impact: partner doesn\'t get notified until webhook delivers\n    Config: 5 retries with exponential backoff, then DLQ + partner alert\n\n  Analytics event → queue\n    Why: analytics platform doesn\'t affect user experience\n    Failure impact: data gap in analytics (acceptable)\n    Config: 2 retries, discard on failure (not worth DLQ noise)\n\nSTAYED SYNCHRONOUS:\n  Auth, inventory reservation, payment → must be synchronous\n  These determine the response. Everything else is follow-up work.',
+
+  failure_modes:'FAILURE MODE COMPARISON\n\nScenario: SendGrid goes down at 19:00 during peak traffic\n\nBefore (synchronous email):\n  19:00  SendGrid down\n  19:00  Checkout endpoint starts returning 500\n  19:00  Users can\'t complete bookings\n  19:05  On-call paged: "Checkout is down"\n  19:05  Engineer investigates: email service dependency\n  19:25  Temporary fix: comment out email send\n  19:25  Deploy + restart: 20 minutes of checkout downtime\n  19:30  SendGrid recovers on its own anyway\n  Impact: 30 min outage, ~2000 failed checkouts\n\nAfter (async email):\n  19:00  SendGrid down\n  19:00  Email worker starts failing, jobs move to retry queue\n  19:00  Checkout: completely unaffected. Users booking fine.\n  19:02  DLQ alert: "email queue failure rate 100%"\n  19:02  Engineer checks: email service issue, not checkout\n  19:30  SendGrid recovers\n  19:30  Email worker retries all queued jobs successfully\n  Impact: email delivery delayed 30 min. Zero checkout downtime.',
+};
+function showSyncAsync(k){document.getElementById('sync-async-output').textContent=SYNC_ASYNC[k];}
+
+// VIZ 2: Job lifecycle
+var lcTimer=null;
+function clearLC(){if(lcTimer)clearTimeout(lcTimer);document.getElementById('lifecycle-queue').innerHTML='';document.getElementById('lifecycle-log').innerHTML='';}
+function addPill(q,id,cls,label){var p=document.createElement('span');p.className='job-pill '+cls;p.id='pill-'+id;p.textContent=label;q.appendChild(p);return p;}
+function lcLog(msg,col){var el=document.getElementById('lifecycle-log');var l=document.createElement('div');l.style.color=col||'var(--text2)';l.style.fontSize='11px';var ts=new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});l.textContent='['+ts+'] '+msg;el.appendChild(l);el.scrollTop=el.scrollHeight;}
+function runLifecycle(scenario){
+  clearLC();
+  var q=document.getElementById('lifecycle-queue');
+  if(scenario==='happy'){
+    addPill(q,'j1','job-waiting','job:email-001 [waiting]');
+    lcLog('Job enqueued: email:booking-confirmation {bookingId:"ord_123"}','var(--accent)');
+    lcTimer=setTimeout(function(){
+      var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-active';p.textContent='job:email-001 [active]';}
+      lcLog('Worker picked up job. Sending email to user@example.com...','var(--orange)');
+      setTimeout(function(){
+        var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-done';p.textContent='job:email-001 [completed]';}
+        lcLog('Email sent successfully. Job completed in 312ms.','var(--green)');
+        lcLog('Job retained in completed set (removeOnComplete: {count:1000})','var(--text3)');
+      },2000);
+    },1200);
+  } else if(scenario==='retry'){
+    addPill(q,'j1','job-waiting','job:pdf-002 [waiting]');
+    lcLog('Job enqueued: pdf:ticket-generation {bookingId:"ord_124"}','var(--accent)');
+    lcTimer=setTimeout(function(){
+      var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-active';p.textContent='job:pdf-002 [active, attempt 1]';}
+      lcLog('Attempt 1: Worker picked up job. Calling PDF service...','var(--orange)');
+      setTimeout(function(){
+        var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-failed';p.textContent='job:pdf-002 [failed, retry in 2s]';}
+        lcLog('Attempt 1 FAILED: PDF service timeout. Will retry in 2s.','var(--red)');
+        setTimeout(function(){
+          var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-waiting';p.textContent='job:pdf-002 [waiting, attempt 2]';}
+          lcLog('Job back in waiting state. Backoff: 2000ms elapsed.','var(--text3)');
+          setTimeout(function(){
+            var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-active';p.textContent='job:pdf-002 [active, attempt 2]';}
+            lcLog('Attempt 2: Worker picked up job. PDF service recovered.','var(--orange)');
+            setTimeout(function(){
+              var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-done';p.textContent='job:pdf-002 [completed]';}
+              lcLog('Attempt 2 succeeded. PDF generated. Job completed.','var(--green)');
+            },1500);
+          },800);
+        },2200);
+      },1500);
+    },1000);
+  } else if(scenario==='exhaust'){
+    addPill(q,'j1','job-waiting','job:wh-003 [waiting]');
+    lcLog('Job enqueued: webhook:partner-notify {partnerId:"p_xyz"}','var(--accent)');
+    var attempt=0;
+    function tryAttempt(){
+      attempt++;
+      if(attempt>3){
+        var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-dead';p.textContent='job:wh-003 [dead letter]';}
+        lcLog('All 3 attempts exhausted. Job moved to Dead Letter Queue.','var(--red)');
+        lcLog('DLQ depth: 1. Alert will fire if depth > 10.','var(--orange)');
+        lcLog('Runbook: check partner API status, manually retry from DLQ after fix.','var(--text3)');
+        return;
+      }
+      var delay=Math.pow(2,attempt-1)*2000;
+      var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-active';p.textContent='job:wh-003 [active, attempt '+attempt+']';}
+      lcLog('Attempt '+attempt+': calling partner webhook endpoint...','var(--orange)');
+      setTimeout(function(){
+        var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-failed';p.textContent='job:wh-003 [failed]';}
+        lcLog('Attempt '+attempt+' FAILED: 503 Service Unavailable from partner API. Next retry in '+(delay/1000)+'s.','var(--red)');
+        setTimeout(tryAttempt, delay+300);
+      },1000);
+    }
+    lcTimer=setTimeout(tryAttempt,1000);
+  } else {
+    addPill(q,'j1','job-waiting','job:digest-004 [delayed: 30min]');
+    lcLog('Delayed job enqueued: email:daily-digest. Executes at 08:00 tomorrow.','var(--accent)');
+    lcLog('Job sits in delayed state — not visible to workers yet.','var(--text3)');
+    setTimeout(function(){
+      var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-waiting';p.textContent='job:digest-004 [waiting]';}
+      lcLog('(Simulating: delay elapsed) Job moved from delayed → waiting.','var(--orange)');
+      setTimeout(function(){
+        var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-active';p.textContent='job:digest-004 [active]';}
+        lcLog('Worker picked up scheduled job. Sending digest to 4,823 subscribers...','var(--orange)');
+        setTimeout(function(){
+          var p=document.getElementById('pill-j1');if(p){p.className='job-pill job-done';p.textContent='job:digest-004 [completed]';}
+          lcLog('Digest sent. Next execution scheduled for tomorrow 08:00.','var(--green)');
+        },2000);
+      },1000);
+    },2500);
+  }
+}
+
+// VIZ 3: Patterns
+var PATTERNS={
+  fanout:'FAN-OUT — one event, multiple independent jobs\n\nTrigger: booking confirmed (ord_456)\n\nProducer (checkout API handler):\n  await Promise.all([\n    emailQueue.add("booking-confirmation", { bookingId, userEmail }),\n    pdfQueue.add("ticket-pdf", { bookingId }),\n    webhookQueue.add("partner-notify", { bookingId, partnerId }),\n    analyticsQueue.add("purchase-tracked", { bookingId, amountCents }),\n  ]);\n  // All 4 jobs enqueued in ~5ms total. API responds.\n\nWhat runs in parallel (all 4 simultaneously):\n  Worker A: sends confirmation email (350ms)\n  Worker B: generates PDF ticket (420ms)\n  Worker C: delivers partner webhook (180ms)\n  Worker D: writes analytics event (90ms)\n\nTotal elapsed: 420ms (max of parallel jobs)\nvs sequential: 1040ms\n\nKey property: if email fails, PDF and webhook still run.\nEach job fails or succeeds independently.',
+
+  chain:'CHAIN — jobs that depend on each other\n\nUse case: generate PDF, then email it as attachment\n  (Can\'t email a PDF that hasn\'t been generated yet)\n\nBullMQ Flow (job chain):\n  const flow = new FlowProducer({ connection: redis });\n  await flow.add({\n    name: "send-ticket-email",\n    queueName: "email",\n    data: { bookingId, template: "ticket-with-pdf" },\n    children: [{\n      name: "generate-ticket-pdf",\n      queueName: "pdf",\n      data: { bookingId },\n    }]\n  });\n\nExecution:\n  1. pdf:generate-ticket-pdf runs first\n  2. On completion: email:send-ticket-email becomes available\n  3. email worker picks it up, reads PDF URL from parent result\n\nIf PDF fails: email job is never started (fails atomically)\nIf email fails: PDF already exists, just retry the email\n\nChains vs fan-out: use chains when step B needs step A\'s output.',
+
+  batch:'BATCH — process large sets efficiently\n\nUse case: send newsletter to 50,000 subscribers\n\nNaive approach (don\'t do this):\n  users.forEach(user => emailQueue.add("newsletter", { userId: user.id }))\n  // 50,000 individual jobs queued at once\n  // Redis pipeline: 50,000 round trips or one pipeline?\n  // Queue depth: immediately at 50,000\n\nBetter: batch enqueue with BullMQ addBulk\n  const jobs = users.map(u => ({\n    name: "newsletter-v2",\n    data: { userId: u.id, campaignId },\n    opts: { priority: 10 }  // low priority\n  }));\n  await emailQueue.addBulk(jobs);  // single Redis pipeline\n\nBest: micro-batching in the worker\n  // Worker processes users in batches of 100\n  // One API call to SendGrid per 100 emails (bulk send API)\n  // Reduces API calls from 50,000 to 500\n  const worker = new Worker("newsletter", async (job) => {\n    // job.data.userIds = array of 100 IDs\n    await sendgrid.sendBulk(job.data.userIds, template);\n  });\n  // Enqueue: one job per 100 users = 500 jobs, not 50,000',
+
+  scheduled:'SCHEDULED / CRON — jobs on a timer\n\nBullMQ repeat option:\n  await emailQueue.add("daily-digest", {}, {\n    repeat: { cron: "0 2 * * *" },  // 02:00 UTC daily\n    jobId: "daily-digest",           // fixed ID prevents duplicates\n  });\n\nProblem: multiple worker pods each schedule the job\n  Pod A: schedules daily-digest at startup\n  Pod B: schedules daily-digest at startup\n  Pod C: schedules daily-digest at startup\n  → 3 digest emails tomorrow morning\n\nFix 1: fixed jobId (BullMQ silently ignores duplicate job IDs)\n  The second and third adds are no-ops.\n\nFix 2: dedicated scheduler pod\n  Only one pod (the scheduler) has cron enabled.\n  All other pods are pure workers.\n  Scale workers without multiplying cron executions.\n\nFix 3: leader election\n  Pods elect a leader via Redis lock.\n  Only the leader schedules cron jobs.',
+
+  rate_limited:'RATE-LIMITED QUEUE — respect external API limits\n\nUse case: delivering webhooks to partners who allow 10 req/s\n\nProblem: 500 webhook jobs fire at once → partner gets 500 req/s → 429\n\nFix 1: BullMQ rate limiter (global across all workers)\n  const worker = new Worker("webhook", handler, {\n    connection: redis,\n    limiter: { max: 10, duration: 1000 }  // 10/sec total\n  });\n  // Even with 10 worker pods, total = 10/sec not 100/sec\n  // Redis coordinates the limit across all workers\n\nFix 2: per-partner queues with different limits\n  // Partner A allows 10/sec, Partner B allows 100/sec\n  const partnerAQueue = new Worker("webhook-partner-a", handler, {\n    limiter: { max: 10, duration: 1000 }\n  });\n  const partnerBQueue = new Worker("webhook-partner-b", handler, {\n    limiter: { max: 100, duration: 1000 }\n  });\n\nFix 3: respect Retry-After header\n  catch (err) {\n    if (err.status === 429) {\n      const delay = parseInt(err.headers["retry-after"]) * 1000;\n      throw new Error(`Rate limited. Retry after ${delay}ms`);\n      // BullMQ will apply the configured backoff on next attempt\n    }\n  }',
+};
+function showPattern(k){document.getElementById('pattern-output').textContent=PATTERNS[k];}
+
+// VIZ 4: Idempotency
+var IDEM={
+  email:'EMAIL DEDUPLICATION — prevent duplicate sends\n\nStrategy: Redis SET with NX flag before sending\n\nWorker code:\n  async function processEmailJob(job) {\n    // Attempt to claim this job (NX = only set if not exists)\n    const claimed = await redis.set(\n      `email:sent:${job.id}`,\n      "1",\n      "EX", 86400,  // TTL: 24 hours (long enough for retries)\n      "NX"          // Only set if key doesn\'t exist\n    );\n    \n    if (!claimed) {\n      // Key already exists = email already sent\n      return { skipped: true, reason: "already_sent" };\n    }\n    \n    try {\n      await sendgrid.send({ to, subject, body });\n    } catch (err) {\n      // On failure: remove the lock so next attempt can try again\n      await redis.del(`email:sent:${job.id}`);\n      throw err;\n    }\n  }\n\nResult:\n  Attempt 1: redis SET → nil (not set) → send email → SET key\n  Attempt 2 (duplicate): redis SET → "OK" (key exists) → skip\n  No duplicate email sent.',
+
+  db_write:'DATABASE WRITE — upsert instead of insert\n\nStrategy: INSERT ... ON CONFLICT DO UPDATE\n\nWorker code (creating a notification record):\n  // BAD — will create duplicates on retry:\n  await db.query(\n    "INSERT INTO notifications (booking_id, type, sent_at) VALUES ($1, $2, NOW())",\n    [bookingId, "booking_confirmation"]\n  );\n\n  // GOOD — safe to run multiple times:\n  await db.query(`\n    INSERT INTO notifications (booking_id, type, sent_at)\n    VALUES ($1, $2, NOW())\n    ON CONFLICT (booking_id, type)  -- unique constraint on these two\n    DO UPDATE SET\n      attempt_count = notifications.attempt_count + 1,\n      last_attempt_at = NOW()\n    -- Note: sent_at is NOT updated on conflict = keeps original send time\n  `, [bookingId, "booking_confirmation"]);\n\n  // Add unique constraint in migration:\n  CREATE UNIQUE INDEX ON notifications (booking_id, type);',
+
+  webhook:'WEBHOOK IDEMPOTENCY KEY — help the receiver deduplicate\n\nStrategy: include a stable idempotency key in every webhook payload\n\nProducer (enqueuing the webhook job):\n  await webhookQueue.add("partner-notify", {\n    partnerId,\n    event: "booking.confirmed",\n    idempotencyKey: `booking.confirmed.${bookingId}`, // stable, unique\n    payload: { bookingId, userId, amountCents },\n  });\n\nWorker (delivering the webhook):\n  await fetch(partner.webhookUrl, {\n    method: "POST",\n    headers: {\n      "Content-Type": "application/json",\n      "X-Idempotency-Key": job.data.idempotencyKey,\n      "X-Delivery-Id": job.id,  // job ID as secondary dedup key\n    },\n    body: JSON.stringify(job.data.payload),\n  });\n\nPartner receiver:\n  // If they implement idempotency correctly:\n  if (await redis.get(`webhook:received:${idempotencyKey}`)) {\n    return res.status(200).json({ status: "duplicate_ignored" });\n  }',
+
+  pdf:'FILE GENERATION CHECK — check before creating\n\nStrategy: check if output already exists before generating\n\n  async function generatePDF(job) {\n    const { bookingId, templateVersion } = job.data;\n    \n    // Deterministic key: same inputs always produce same key\n    const storageKey = `tickets/${bookingId}/v${templateVersion}.pdf`;\n    \n    // Check if already exists in S3\n    const exists = await s3.headObject({\n      Bucket: "ticket-pdfs",\n      Key: storageKey,\n    }).catch(() => null);\n    \n    if (exists) {\n      // Already generated on a previous attempt\n      return { url: `https://cdn.example.com/${storageKey}`, cached: true };\n    }\n    \n    // Generate the PDF\n    const pdf = await pdfService.render(bookingId, templateVersion);\n    \n    // Upload to S3\n    await s3.putObject({\n      Bucket: "ticket-pdfs",\n      Key: storageKey,\n      Body: pdf,\n      ContentType: "application/pdf",\n    });\n    \n    return { url: `https://cdn.example.com/${storageKey}`, cached: false };\n  }',
+
+  lock:'DISTRIBUTED LOCK — approximate exactly-once for non-idempotent ops\n\nStrategy: claim a lock in Redis before processing; skip if already claimed\n\n  async function processPaymentRetry(job) {\n    const lockKey = `lock:payment-retry:${job.data.orderId}`;\n    const lockTTL = 5 * 60 * 1000; // 5 minutes (max job duration)\n    \n    // Try to claim the lock\n    const acquired = await redis.set(\n      lockKey, job.id, "PX", lockTTL, "NX"\n    );\n    \n    if (!acquired) {\n      // Another worker is processing this order right now\n      // (or just finished within the TTL window)\n      return { skipped: true, reason: "lock_held" };\n    }\n    \n    try {\n      await paymentGateway.retry(job.data.orderId);\n    } finally {\n      // Only release lock if WE still hold it (Lua script for atomicity)\n      await releaseLock(redis, lockKey, job.id);\n    }\n  }\n\nLimitation: if job takes longer than lockTTL, lock expires\nand another worker may start. TTL must exceed max job duration.',
+};
+function showIdempotency(k){document.getElementById('idempotency-output').textContent=IDEM[k];}
+
+// VIZ 5: Backoff
+function calcBackoff(){
+  document.getElementById('att-val').textContent=document.getElementById('att-slider').value;
+  document.getElementById('base-val').textContent=document.getElementById('base-slider').value+'ms';
+}
+function showBackoff(strategy){
+  var attempts=parseInt(document.getElementById('att-slider').value);
+  var base=parseInt(document.getElementById('base-slider').value);
+  var lines=[];
+  if(strategy==='exponential'){
+    lines.push('EXPONENTIAL BACKOFF (base: '+base+'ms, max attempts: '+attempts+')');lines.push('');
+    var cumulative=0;
+    for(var i=0;i<attempts;i++){
+      var delay=i===0?0:Math.min(base*Math.pow(2,i-1),30000);
+      cumulative+=delay;
+      var jitter=i===0?0:Math.floor(Math.random()*base*0.5);
+      lines.push('Attempt '+(i+1)+': '+
+        (i===0?'immediate (T+0)':`T+${(cumulative/1000).toFixed(1)}s (wait ${delay/1000}s + ~${jitter}ms jitter)`)+
+        (i===attempts-1?' → DLQ if fails':''));
+    }
+    lines.push('');lines.push('Total time before DLQ: ~'+((cumulative/1000)).toFixed(0)+'s');
+    lines.push('Spread: each retry doubles wait time → services have time to recover');
+  } else if(strategy==='fixed'){
+    lines.push('FIXED BACKOFF (delay: '+base+'ms, max attempts: '+attempts+')');lines.push('');
+    var cum=0;
+    for(var i=0;i<attempts;i++){
+      var d=i===0?0:base;cum+=d;
+      lines.push('Attempt '+(i+1)+': '+
+        (i===0?'immediate (T+0)':`T+${(cum/1000).toFixed(1)}s (wait ${base}ms)`)+
+        (i===attempts-1?' → DLQ if fails':''));
+    }
+    lines.push('');lines.push('Total time before DLQ: ~'+((cum/1000)).toFixed(0)+'s');
+    lines.push('Problem: all retrying jobs fire at the SAME time → thundering herd');
+  } else {
+    lines.push('STRATEGY COMPARISON (base: '+base+'ms, '+attempts+' attempts)');lines.push('');
+    lines.push('           Exponential     Fixed          No-backoff');
+    var expCum=0,fixCum=0;
+    for(var i=0;i<attempts;i++){
+      var expD=i===0?0:Math.min(base*Math.pow(2,i-1),30000);
+      var fixD=i===0?0:base;
+      expCum+=expD;fixCum+=fixD;
+      lines.push('Attempt '+(i+1)+':  T+'+(expCum/1000).toFixed(1)+'s          T+'+(fixCum/1000).toFixed(1)+'s          T+0s');
+    }
+    lines.push('');
+    lines.push('Exponential: spreads load, gives recovery time → recommended');
+    lines.push('Fixed: predictable but creates synchronized retry spikes');
+    lines.push('No backoff: hammers struggling service → prevents recovery');
+  }
+  document.getElementById('backoff-output').innerHTML=lines.join('\n');
+}
+
+// VIZ 6: DLQ
+var DLQ_CONTENT={
+  inspect:'INSPECTING A DLQ JOB\n\nBullMQ Board (UI) or programmatic:\n  const failedJobs = await emailQueue.getFailed(0, 50);\n  const job = failedJobs[0];\n  \n  console.log({\n    id:          job.id,\n    name:        job.name,                    // "booking-confirmation"\n    data:        job.data,                    // { bookingId: "ord_789", ... }\n    attemptsMade: job.attemptsMade,           // 4 (exhausted all retries)\n    failedReason: job.failedReason,           // "Error: Cannot read property..."\n    stacktrace:  job.stacktrace,              // full stack trace\n    timestamp:   new Date(job.timestamp),     // when originally enqueued\n    finishedOn:  new Date(job.finishedOn),    // when last failed\n  });\n  \n  // Output reveals the bug immediately:\n  // failedReason: "TypeError: Cannot read property \'email\' of undefined"\n  // data: { bookingId: "ord_789" }  ← email field missing from payload!\n\n  // Root cause: producer changed, forgot to include email in job data\n  // Fix: update producer to include email\n  // Then: retry all failed jobs with corrected worker',
+
+  growing_dlq:'GROWING DLQ = SYSTEMIC BUG\n\nAlert fires: DLQ depth > 10\n\n  09:00  Deploy: v2.1.4 (updated email template structure)\n  09:00  Email workers start processing existing queue\n  09:01  First DLQ entry: TypeError accessing template.subject\n  09:05  DLQ depth: 47 jobs\n  09:10  DLQ depth: 156 jobs  ← alert fires\n  09:12  On-call checks: ALL email jobs failing since 09:00\n         Error: "Cannot read \'subject\' of undefined"\n         Cause: old jobs have data.subject, new template expects data.template.subject\n         Jobs enqueued before deploy: schema mismatch\n\nThis is a breaking change in the job schema.\nRunbook:\n  1. Stop email workers (prevent more DLQ entries)\n  2. Identify schema mismatch: old vs new job data shape\n  3. Write migration: transform old schema to new in worker\n  4. Deploy fixed worker with backward-compatible schema handling\n  5. Retry all DLQ jobs\n\nLesson: never make breaking changes to job schemas.\nAlways make job schema changes backward-compatible first,\nthen clean up old format after all old jobs are drained.',
+
+  retry_all:'RETRY ALL DLQ JOBS AFTER FIX\n\nProgrammatic retry (BullMQ):\n  const failedJobs = await emailQueue.getFailed(0, 1000);\n  \n  for (const job of failedJobs) {\n    await job.retry();  // moves job back to waiting state\n  }\n  \n  console.log(`Retrying ${failedJobs.length} failed jobs`);\n\nBetter: retry with a dry-run first\n  const job = failedJobs[0];\n  \n  // Test the fix on one job first\n  console.log("Testing on:", job.data);\n  await emailWorker.processJob(job);  // run manually\n  console.log("Success? Then retry all.");\n\n  // Retry all\n  await Promise.all(failedJobs.map(j => j.retry()));\n\nUseful BullMQ commands:\n  queue.clean(0, 1000, "failed")  // delete all failed jobs\n  queue.getFailed(offset, limit)  // paginate failed jobs\n  queue.getJobCounts()            // {waiting, active, completed, failed, delayed}',
+
+  alert_setup:'DLQ ALERT CONFIGURATION\n\nBullMQ + Prometheus (via bullmq-prometheus or custom):\n  // Expose queue metrics\n  const queueMetrics = {\n    failed:    await emailQueue.getJobCounts().failed,\n    dlqDepth:  await emailQueue.getFailed(0, 1).length,  // proxy\n    // For exact DLQ count: use bull-board or custom metric\n  };\n\nGrafana alert (LogQL from worker logs):\n  Alert 1: DLQ depth growing\n    sum(count_over_time(\n      {service="email-worker"} | json | msg="job.moved_to_dlq" [5m]\n    )) > 5\n    → "More than 5 jobs moved to DLQ in 5 minutes"\n\n  Alert 2: Job failure rate spike\n    rate(\n      {service="email-worker"} | json | level="error" [5m]\n    ) > 0.1\n    → "Email worker error rate > 10%"\n\n  Alert 3: Queue depth backlog\n    sum(count_over_time(\n      {service="email-worker"} | json | msg="job.enqueued" [1m]\n    ))\n    minus\n    sum(count_over_time(\n      {service="email-worker"} | json | msg="job.completed" [1m]\n    ))\n    > 1000\n    → "Queue depth growing: more enqueued than completed"',
+};
+function showDLQ(k){document.getElementById('dlq-output').textContent=DLQ_CONTENT[k];}
+
+// VIZ 7: Workers
+function calcWorkers(){
+  var jobs=parseInt(document.getElementById('jobs-slider').value);
+  var dur=parseInt(document.getElementById('dur-slider').value);
+  var conc=parseInt(document.getElementById('conc-slider').value);
+  var inst=parseInt(document.getElementById('inst-slider').value);
+  document.getElementById('jobs-val').textContent=jobs.toLocaleString();
+  document.getElementById('dur-val').textContent=dur+'ms';
+  document.getElementById('conc-val').textContent=conc;
+  document.getElementById('inst-val').textContent=inst;
+  var totalConcurrency=conc*inst;
+  var jobsPerSec=totalConcurrency/(dur/1000);
+  var drainSec=jobs/jobsPerSec;
+  var col=drainSec<30?'var(--green)':drainSec<120?'var(--orange)':'var(--red)';
+  document.getElementById('worker-output').innerHTML=[
+    'Configuration:',
+    '  '+inst+' worker instance'+(inst>1?'s':'')+' × '+conc+' concurrency = '+totalConcurrency+' total concurrent slots',
+    '  Job duration: '+dur+'ms ('+((dur/1000).toFixed(1))+'s per job)',
+    '',
+    'Throughput:',
+    '  Jobs per second:  '+jobsPerSec.toFixed(1),
+    '  Jobs per minute:  '+(jobsPerSec*60).toFixed(0),
+    '',
+    'Queue drain time:   <span style="color:'+col+';font-weight:700">'+
+      (drainSec<60?drainSec.toFixed(0)+'s':(drainSec/60).toFixed(1)+' min')+'</span>  (for '+jobs.toLocaleString()+' queued jobs)',
+    '',
+    drainSec>60?'⚠ Queue will take over a minute to drain. Consider:':'✓ Queue drains quickly.',
+    drainSec>60?'  → Increasing worker instances (currently '+inst+')\n  → Increasing concurrency (currently '+conc+')\n  → Reducing job duration (current bottleneck: '+dur+'ms)':'',
+    '',
+    'Rule of thumb:',
+    '  Target drain time < 30s → need '+Math.ceil(jobs/(30*jobsPerSec/inst))+' instances',
+    '  At this config: '+inst+' instances × '+conc+' concurrent = '+totalConcurrency+' slots',
+  ].filter(function(l){return l!==undefined;}).join('\n');
+}
+
+// VIZ 8: Topology
+var TOPOLOGIES={
+  single_queue:'SINGLE QUEUE — naive approach\n\nArchitecture:\n  All jobs → single "jobs" queue → single worker pool\n\nProblems:\n  1. A bulk newsletter send (50,000 jobs) blocks confirmation emails\n     → User books ticket. Confirmation email queued behind newsletter.\n     → User waits 2 hours for confirmation email.\n\n  2. One slow job type ties up all workers\n     → PDF generation takes 5s. 10 workers × 5s = 50 concurrent PDFs.\n     → Email jobs queue behind them even though emails take 200ms.\n\n  3. No isolation: one broken job type affects all job types\n     → Bug in webhook worker → all webhook jobs fail → DLQ grows\n     → But DLQ alert doesn\'t tell you WHICH type is broken\n\nOnly acceptable for:\n  Very low volume where all jobs are the same type and urgency.',
+
+  priority_queue:'PRIORITY QUEUE — same queue, numeric priorities\n\nBullMQ priority option (lower number = higher priority):\n  // Confirmation email: priority 1 (highest)\n  emailQueue.add("confirmation", data, { priority: 1 });\n  \n  // Newsletter: priority 10 (lowest)\n  emailQueue.add("newsletter", data, { priority: 10 });\n\nHow it works:\n  Workers always pick the highest-priority available job first.\n  Priority 1 jobs always run before priority 10 jobs.\n\nProblem: STARVATION\n  If confirmation emails arrive continuously:\n  → Priority 1 jobs never stop arriving\n  → Priority 10 (newsletter) jobs never get processed\n  → All in one worker pool, so priority starvation is real\n\nAlso: still one queue = one failure domain\n  A bug affecting one job type slows all workers\n\nBetter than single queue, worse than separate queues.\nUse when: few job types, occasional bursts, no strict SLAs.',
+
+  three_tier:'THREE-TIER (RECOMMENDED FOR MOST TEAMS)\n\nArchitecture:\n  ┌─────────────────────────────────────────────────────────┐\n  │ CRITICAL queue     5 workers    max 20 concurrent/worker│\n  │   booking-confirmation-email                           │\n  │   payment-retry                                        │\n  │   partner-webhook (SLA-bound partners)                 │\n  └─────────────────────────────────────────────────────────┘\n  ┌─────────────────────────────────────────────────────────┐\n  │ DEFAULT queue      3 workers    max 10 concurrent/worker│\n  │   ticket-pdf-generation                                │\n  │   internal-notifications                               │\n  │   cache-invalidation                                   │\n  └─────────────────────────────────────────────────────────┘\n  ┌─────────────────────────────────────────────────────────┐\n  │ BULK queue         1-2 workers  max 5 concurrent/worker │\n  │   newsletter-send                                      │\n  │   analytics-backfill                                   │\n  │   csv-export                                           │\n  └─────────────────────────────────────────────────────────┘\n\nBenefits:\n  ✓ Newsletter backlog never delays confirmation emails\n  ✓ Scale each tier independently\n  ✓ Per-tier DLQ alerts with different thresholds\n  ✓ Deploy workers independently',
+
+  per_type:'PER-TYPE QUEUES — maximum isolation\n\nArchitecture: one queue and one worker pool per job type\n  email-confirmation queue → 5 dedicated workers\n  pdf-generation queue    → 3 dedicated workers\n  partner-webhooks queue  → 8 dedicated workers (per partner or SLA)\n  analytics-events queue  → 2 dedicated workers\n  newsletter queue        → 1-2 dedicated workers\n\nBenefits:\n  ✓ Complete isolation: one type failing never affects another\n  ✓ Per-type scaling: scale webhook workers without scaling email workers\n  ✓ Per-type retry policies: webhooks get 5 retries, analytics gets 1\n  ✓ Per-type DLQ: immediately obvious which type failed\n\nCost:\n  ✗ More Redis connections\n  ✗ More worker processes to manage\n  ✗ More alerting rules to maintain\n\nWhen to use:\n  Large teams with many job types and strict per-type SLAs\n  When job types have very different resource requirements\n  When operational clarity per type outweighs management overhead',
+};
+function showTopology(k){document.getElementById('topology-output').textContent=TOPOLOGIES[k];}
+
+// Init
+showSyncAsync('sync_before');
+runLifecycle('happy');
+showPattern('fanout');
+showIdempotency('email');
+calcBackoff();showBackoff('exponential');
+showDLQ('inspect');
+calcWorkers();
+showTopology('three_tier');
+</script>
+</body>
+</html>
