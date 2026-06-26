@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 22 Deep Dive: Prometheus Recording Rules, Sloth, Grafana SLO Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;max-width:660px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+p code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.cm{color:#5c6370;font-style:italic}.str{color:#98c379}.kw{color:#c678dd}.fn{color:#61afef}.num{color:#d19a66}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+.verify-text code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day22" class="back-link">&#8592; Day 22: SLOs & Error Budgets</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 22 · SLOs & Error Budgets · Deep Dive</div>
+  <h1>Prometheus recording rules,<br>Sloth config, &amp;<br><em>Grafana SLO dashboard</em></h1>
+  <p>The full implementation stack: Prometheus recording rules for efficient multi-window SLI computation, Sloth for SLO-as-code configuration, and the Grafana dashboard panels that make the error budget visible to the whole team.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Prometheus recording rules:<br><em>efficient multi-window SLI computation</em></h2>
+  <p class="lead">Computing error rates over 28-day windows at query time is expensive — Prometheus has to scan millions of samples on every dashboard load. Recording rules pre-aggregate metrics on a schedule, making dashboard queries fast regardless of time window length.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">slo-recording-rules.yaml — pre-aggregate SLI across multiple windows</span><span class="code-block-lang">YAML</span></div>
+    <pre>groups:
+  - name: slo_checkout_api
+    interval: 30s   <span class="cm"># recompute every 30s</span>
+    rules:
+      <span class="cm"># Error rate over multiple windows — used by burn rate alerts</span>
+      - record: job:http_requests_total:error_rate5m
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[5m])
+          /
+          rate(http_requests_total{job="checkout-api"}[5m])
+
+      - record: job:http_requests_total:error_rate30m
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[30m])
+          /
+          rate(http_requests_total{job="checkout-api"}[30m])
+
+      - record: job:http_requests_total:error_rate1h
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[1h])
+          /
+          rate(http_requests_total{job="checkout-api"}[1h])
+
+      - record: job:http_requests_total:error_rate6h
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[6h])
+          /
+          rate(http_requests_total{job="checkout-api"}[6h])
+
+      - record: job:http_requests_total:error_rate1d
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[1d])
+          /
+          rate(http_requests_total{job="checkout-api"}[1d])
+
+      - record: job:http_requests_total:error_rate28d
+        expr: |
+          rate(http_requests_total{job="checkout-api",status=~"5.."}[28d])
+          /
+          rate(http_requests_total{job="checkout-api"}[28d])
+
+      <span class="cm"># Error budget consumed — fraction of 28d budget used so far</span>
+      <span class="cm"># SLO = 99.9%, so error_budget = 0.001</span>
+      - record: job:slo_error_budget:remaining
+        expr: |
+          1 - (
+            job:http_requests_total:error_rate28d
+            / 0.001  <span class="cm"># error budget = 1 - SLO = 0.001</span>
+          )
+
+      <span class="cm"># Burn rate — how fast budget is being consumed right now</span>
+      - record: job:slo_burn_rate:1h
+        expr: job:http_requests_total:error_rate1h / 0.001
+
+      - record: job:slo_burn_rate:6h
+        expr: job:http_requests_total:error_rate6h / 0.001
+
+      <span class="cm"># Latency SLI — fraction of requests under 500ms</span>
+      - record: job:http_request_duration:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{
+              job="checkout-api"
+            }[5m])
+          )
+
+<span class="cm">  # Burn rate alert rules (reference recording rules — fast to evaluate)</span>
+  - name: slo_checkout_alerts
+    rules:
+      - alert: CheckoutAPIFastBurn
+        expr: |
+          job:slo_burn_rate:1h > 14.4
+          AND
+          job:http_requests_total:error_rate5m / 0.001 > 14.4
+        for: 2m
+        labels: { severity: critical, slo: checkout_api }
+        annotations:
+          summary: "Checkout API: error budget burning at >14.4× rate"
+          description: "Current 1h burn: {{ $value | humanize }}×. Budget exhausted in <48h."
+
+      - alert: CheckoutAPISlowBurn
+        expr: |
+          job:slo_burn_rate:6h > 6
+          AND
+          job:http_requests_total:error_rate30m / 0.001 > 6
+        for: 15m
+        labels: { severity: warning, slo: checkout_api }
+        annotations:
+          summary: "Checkout API: error budget burning at >6× rate"</pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Sloth: <em>SLO configuration as code</em></h2>
+  <p class="lead">Sloth generates all the recording rules and alerts above from a simple YAML definition. Instead of maintaining complex Prometheus expressions by hand, you define your SLO once and Sloth generates the complete Prometheus configuration.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">checkout-api-slo.yaml — Sloth SLO definition</span><span class="code-block-lang">YAML</span></div>
+    <pre>version: "prometheus/v1"
+service: "checkout-api"
+labels:
+  team: "platform"
+  env: "production"
+
+slos:
+  - name: "requests-success-rate"
+    objective: 99.9   <span class="cm"># 99.9% SLO</span>
+    description: "99.9% of checkout API requests must succeed"
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_requests_total{
+            job="checkout-api",
+            status=~"5.."
+          }[{{.window}}]))
+        total_query: |
+          sum(rate(http_requests_total{
+            job="checkout-api"
+          }[{{.window}}]))
+    alerting:
+      name: CheckoutAPISuccessRate
+      annotations:
+        summary: "Checkout API error budget burning"
+        runbook: "https://runbooks.internal/checkout-slo"
+      page_alert:
+        labels: { severity: critical }
+      ticket_alert:
+        labels: { severity: warning }
+
+  - name: "request-latency"
+    objective: 95    <span class="cm"># 95% of requests must complete within 500ms</span>
+    description: "95% of checkout requests complete within 500ms"
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_request_duration_seconds_bucket{
+            job="checkout-api",
+            le="0.5"   <span class="cm"># 500ms</span>
+          }[{{.window}}]))
+        total_query: |
+          sum(rate(http_request_duration_seconds_count{
+            job="checkout-api"
+          }[{{.window}}]))
+    alerting:
+      name: CheckoutAPILatency
+      annotations:
+        summary: "Checkout API latency SLO burning"
+
+<span class="cm"># Generate Prometheus rules:</span>
+<span class="cm"># sloth generate -i checkout-api-slo.yaml > checkout-api-rules.yaml</span>
+<span class="cm"># kubectl apply -f checkout-api-rules.yaml</span></pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify the stack</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Recording rules computing: <code>curl prometheus:9090/api/v1/query?query=job:slo_error_budget:remaining</code> should return a value between 0 and 1.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Burn rate alert test: artificially spike error rate to 10× above SLO threshold for 3 minutes — fast burn alert should fire within 5 minutes.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Dashboard visible: error budget percentage, burn rate sparklines for 1h/6h/24h, and remaining budget in minutes — all visible to the whole team, not just on-call.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Sloth generation: <code>sloth validate -i checkout-api-slo.yaml</code> returns no errors before committing to the repo.</span></div>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 03</div>
+  <h2>Grafana dashboard:<br><em>the five panels every SLO dashboard needs</em></h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Grafana panel queries — PromQL for each SLO panel</span><span class="code-block-lang">PROMQL</span></div>
+    <pre><span class="cm">## Panel 1: Error budget remaining (gauge, 0-100%)</span>
+<span class="cm">## Green >50%, orange 10-50%, red <10%</span>
+job:slo_error_budget:remaining * 100
+
+<span class="cm">## Panel 2: Current burn rate (stat panel)</span>
+<span class="cm">## Threshold lines at 1× (SLO pace), 6× (slow burn), 14.4× (fast burn)</span>
+job:slo_burn_rate:1h
+
+<span class="cm">## Panel 3: Error budget consumption over time (time series)</span>
+<span class="cm">## Shows budget draining visually across the 28-day window</span>
+1 - job:slo_error_budget:remaining
+
+<span class="cm">## Panel 4: SLI over time — actual error rate (time series)</span>
+<span class="cm">## Red zone = above SLO error budget (0.1%)</span>
+job:http_requests_total:error_rate5m * 100
+
+<span class="cm">## Panel 5: Latency P95 vs threshold (time series)</span>
+<span class="cm">## Threshold line at 500ms</span>
+job:http_request_duration:p95_5m * 1000  <span class="cm"># convert to ms</span>
+
+<span class="cm">## Stat panel: Budget remaining in minutes</span>
+job:slo_error_budget:remaining * 28 * 24 * 60  <span class="cm"># minutes in window</span>
+
+<span class="cm">## Stat panel: Requests in window (denominator)</span>
+increase(http_requests_total{job="checkout-api"}[28d])</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
