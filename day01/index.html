@@ -702,15 +702,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 <!-- ─── SECTION 1: ANALOGY ─── -->
 <div class="section" id="s-model">
   <div class="section-eyebrow">Section 01</div>
-  <h2>The airport analogy — and why it makes everything click</h2>
-
-  <p>Imagine you're at an international airport. You want to fly somewhere. Between you and your seat on the plane, you go through a series of checkpoints — each one mandatory, each one adding time, each one serving a specific purpose. Skip any of them and you don't get on the plane.</p>
-
-  <p>Now think about what happens when your application makes an HTTP request. Between your code calling <code>fetch()</code> and the server receiving your data, the request goes through its own series of mandatory checkpoints. Skip any of them and the request doesn't arrive.</p>
-
-  <p>The airport analogy isn't just a cute metaphor. It's precise. Hold it in your head as we walk through each phase — and every concept in this lesson will slot straight into the picture.</p>
-
-  <h3>The passenger's journey, step by step</h3>
+  <h2>Your request's journey, checkpoint by checkpoint</h2>
 
   <p><strong>First: check-in and the departure board.</strong> You arrive at the airport and look up at the departure board. You don't know which gate you need until you look it up. Gate B47. Terminal 2. Good for the next hour — after that, check again in case it changes.</p>
 
@@ -740,27 +732,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     </div>
   </div>
 
-  <h3>Now replace the airport with servers</h3>
-
-  <p>Here's the translation. Every time your code calls <code>fetch('https://api.payments.com/v1/charge')</code>:</p>
-
-  <ul>
-    <li><strong>Departure board → DNS resolution:</strong> Your OS asks "what IP is api.payments.com?" A DNS resolver answers with an IP and a TTL. Cold miss: 50-200ms. Cached: 0ms. Connection pooling: irrelevant — the pool already knows.</li>
-    <li><strong>Passport control → TLS handshake:</strong> The server proves its identity with a certificate. Both sides negotiate encryption keys. TLS 1.3 costs 1 round-trip. TLS 1.2 costs 2. Session resumption: 0. Your nginx config determines which.</li>
-    <li><strong>Gate scan → TCP handshake:</strong> Three packets — SYN, SYN-ACK, ACK — establish the reliable channel. Exactly 1 round-trip time. At 40ms RTT: 40ms just for this step.</li>
-    <li><strong>The flight → HTTP request/response:</strong> Your application protocol. The server processes your request and responds. This is the only phase your backend code controls. Everything else is infrastructure.</li>
-    <li><strong>Staying in the airport → connection pooling:</strong> Reuse the established connection. Skip DNS, TCP, and TLS for every subsequent request. One pool, many requests, dramatic latency reduction.</li>
-  </ul>
-
-  <p>On a mobile device in India hitting a server in Mumbai, each round-trip is 40-80ms. That means before your server has processed a single byte, you've potentially spent <strong>200-400ms in protocol overhead</strong>. Your 5ms handler is irrelevant to the user if the airport took 350ms.</p>
-
-  <div class="callout insight">
-    <div class="callout-icon">💡</div>
-    <div class="callout-inner">
-      <strong>The mental model that changes your debugging forever</strong>
-      <p>Stop thinking about HTTP latency as "server processing time." Start thinking: <strong>DNS + TCP + TLS + Server + Transfer</strong>. Each term is independently measurable and independently optimisable. Most backend engineers only ever optimise the Server term — because it's the only one in their code. The other four are where the biggest wins usually hide. The <code>curl -w</code> timing breakdown in Section 2 shows you exactly how to measure each one in 10 seconds.</p>
-    </div>
-  </div>
+  <p>On a mobile device in India hitting a server in Mumbai, each round-trip is 40-80ms. That means before your server has processed a single byte, you've potentially spent <strong>200-400ms in overhead</strong>. Your 5ms handler is irrelevant to the user if the checkpoints took 350ms. The <code>curl -w</code> timing breakdown in Section 2 shows you how to measure exactly which checkpoint is slow — in 10 seconds.</p>
 </div>
 
 <!-- VIZ: Airport → HTTP mapping (replaces old waterfall builder as opening interactive) -->
