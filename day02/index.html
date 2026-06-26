@@ -223,8 +223,8 @@ tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mo
 <!-- HERO -->
 <div class="hero" id="hero">
   <div class="hero-eyebrow">Week 1 · Day 2 · Networking &amp; APIs</div>
-  <h1>TCP is the <em>contract</em><br>your code never reads</h1>
-  <p class="hero-sub">Every HTTP request, every database query, every microservice call rides on top of TCP. Most engineers treat it as invisible plumbing. Then something breaks at 3am — ECONNRESET, port exhaustion, 75-second hangs — and suddenly the plumbing is all that matters. This lesson is about understanding the contract before it breaks.</p>
+  <h1>Before your code sends<br>a single byte, TCP<br><em>makes a phone call.</em></h1>
+  <p class="hero-sub">Every HTTP request, every database query, every microservice call starts with a negotiation your code never sees. TCP dials. The server picks up. Both sides say "ready." Only then does your data move. Most engineers treat this as invisible plumbing — until ECONNRESET, port exhaustion, or a 75-second hang proves it isn't.</p>
   <div class="hero-meta">
     <div class="hero-meta-item"><div class="hero-meta-dot"></div> ~60 min read</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div> 8 interactive visuals</div>
@@ -232,18 +232,24 @@ tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mo
   </div>
 </div>
 
-<!-- ── SECTION 1: MENTAL MODEL ── -->
+<!-- ── SECTION 1: ANALOGY ── -->
 <div class="section" id="s-model">
   <div class="section-eyebrow">Section 01</div>
-  <h2>The mental model: TCP is a phone call, not a letter</h2>
+  <h2>Your code's journey, before a byte moves</h2>
 
-  <p>Here's how most backend engineers think of TCP: "It's reliable. Packets get there. Moving on." That abstraction is fine — until it costs you. The better mental model is this: <strong>TCP is a phone call, HTTP is the conversation you have on it.</strong></p>
+  <p><strong>You call a friend.</strong> You dial. Their phone rings. They pick up and say "hello?" You say "hi, it's me." Now — and only now — can you start talking. That back-and-forth before the conversation isn't politeness. It's verification: the line is open, both sides are ready, and you've confirmed you're speaking to the right person.</p>
 
-  <p>A phone call has overhead: dialling, ringing, the other person picking up. You can't start talking until the call is established. And if the call drops mid-sentence, you have to redial and restart. HTTP inherits all of this. Every time you open an HTTP connection, you're making a phone call first. Connection pooling is the equivalent of keeping the call alive between sentences rather than hanging up and redialling for every word.</p>
+  <p>That's the TCP handshake. Your client dials (SYN), the server picks up (SYN-ACK), your client says "ready" (ACK). Three messages. One round-trip. Only after all three does your application data move. Every HTTP request, every database query, every microservice call begins with this. Most of the time it takes 40ms and you never think about it. When it fails, it takes 75 seconds and wakes you up.</p>
 
-  <p>The second mental model shift: <strong>TCP operates in the kernel, not your process.</strong> When you call <code>socket.write(data)</code>, you are not sending data to the network. You are handing data to the kernel's send buffer. The kernel decides when to actually transmit — based on congestion windows, Nagle's algorithm, and available bandwidth. This indirection is invisible in normal operation and catastrophic when misconfigured.</p>
+  <p><strong>You can't start talking until the call connects.</strong> This seems obvious for a phone call but engineers routinely write code that assumes connections are instant — no retry logic, no timeout configuration, no connection pooling. Those engineers meet TCP at 3am.</p>
 
-  <p>TCP lives in a specific layer of the networking stack. Understanding which layer owns which responsibility tells you immediately where to look when things break:</p>
+  <p><strong>When you speak, your words go to the phone's buffer first.</strong> You don't shout directly into the air. The phone captures your voice, processes it, and transmits it. When you call <code>socket.write(data)</code>, you're doing the same thing — handing data to the kernel's send buffer. The kernel decides when to actually transmit, based on congestion windows, Nagle's algorithm, and available bandwidth. This indirection is invisible when everything works and catastrophic when misconfigured.</p>
+
+  <p><strong>When the line drops, both sides need to clean up.</strong> A phone call that drops doesn't disappear instantly — there's a moment of confusion, then realisation, then the line closes. TCP has the same protocol for ending connections. TIME_WAIT, CLOSE_WAIT, FIN_WAIT — these are the states a connection passes through when the call ends. Skip the cleanup and you leak connections until the server runs out of ports.</p>
+
+  <p><strong>You can't hear someone speaking too fast.</strong> If your friend speaks faster than you can process, you'd say "slow down." TCP does this too — it's called flow control, and it's the kernel's way of making sure the receiver isn't overwhelmed. The receive buffer fills, the window shrinks, the sender slows. When engineers bypass this (by setting enormous socket buffers without understanding why), they create instability that looks like random network failures.</p>
+
+  <p>TCP lives in the kernel, not your process. Here's which layer of the stack owns which responsibility — and therefore, where to look when things break:</p>
 </div>
 
 <!-- VIZ 1: Layer stack ── injected after s-model -->
@@ -259,7 +265,7 @@ tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mo
 <!-- ── SECTION 2: 3-WAY HANDSHAKE ── -->
 <div class="section" id="s-handshake">
   <div class="section-eyebrow">Section 02</div>
-  <h2>The 3-way handshake: why connection setup costs exactly 1 RTT</h2>
+  <h2>Why does it take three messages just to open a connection?</h2>
 
   <p>Before a single byte of your application data moves, TCP requires a 3-message negotiation. This is not bureaucracy — it's necessary to establish the initial sequence numbers both sides will use to detect packet loss and reorder out-of-order delivery.</p>
 
@@ -315,7 +321,7 @@ tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mo
 <!-- ── SECTION 3: TIME_WAIT ── -->
 <div class="section" id="s-timewait">
   <div class="section-eyebrow">Section 03</div>
-  <h2>TIME_WAIT &amp; port exhaustion: the silent production killer</h2>
+  <h2>Why does TCP refuse to let go of a connection that's already closed?</h2>
 
   <p>When a TCP connection closes, it doesn't immediately disappear. The side that sends the final FIN enters <strong>TIME_WAIT state</strong> and stays there for <strong>2 × MSL</strong> (Maximum Segment Lifetime — 60 seconds by default on Linux). So a connection that closes sits in TIME_WAIT for up to 2 minutes.</p>
 
@@ -405,7 +411,7 @@ sysctl -w net.ipv4.tcp_tw_reuse=1
 <!-- ── SECTION 4: BACKLOG ── -->
 <div class="section" id="s-backlog">
   <div class="section-eyebrow">Section 04</div>
-  <h2>The accept queue &amp; backlog: the invisible traffic jam</h2>
+  <h2>What happens to connections while your server is busy?</h2>
 
   <p>When clients connect to your server, they don't go directly to your application. They pass through two kernel queues first. Understanding these queues is the difference between a server that gracefully handles traffic spikes and one that silently drops connections.</p>
 
@@ -505,7 +511,7 @@ netstat -s | grep -i "listen"
 <!-- ── SECTION 5: NAGLE ── -->
 <div class="section" id="s-nagle">
   <div class="section-eyebrow">Section 05</div>
-  <h2>Nagle's algorithm: the 200ms mystery latency</h2>
+  <h2>Why is my request taking 200ms when the server responds in 1ms?</h2>
 
   <p>In 1984, John Nagle proposed a simple algorithm to reduce network congestion caused by tiny packets — a problem known as the "small packet problem." Networks were flooding with packets carrying 1 byte of payload but 40 bytes of TCP/IP header. Nagle's solution: buffer small outgoing data until either a full-sized packet (MSS — Maximum Segment Size, typically 1460 bytes) can be sent, or all previously sent data has been acknowledged.</p>
 
@@ -588,7 +594,7 @@ strace -e trace=setsockopt -p $(pgrep node) <span class="num">2</span>&gt;&amp;<
 <!-- ── SECTION 6: BUFFERS ── -->
 <div class="section" id="s-buffers">
   <div class="section-eyebrow">Section 06</div>
-  <h2>Socket buffers &amp; flow control: the kernel's invisible hand</h2>
+  <h2>Who decides how fast data actually moves across the wire?</h2>
 
   <p>Every TCP socket has two kernel buffers: a <strong>send buffer</strong> (data your app wrote, waiting to be transmitted) and a <strong>receive buffer</strong> (data received from the network, waiting for your app to read). These buffers are the interface between your application's time (event loop, async/await) and the network's time (packet timing, RTT, bandwidth).</p>
 
@@ -737,7 +743,7 @@ sysctl -w net.ipv4.tcp_moderate_rcvbuf=1
 <!-- ── SECTION 8: PRODUCTION REALITY ── -->
 <div class="section" id="s-prod">
   <div class="section-eyebrow">Section 08</div>
-  <h2>Production reality: what actually breaks and why</h2>
+  <h2>The failures that actually wake engineers up at 3am</h2>
 
   <h3>ECONNRESET: the three causes</h3>
   <p><code>ECONNRESET</code> means the remote end sent a TCP RST — it forcibly terminated the connection. The three most common causes in production:</p>
@@ -1004,6 +1010,15 @@ python3 -c "print(f'BDP: {1e9/8*0.05/1024/1024:.1f}MB')"</pre>
     <div style="font-size:13px;color:var(--text2)">BDP calculation · sysctl values · tw_reuse vs tw_recycle · port math</div>
   </div>
   <a href="/day02/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap" onmouseover="this.style.background='rgba(168,127,255,.2)'" onmouseout="this.style.background='rgba(168,127,255,.1)'">&#8594; Go deep</a>
+</div>
+
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    TCP is a phone call your code makes before every conversation. Most of the time the line connects cleanly and you never think about it. When it doesn't — ECONNRESET, port exhaustion, 75-second hangs — it's because something in the call setup, the conversation, or the goodbye went wrong.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:56px">
+    The next time TCP breaks at 3am — ask: <em style="color:var(--accent)">which part of the call?</em>
+  </p>
 </div>
 
 <div class="section" id="s-checklist">
