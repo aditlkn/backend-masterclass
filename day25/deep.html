@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 25 Deep Dive: JWKS Rotation, Refresh Tokens, PKCE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day25" class="back-link">&#8592; Day 25: Auth — JWT, OAuth2, RBAC</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 25 · Auth: JWT, OAuth2, RBAC · Deep Dive</div>
+  <h1>JWKS key rotation,<br>refresh token implementation,<br><em>&amp; PKCE flow</em></h1>
+  <p>The three implementation patterns that make JWT auth production-grade: automatic key rotation via JWKS, refresh token issuance and rotation, and the PKCE authorization code flow for web clients.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>JWKS key rotation:<br><em>zero-downtime public key updates</em></h2>
+  <p class="lead">Instead of configuring each service with a static public key, services fetch the current public key from the auth server JWKS endpoint. Key rotation is publishing a new key alongside the old one, waiting for old tokens to expire, then removing the old key.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">auth-middleware.ts — JWKS client with key caching</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> jwksClient <span class="kw">from</span> <span class="str">'jwks-rsa'</span>;
+<span class="kw">import</span> jwt        <span class="kw">from</span> <span class="str">'jsonwebtoken'</span>;
+
+<span class="kw">const</span> client = <span class="fn">jwksClient</span>({
+  jwksUri:  <span class="str">'https://auth.example.com/.well-known/jwks.json'</span>,
+  cache:    <span class="kw">true</span>,
+  cacheMaxEntries: <span class="num">5</span>,
+  cacheMaxAge:     <span class="num">600_000</span>,   <span class="cm">// 10 minutes — re-fetch keys periodically</span>
+  rateLimit: <span class="kw">true</span>,
+  jwksRequestsPerMinute: <span class="num">10</span>, <span class="cm">// avoid hammering auth server</span>
+});
+
+<span class="kw">function</span> <span class="fn">getKey</span>(header, callback) {
+  client.<span class="fn">getSigningKey</span>(header.kid, (err, key) => {
+    callback(err, key?.getPublicKey());
+  });
+}
+
+<span class="kw">export function</span> <span class="fn">authenticate</span>(req, res, next) {
+  <span class="kw">const</span> token = req.headers.authorization?.split(<span class="str">' '</span>)[<span class="num">1</span>];
+  <span class="kw">if</span> (!token) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'missing_token'</span> });
+
+  jwt.<span class="fn">verify</span>(token, getKey, {
+    algorithms: [<span class="str">'RS256'</span>],         <span class="cm">// explicit — never omit</span>
+    audience:   <span class="str">'booking-api'</span>,
+    issuer:     <span class="str">'https://auth.example.com'</span>,
+  }, (err, decoded) => {
+    <span class="kw">if</span> (err) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: err.message });
+    req.user = decoded;
+    <span class="fn">next</span>();
+  });
+}
+
+<span class="cm">// Key rotation procedure (auth server side):</span>
+<span class="cm">// 1. Generate new key pair: openssl genrsa -out private.pem 2048</span>
+<span class="cm">// 2. Add new public key to JWKS response (alongside old key)</span>
+<span class="cm">// 3. Start signing new tokens with new private key</span>
+<span class="cm">// 4. Wait for all old tokens to expire (max_expiry = 15 min)</span>
+<span class="cm">// 5. Remove old public key from JWKS response</span>
+<span class="cm">// Services automatically pick up new key via JWKS cache refresh</span></pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Refresh token implementation:<br><em>rotation and secure storage</em></h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">auth-server.ts — refresh token issuance and rotation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> jwt    <span class="kw">from</span> <span class="str">'jsonwebtoken'</span>;
+<span class="kw">import</span> crypto <span class="kw">from</span> <span class="str">'crypto'</span>;
+
+<span class="cm">// Issue tokens on login</span>
+app.<span class="fn">post</span>(<span class="str">'/auth/login'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">verifyCredentials</span>(req.body);
+  <span class="kw">if</span> (!user) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'invalid_credentials'</span> });
+
+  <span class="kw">const</span> accessToken = jwt.<span class="fn">sign</span>(
+    { sub: user.id, roles: user.roles, jti: crypto.<span class="fn">randomUUID</span>() },
+    privateKey,
+    { algorithm: <span class="str">'RS256'</span>, expiresIn: <span class="str">'15m'</span>,
+      audience: <span class="str">'booking-api'</span>, issuer: <span class="str">'https://auth.example.com'</span> }
+  );
+
+  <span class="kw">const</span> refreshTokenValue = crypto.<span class="fn">randomBytes</span>(<span class="num">32</span>).<span class="fn">toString</span>(<span class="str">'hex'</span>);
+  <span class="kw">await</span> db.<span class="fn">createRefreshToken</span>({
+    token:     crypto.<span class="fn">createHash</span>(<span class="str">'sha256'</span>).<span class="fn">update</span>(refreshTokenValue).<span class="fn">digest</span>(<span class="str">'hex'</span>),
+    userId:    user.id,
+    expiresAt: <span class="kw">new</span> Date(Date.<span class="fn">now</span>() + <span class="num">7</span> * <span class="num">24</span> * <span class="num">60</span> * <span class="num">60</span> * <span class="num">1000</span>),
+  });
+
+  res
+    .<span class="fn">cookie</span>(<span class="str">'refresh_token'</span>, refreshTokenValue, {
+      httpOnly: <span class="kw">true</span>,   <span class="cm">// inaccessible to JS</span>
+      secure:   <span class="kw">true</span>,   <span class="cm">// HTTPS only</span>
+      sameSite: <span class="str">'strict'</span>,
+      maxAge:   <span class="num">7</span> * <span class="num">24</span> * <span class="num">60</span> * <span class="num">60</span> * <span class="num">1000</span>,
+      path:     <span class="str">'/auth'</span>, <span class="cm">// only sent to /auth endpoints</span>
+    })
+    .<span class="fn">json</span>({ access_token: accessToken });
+});
+
+<span class="cm">// Rotate refresh token on use</span>
+app.<span class="fn">post</span>(<span class="str">'/auth/refresh'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> rawToken = req.cookies.refresh_token;
+  <span class="kw">if</span> (!rawToken) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'no_refresh_token'</span> });
+
+  <span class="kw">const</span> tokenHash = crypto.<span class="fn">createHash</span>(<span class="str">'sha256'</span>).<span class="fn">update</span>(rawToken).<span class="fn">digest</span>(<span class="str">'hex'</span>);
+  <span class="kw">const</span> stored = <span class="kw">await</span> db.<span class="fn">findRefreshToken</span>(tokenHash);
+
+  <span class="kw">if</span> (!stored || stored.revoked || stored.expiresAt < <span class="kw">new</span> Date()) {
+    <span class="cm">// Possible token reuse attack — revoke all tokens for this user</span>
+    <span class="kw">if</span> (stored?.revoked) <span class="kw">await</span> db.<span class="fn">revokeAllUserTokens</span>(stored.userId);
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'invalid_refresh_token'</span> });
+  }
+
+  <span class="cm">// Rotate: revoke old, issue new</span>
+  <span class="kw">await</span> db.<span class="fn">revokeRefreshToken</span>(tokenHash);
+
+  <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">findUser</span>(stored.userId);
+  <span class="cm">// Issue new access token + new refresh token (same as login flow)</span>
+  <span class="cm">// ... (same code as login)</span>
+});</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

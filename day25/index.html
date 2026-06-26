@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 25: Auth — JWT, OAuth2, RBAC — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--purple);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--purple);color:var(--purple);background:rgba(168,127,255,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 25 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Hotel Key Card</a>
+  <a href="#s-jwt">JWT Anatomy</a>
+  <a href="#s-oauth">OAuth2 & OIDC</a>
+  <a href="#s-rbac">RBAC</a>
+  <a href="#s-revocation">Token Revocation</a>
+  <a href="#s-attacks">Common Attacks</a>
+  <a href="#s-sessions">Sessions vs Tokens</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day25/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day25/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 4 · Day 25 · Auth: JWT, OAuth2, RBAC</div>
+  <h1>Authentication proves<br>who you are. Authorisation<br><em>decides what you can do.</em></h1>
+  <p class="hero-sub">Most engineers conflate these. A JWT proves you are usr_456. RBAC decides whether usr_456 can access <code>/admin/refunds</code>. OAuth2 lets a third party act on your behalf without ever seeing your password. Getting any of these wrong does not produce a bug — it produces a breach.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>7 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--red)"></div>JWT · OAuth2 · PKCE · RBAC · Token revocation</div>
+  </div>
+</div>
+
+<!-- S1: ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The hotel key card — and why it cannot be cancelled instantly</h2>
+
+  <p><strong>You arrive at a hotel and check in at the front desk.</strong> The receptionist verifies your passport, checks your booking, and hands you a key card. From this moment, you do not need to return to the front desk every time you want to enter your room. You tap the card against the door reader. The reader checks the card. The door opens. The front desk is never involved again.</p>
+
+  <p>That is a JWT. The check-in process is authentication — you proved who you are with a passport. The key card is the token — a physical object that encodes your identity and permissions without requiring the front desk to be consulted. The door reader is the resource server — it verifies the card against a known format and lets you through if it is valid. Your room number and checkout date are embedded in the card itself. The reader does not call the front desk. It trusts the card.</p>
+
+  <p><strong>Different floors require different cards.</strong> Your key card opens your room on floor 3. It does not open the executive lounge on floor 7. It does not open the gym if you did not pay for the fitness package. The card encodes your access level, and each door reader enforces the right level for that door. That is role-based access control — RBAC. Your card says what you are allowed to do, and each protected resource checks whether your card authorises entry.</p>
+
+  <p><strong>The concierge gets you gym access without giving the gym your room key.</strong> You want to book a personal training session. The trainer needs to know your name and that you are a guest — but not your room number or checkout date. So the concierge issues a limited pass: "this person is a verified guest and may access the gym between 06:00 and 22:00." The trainer scans the pass. They know what they need to know. Nothing more. That is OAuth2 — a protocol for issuing limited, scoped credentials to a third party on your behalf, without sharing your primary credentials.</p>
+
+  <p><strong>Here is the problem that makes hotel security teams nervous: you cannot instantly cancel a key card.</strong> If a guest loses their card at 14:00, the receptionist issues a new one. But the old card still works until midnight — the checkout time encoded in the card itself. The door readers do not call the front desk to check if a card has been revoked. They are stateless. They just check the card format and expiry. This is the fundamental tension in JWT authentication: the token is self-contained and fast to verify, but it cannot be cancelled without either adding state (a revocation list that every door reader must consult) or waiting for it to expire. Short expiry times — 15 minutes — are the hotel equivalent of cards that auto-cancel quickly.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">🏨</div>
+    <div class="callout-inner">
+      <strong>Where the hotel analogy breaks</strong>
+      <p>A physical key card cannot be forged by a guest who knows the magnetic stripe format. A JWT can be tampered with — if the verification algorithm is misconfigured. The signature on a JWT is what makes it unforgeable, and it only holds if you verify it correctly. A door reader that accepts any card without checking the magnetic stripe is not a door reader — it is an open door. Setting <code>algorithms: ['none']</code> in your JWT library is exactly this. The hotel analogy is perfect for the conceptual model. The implementation details require more care.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Hotel -> Auth mapping -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Hotel key card -> auth system — click each concept</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showHotel('checkin')">Check-in -> Authentication</button>
+      <button class="viz-btn" onclick="showHotel('keycard')">Key card -> JWT</button>
+      <button class="viz-btn" onclick="showHotel('reader')">Door reader -> Resource server</button>
+      <button class="viz-btn" onclick="showHotel('floors')">Floor access -> RBAC</button>
+      <button class="viz-btn" onclick="showHotel('concierge')">Concierge pass -> OAuth2</button>
+      <button class="viz-btn" onclick="showHotel('revoke')">Lost card -> Token revocation</button>
+    </div>
+    <div id="hotel-output" class="mono-out" style="min-height:160px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S2: JWT -->
+<div class="section" id="s-jwt">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>What is actually inside a JWT?</h2>
+
+  <p>A JWT is three Base64URL-encoded JSON objects joined by dots: <code>header.payload.signature</code>. The header says which algorithm signed it. The payload carries claims — assertions about the user. The signature proves the payload has not been tampered with since it was issued.</p>
+
+  <h3>The header</h3>
+  <p>Typically just two fields: <code>alg</code> (the signing algorithm — always specify <code>RS256</code> or <code>ES256</code>, never <code>HS256</code> in a microservices context) and <code>typ</code> (<code>JWT</code>). The algorithm field is what attackers target — the <code>alg:none</code> attack tells the server to accept any token without a signature.</p>
+
+  <h3>The payload — registered and custom claims</h3>
+  <p>Registered claims are standardised field names: <code>sub</code> (subject — the user ID), <code>iss</code> (issuer — who signed this token), <code>aud</code> (audience — who this token is intended for), <code>exp</code> (expiry Unix timestamp), <code>iat</code> (issued at). Custom claims carry your application data: roles, plan tier, organisation ID. Keep the payload small — it is sent on every request.</p>
+
+  <h3>The signature — what makes it trustworthy</h3>
+  <p>The signature is <code>sign(base64(header) + "." + base64(payload), privateKey)</code>. The resource server verifies it with the corresponding public key. If the payload has been altered in any way, the signature does not match and the token is rejected. The signature is what converts a readable JSON object into an unforgeable credential — as long as the private key is kept secret and the algorithm is not <code>none</code>.</p>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Never use HS256 across services — use RS256 or ES256</strong>
+      <p>HS256 uses a symmetric key: the same secret signs and verifies. Every service that needs to verify a token must have the secret — which means every service can also forge tokens. RS256/ES256 use asymmetric keys: only the auth server has the private key (and signs tokens), services have the public key (and verify tokens). A compromised downstream service cannot forge new tokens, only use the ones it already has. In a microservices architecture, this distinction is the difference between a breach affecting one service and a breach affecting all of them.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 2: JWT anatomy -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">JWT anatomy — decode and inspect a real token</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showJWT('user')">Regular user token</button>
+      <button class="viz-btn" onclick="showJWT('admin')">Admin token</button>
+      <button class="viz-btn" onclick="showJWT('service')">Service-to-service token</button>
+      <button class="viz-btn" onclick="showJWT('expired')">Expired token</button>
+      <button class="viz-btn" onclick="showJWT('attack_none')">alg:none attack</button>
+    </div>
+    <div id="jwt-output" class="mono-out" style="font-size:11.5px;min-height:220px"></div>
+  </div>
+</div>
+
+<!-- S3: OAUTH2 -->
+<div class="section" id="s-oauth">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>OAuth2 and OIDC — delegated authorisation</h2>
+
+  <p>OAuth2 is not an authentication protocol. It is an authorisation protocol — a way for a user to grant a third-party application limited access to their data on another service, without sharing their credentials. The "Login with Google" button is not Google authenticating you — it is Google issuing your application a token that says "this user has granted you access to their email address and profile."</p>
+
+  <p>OpenID Connect (OIDC) adds identity on top of OAuth2. OAuth2 gives you access tokens (what can this app do on the user's behalf). OIDC adds ID tokens (who is this user). When you see "Sign in with Google," the identity part is OIDC. The access part (allow this app to read your Gmail) is OAuth2.</p>
+
+  <h3>The four grant types — which to use</h3>
+  <ul>
+    <li><strong>Authorization Code + PKCE:</strong> The correct flow for web and mobile apps. User logs in on the auth server, gets a code, exchanges code for token. PKCE prevents code interception attacks. Use this for all user-facing applications.</li>
+    <li><strong>Client Credentials:</strong> Service-to-service authentication — no user involved. Service A presents its client ID and secret to get a token to call Service B. Use this for backend-to-backend calls.</li>
+    <li><strong>Implicit:</strong> Deprecated. Returned tokens directly in the URL. Never use this.</li>
+    <li><strong>Resource Owner Password:</strong> Deprecated. App collects username and password and exchanges them directly. Defeats the purpose of OAuth2. Never use this.</li>
+  </ul>
+
+  <h3>PKCE — what it solves and why mobile apps need it</h3>
+  <p>In the authorization code flow, the auth server returns a code to the app's redirect URI. In a mobile app, multiple apps can register the same redirect URI — a malicious app can intercept the code. PKCE (Proof Key for Code Exchange) prevents this: the app generates a random <code>code_verifier</code>, hashes it into a <code>code_challenge</code>, sends the challenge with the initial request, and sends the verifier when exchanging the code. Only the app that started the flow knows the verifier. An intercepted code is useless.</p>
+</div>
+
+<!-- VIZ 3: OAuth2 flow -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">OAuth2 flows — step by step</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showOAuth('auth_code_pkce')">Authorization code + PKCE</button>
+      <button class="viz-btn" onclick="showOAuth('client_creds')">Client credentials</button>
+      <button class="viz-btn" onclick="showOAuth('refresh')">Token refresh flow</button>
+      <button class="viz-btn" onclick="showOAuth('oidc')">OIDC: who is this user?</button>
+    </div>
+    <div id="oauth-output" class="mono-out" style="font-size:12px;min-height:220px"></div>
+  </div>
+</div>
+
+<!-- S4: RBAC -->
+<div class="section" id="s-rbac">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>RBAC — who can do what</h2>
+
+  <p>Role-Based Access Control assigns permissions to roles, and roles to users. A user with role <code>admin</code> can do everything a user with role <code>staff</code> can do, plus more. A user with role <code>viewer</code> can read but not write. The mapping is: user has roles, roles have permissions, permissions gate actions on resources.</p>
+
+  <h3>Where to enforce it</h3>
+  <p>RBAC enforcement should happen at two levels. First in the API gateway or middleware — check that the token includes a role that is allowed to call this endpoint at all. Second in the service logic — check that the user's role allows this specific action on this specific resource. The first check is coarse-grained and fast. The second check is fine-grained and context-aware.</p>
+
+  <h3>Attribute-Based Access Control (ABAC) — when RBAC is not enough</h3>
+  <p>RBAC says "admins can edit bookings." ABAC says "admins can edit bookings in their own region, created within the last 30 days, that have not been paid." ABAC evaluates attributes of the user, the resource, the environment, and the action. It is more expressive than RBAC and significantly more complex to implement and audit. Start with RBAC. Move to ABAC only when you have a concrete case that RBAC cannot handle cleanly.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">RBAC middleware — Express + JWT</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> jwt <span class="kw">from</span> <span class="str">'jsonwebtoken'</span>;
+
+<span class="cm">// Verify JWT and attach user to request</span>
+<span class="kw">export function</span> <span class="fn">authenticate</span>(req, res, next) {
+  <span class="kw">const</span> token = req.headers.authorization?.split(<span class="str">' '</span>)[<span class="num">1</span>];
+  <span class="kw">if</span> (!token) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'missing_token'</span> });
+
+  <span class="kw">try</span> {
+    req.user = jwt.<span class="fn">verify</span>(token, publicKey, {
+      algorithms: [<span class="str">'RS256'</span>],       <span class="cm">// explicit allowlist — never omit</span>
+      audience:   <span class="str">'booking-api'</span>,   <span class="cm">// reject tokens not meant for us</span>
+      issuer:     <span class="str">'https://auth.example.com'</span>,
+    });
+    <span class="fn">next</span>();
+  } <span class="kw">catch</span> (err) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ error: <span class="str">'invalid_token'</span>, detail: err.message });
+  }
+}
+
+<span class="cm">// Authorise by role</span>
+<span class="kw">export function</span> <span class="fn">requireRole</span>(...roles: string[]) {
+  <span class="kw">return</span> (req, res, next) => {
+    <span class="kw">const</span> userRoles: string[] = req.user?.roles || [];
+    <span class="kw">const</span> allowed = roles.<span class="fn">some</span>(r => userRoles.<span class="fn">includes</span>(r));
+    <span class="kw">if</span> (!allowed) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">403</span>).<span class="fn">json</span>({ error: <span class="str">'insufficient_permissions'</span> });
+    <span class="fn">next</span>();
+  };
+}
+
+<span class="cm">// Usage</span>
+app.<span class="fn">get</span>(<span class="str">'/bookings/:id'</span>, authenticate, requireRole(<span class="str">'user'</span>, <span class="str">'admin'</span>), getBooking);
+app.<span class="fn">post</span>(<span class="str">'/admin/refund'</span>, authenticate, requireRole(<span class="str">'admin'</span>), issueRefund);
+app.<span class="fn">delete</span>(<span class="str">'/bookings/:id'</span>, authenticate, requireRole(<span class="str">'admin'</span>), deleteBooking);
+
+<span class="cm">// Fine-grained ownership check inside the handler</span>
+<span class="kw">async function</span> <span class="fn">getBooking</span>(req, res) {
+  <span class="kw">const</span> booking = <span class="kw">await</span> db.<span class="fn">findBooking</span>(req.params.id);
+  <span class="kw">if</span> (!booking) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">404</span>).<span class="fn">json</span>({ error: <span class="str">'not_found'</span> });
+
+  <span class="cm">// User can only see their own bookings unless they are admin</span>
+  <span class="kw">if</span> (booking.userId !== req.user.sub && !req.user.roles.<span class="fn">includes</span>(<span class="str">'admin'</span>)) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">403</span>).<span class="fn">json</span>({ error: <span class="str">'forbidden'</span> });
+  }
+  res.<span class="fn">json</span>(booking);
+}</pre>
+  </div>
+</div>
+
+<!-- VIZ 4: RBAC explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">RBAC — roles, permissions, and what each can do</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showRBAC('viewer')">viewer role</button>
+      <button class="viz-btn" onclick="showRBAC('user')">user role</button>
+      <button class="viz-btn" onclick="showRBAC('staff')">staff role</button>
+      <button class="viz-btn" onclick="showRBAC('admin')">admin role</button>
+      <button class="viz-btn" onclick="showRBAC('service')">service account</button>
+    </div>
+    <div id="rbac-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+
+<!-- S5: REVOCATION -->
+<div class="section" id="s-revocation">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Token revocation — the hardest problem in JWT auth</h2>
+
+  <p>A JWT is valid until it expires. There is no built-in revocation. If a user logs out, changes their password, or is banned — their existing JWT still works until expiry. This is not a JWT flaw; it is an inherent property of stateless tokens. The door readers cannot call the front desk. They just check the card.</p>
+
+  <h3>Three strategies, each with a real cost</h3>
+
+  <p><strong>Short expiry (15 minutes) + refresh tokens:</strong> The access token expires quickly, limiting the window of abuse. A longer-lived refresh token (days or weeks) is used to get new access tokens silently. Revocation works by refusing to issue a new access token when the refresh token is presented — the old access token expires naturally within 15 minutes. The cost: more complexity, more round-trips, and the refresh token itself needs to be stored and revocable (which reintroduces state).</p>
+
+  <p><strong>Token blocklist in Redis:</strong> On logout or revocation, store the JWT ID (<code>jti</code> claim) in Redis with a TTL matching the token expiry. On every request, check if the <code>jti</code> is in the blocklist. If yes, reject. The cost: every token verification now requires a Redis lookup — you have converted stateless JWTs into stateful sessions with extra steps. At high throughput, Redis becomes a bottleneck and a single point of failure.</p>
+
+  <p><strong>Accept the window:</strong> Set a short expiry (15 minutes), do not implement a blocklist, accept that a logged-out user can still use their token for up to 15 minutes. For most applications, this is acceptable. A user who logs out on a public computer has at most 15 minutes of exposure. For high-security applications (banking, healthcare), this window is unacceptable and one of the other strategies is required.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>Storing JWTs in localStorage is an XSS vulnerability</strong>
+      <p>JWTs stored in <code>localStorage</code> are accessible to any JavaScript running on the page. An XSS attack that injects a script can exfiltrate every token in storage. Store access tokens in memory (a JavaScript variable) and refresh tokens in <code>HttpOnly</code> cookies. <code>HttpOnly</code> cookies are inaccessible to JavaScript — only the browser sends them, automatically, on every request to the right domain. This does not eliminate CSRF risk (solved with <code>SameSite=Strict</code> or CSRF tokens) but closes the XSS-to-token-theft attack path.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 5: Revocation strategies -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Token revocation — three strategies and their costs</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showRevoke('short_expiry')">Short expiry + refresh tokens</button>
+      <button class="viz-btn" onclick="showRevoke('blocklist')">Redis token blocklist</button>
+      <button class="viz-btn" onclick="showRevoke('accept')">Accept the window</button>
+      <button class="viz-btn" onclick="showRevoke('compare')">Compare all three</button>
+    </div>
+    <div id="revoke-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S6: ATTACKS -->
+<div class="section" id="s-attacks">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>The attacks that actually happen</h2>
+
+  <h3>alg:none — accepting unsigned tokens</h3>
+  <p>The JWT header specifies the signing algorithm. An attacker crafts a token with <code>"alg":"none"</code> and no signature. If the server does not explicitly specify which algorithms to accept, some JWT libraries will accept this token — no signature verification performed. Fix: always specify <code>algorithms: ['RS256']</code> explicitly. Never let the token header dictate the algorithm used for verification.</p>
+
+  <h3>Algorithm confusion — RS256 to HS256</h3>
+  <p>A server configured for RS256 uses its public key to verify signatures. An attacker takes the public key (which is public), uses it as an HMAC secret, and signs a token with HS256. If the server accepts both RS256 and HS256, it verifies the HS256 signature with the public key as the HMAC secret — and it matches. Fix: accept only one algorithm. Never accept both RS256 and HS256 on the same endpoint.</p>
+
+  <h3>JWT secret too weak</h3>
+  <p>If using HS256 (symmetric), the secret must be at least 256 bits of cryptographically random data. Teams that use human-readable strings (<code>"mysecret"</code>, <code>"development"</code>) or short keys are vulnerable to offline brute force. An attacker who captures a JWT can attempt millions of HMAC verifications per second against candidate secrets. Fix: use RS256/ES256 (asymmetric) for production. If you must use HS256, use <code>crypto.randomBytes(32).toString('hex')</code> for the secret.</p>
+
+  <h3>Missing audience validation</h3>
+  <p>A JWT issued by your auth server for Service A should not be accepted by Service B. The <code>aud</code> claim specifies the intended audience. If Service B does not validate the audience, an attacker who obtains a token issued for Service A (perhaps through an XSS attack on Service A) can use it against Service B. Fix: always validate <code>aud</code> and <code>iss</code> in your JWT verification.</p>
+</div>
+
+<!-- VIZ 6: Attack scenarios -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">JWT attacks — how they work and how to prevent them</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showAttack('alg_none')">alg:none attack</button>
+      <button class="viz-btn" onclick="showAttack('alg_confusion')">Algorithm confusion</button>
+      <button class="viz-btn" onclick="showAttack('weak_secret')">Weak HS256 secret</button>
+      <button class="viz-btn" onclick="showAttack('missing_aud')">Missing audience check</button>
+    </div>
+    <div id="attack-output" class="mono-out" style="font-size:12px;min-height:200px"></div>
+  </div>
+</div>
+
+<!-- S7: SESSIONS VS TOKENS -->
+<div class="section" id="s-sessions">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Sessions vs tokens — which should you use?</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dimension</th><th>Server-side sessions</th><th>JWT tokens</th></tr></thead>
+      <tbody>
+        <tr><td>State location</td><td>Server (Redis/DB)</td><td>Client (token itself)</td></tr>
+        <tr><td>Revocation</td><td>Instant — delete the session</td><td>Hard — wait for expiry or use blocklist</td></tr>
+        <tr><td>Scalability</td><td>Session store can bottleneck</td><td>Stateless — scales horizontally easily</td></tr>
+        <tr><td>Cross-domain</td><td>Cookie-based, same-domain easier</td><td>Bearer header, works cross-domain</td></tr>
+        <tr><td>Microservices</td><td>Every service needs session store access</td><td>Every service verifies locally with public key</td></tr>
+        <tr><td>Security</td><td>Session ID is opaque — no payload exposure</td><td>Payload is readable (not encrypted by default)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Use sessions</strong> when you need instant revocation (security-critical apps), when you have a single-domain web app, and when you want the simplicity of server-side state management. Redis-backed sessions are fast and revocable.</p>
+
+  <p><strong>Use JWTs</strong> when you have microservices that need to verify identity without a shared session store, when you need cross-domain or cross-service authentication, and when you are building APIs consumed by mobile apps or third parties. Accept the revocation limitation or mitigate it with short expiry + refresh tokens.</p>
+
+  <p>A hybrid approach works well: short-lived JWTs (15 minutes) for API access, with refresh tokens stored in <code>HttpOnly</code> cookies managed by a central auth service. The auth service is the only component with a session store. All other services verify JWTs locally.</p>
+</div>
+
+<!-- S8: PROD -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>Use an auth provider — do not build it yourself</h3>
+  <p>Auth0, Cognito, Clerk, Supabase Auth, and Keycloak implement OAuth2, OIDC, MFA, social login, token rotation, and session management correctly. Building your own authentication from scratch is a path to subtle security bugs that will not be discovered until they are exploited. The auth provider is one of the very few components where "do not build it yourself" is nearly universal advice. Use a provider for everything except the authorisation logic — RBAC is application-specific and must live in your services.</p>
+
+  <h3>Rotate secrets and keys on a schedule</h3>
+  <p>JWT signing keys should be rotated every 90 days. JWKS (JSON Web Key Sets) make this transparent to consumers — the auth server publishes its public keys at a well-known endpoint, services fetch them periodically, and rotation happens without downtime. When rotating: publish the new key alongside the old key, wait for all outstanding tokens signed with the old key to expire, then remove the old key.</p>
+
+  <h3>Rate limiting on auth endpoints</h3>
+  <p>Login, token exchange, and password reset endpoints are targets for brute force and credential stuffing attacks. Rate limit by IP and by account: maximum 10 login attempts per minute per IP, lockout after 5 failed attempts per account, exponential backoff on repeated failures. These limits should be enforced at the API gateway level, not in the auth service code — they need to be applied before the request reaches your application.</p>
+</div>
+
+<!-- S9: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>The JWT payload is not encrypted — it is encoded</h3>
+  <p>Base64URL encoding is reversible. Anyone who can read the JWT — including the user, including logs, including any proxy between client and server — can read the payload. Never put sensitive information in a JWT payload: no PII, no financial data, no internal system details. The payload should contain only what is necessary for auth decisions: user ID, roles, audience, expiry. If you need to pass sensitive data, encrypt the JWT (JWE) or pass it through a secure channel separately.</p>
+
+  <h3>Clock skew breaks JWT verification in distributed systems</h3>
+  <p>JWT expiry is a Unix timestamp compared against the server clock. If two servers have clocks 2 minutes apart, a token that expired 1 minute ago on one server is still valid on the other. JWT libraries have a <code>clockTolerance</code> or <code>leeway</code> option — typically 30-60 seconds — to handle normal clock drift. Set it. But ensure your systems are NTP-synchronised regardless.</p>
+
+  <h3>Logout does not work the way users expect</h3>
+  <p>A user clicks "logout." The client deletes the JWT from storage. The user feels logged out. But if they had the token copied somewhere, or if an attacker stole it, the token is still valid until expiry. "Logout" in a stateless JWT system is client-side fiction unless you implement revocation. Be honest in your product about what logout does and does not guarantee. For regulated industries, server-side revocation is a compliance requirement, not an option.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="section" id="s-sequence" style="margin-top:64px">
+  <div class="section-eyebrow">Decision sequence</div>
+  <h2>Designing auth for a new service</h2>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text3);margin-bottom:24px">Work through this before writing any auth code.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Use an auth provider for authentication</div>
+        <div class="ds-detail">Auth0, Cognito, Clerk, Keycloak. Do not implement OAuth2, token issuance, or session management from scratch. The auth provider handles login, MFA, social login, token rotation, and OIDC. Your service handles only authorisation — who can do what once identity is established.
+          <br><span class="ds-tag ds-tag-stop">DIY auth is where most auth breaches start</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Use RS256 or ES256 — not HS256</div>
+        <div class="ds-detail">In any system with more than one service, asymmetric signing means only the auth server can issue tokens. Services verify with the public key. A compromised service cannot forge tokens. Configure your JWT library with an explicit algorithm allowlist: <code>algorithms: ['RS256']</code>. Fetch the public key from the auth server JWKS endpoint, not from configuration.
+          <br><span class="ds-tag ds-tag-stop">HS256 means every service can forge tokens</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Set access token expiry to 15 minutes</div>
+        <div class="ds-detail">15-minute access tokens + refresh tokens is the standard pattern. Short expiry limits the damage window if a token is stolen. The refresh token (stored in an HttpOnly cookie) silently renews the access token. Set refresh token expiry to the session duration you want (7 days, 30 days). Implement refresh token rotation — each use of a refresh token issues a new refresh token and invalidates the old one.
+          <br><span class="ds-tag ds-tag-ok">15 min access + rotation = limited breach window</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Validate iss, aud, and exp on every token</div>
+        <div class="ds-detail">Verify the issuer matches your auth server. Verify the audience matches this service. Verify the token is not expired. All three. A valid signature is not enough — a token signed by your auth server but issued for a different service should be rejected. These fields exist precisely for this reason.
+          <br><span class="ds-tag ds-tag-warn">missing aud check = token reuse across services</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Implement RBAC at two levels: gateway + handler</div>
+        <div class="ds-detail">Coarse check in middleware: does this role have access to this endpoint at all? Fine check in the handler: does this user have access to this specific resource? The first check catches obvious violations early. The second enforces ownership (user can only access their own data). Both are necessary — middleware alone cannot check resource ownership.
+          <br><span class="ds-tag ds-tag-info">two levels = coarse gate + fine ownership</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Store tokens in HttpOnly cookies, not localStorage</div>
+        <div class="ds-detail">Refresh tokens in <code>HttpOnly; Secure; SameSite=Strict</code> cookies. Access tokens in memory (JS variable). If XSS occurs, the attacker cannot read <code>HttpOnly</code> cookies. They may be able to make requests (CSRF) — mitigated by <code>SameSite=Strict</code>. <code>localStorage</code> is completely readable by any JS on the page — one XSS vulnerability and every token is stolen.
+          <br><span class="ds-tag ds-tag-stop">localStorage + XSS = instant token theft</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">A banned user is still booking tickets. The token has not expired.</div>
+    <div style="font-size:13px;color:var(--text2)">Token revocation implementation · refresh token rotation · blocklist strategy</div>
+  </div>
+  <a href="/day25/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">JWKS rotation, refresh token implementation, PKCE flow</div>
+    <div style="font-size:13px;color:var(--text2)">Full auth middleware · JWKS client · refresh token rotation · PKCE code</div>
+  </div>
+  <a href="/day25/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Auth production checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">ALG</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">RS256 / ES256</div><p style="font-size:12.5px;color:var(--text3);margin:0">Asymmetric signing. Explicit algorithm allowlist in JWT verify. No HS256 in multi-service systems. JWKS endpoint for key rotation.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">EXP</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Short expiry</div><p style="font-size:12.5px;color:var(--text3);margin:0">Access tokens: 15 minutes. Refresh tokens: 7-30 days with rotation. Never long-lived access tokens in production.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">VAL</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">iss + aud + exp</div><p style="font-size:12.5px;color:var(--text3);margin:0">All three validated on every token. iss: auth server URL. aud: this service. exp: must be in the future. Non-negotiable.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">STR</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Token storage</div><p style="font-size:12.5px;color:var(--text3);margin:0">Refresh tokens in HttpOnly cookies. Access tokens in memory. No JWTs in localStorage. SameSite=Strict on auth cookies.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">RBK</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">RBAC enforced</div><p style="font-size:12.5px;color:var(--text3);margin:0">Coarse check in middleware (role allowed for endpoint). Fine check in handler (user owns this resource). Both levels present.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">RL</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Rate limited</div><p style="font-size:12.5px;color:var(--text3);margin:0">Login, token exchange, password reset all rate-limited at gateway. Per-IP and per-account limits. Lockout after N failures.</p></div>
+  </div>
+</div>
+
+<!-- CLOSING HOOK -->
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    The hotel key card proves you checked in. It does not prove who you are right now. The door reader trusts it until checkout time — and if the card is lost, the door still opens for whoever has it. Short expiry is not a workaround. It is the design.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:56px">
+    The next time an auth bug appears — ask: <em style="color:var(--purple)">is this an authentication problem, an authorisation problem, or a revocation problem?</em> They have different causes and different fixes.
+  </p>
+</div>
+<div style="height:40px"></div>
+</article>
+</div>
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){if(s.id&&s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Hotel mapping
+var HOTEL={
+  checkin:'CHECK-IN AT FRONT DESK  ->  AUTHENTICATION\n\nHotel:\n  You arrive. The receptionist asks for your passport and booking reference.\n  They verify you are who you claim to be.\n  They check you are supposed to be here.\n  They create a record of your stay.\n  This takes 2-5 minutes. You only do it once.\n\nAuth system:\n  User submits username and password (or social login, or MFA code).\n  The auth server verifies the credential against its user store.\n  On success: issues a JWT access token and a refresh token.\n  This is the only moment the auth server is directly involved.\n  All subsequent requests use the token — the auth server is not consulted.\n\nKey distinction:\n  Authentication = "who are you?" (proved once at check-in)\n  Authorisation = "what can you do?" (checked at every door)\n  These are separate problems with separate solutions.\n  A valid JWT proves you authenticated. It does not prove\n  you are authorised to do what you are trying to do.',
+
+  keycard:'HOTEL KEY CARD  ->  JWT\n\nHotel:\n  After check-in, you receive a plastic card.\n  Encoded on the card: your room number, checkout date, access level.\n  You carry this card. No need to return to the front desk.\n  The card is self-contained: it carries all the information needed\n  to make access decisions.\n\nJWT:\n  After authentication, you receive a token (three base64-encoded strings).\n  Encoded in the payload: user ID, roles, expiry, issuer, audience.\n  The client carries this token in the Authorization header.\n  No need to query the auth server or a session store.\n  The token is self-contained: it carries all the information needed\n  for the resource server to make auth decisions locally.\n\nThe token payload (decoded):\n  {\n    "sub": "usr_456",\n    "roles": ["user"],\n    "iss": "https://auth.example.com",\n    "aud": "booking-api",\n    "iat": 1692277200,\n    "exp": 1692278100  <- 15 minutes after iat\n  }',
+
+  reader:'DOOR READER  ->  RESOURCE SERVER\n\nHotel:\n  Each door has a reader. You tap your card.\n  The reader checks: is this a valid card format? Is it expired?\n  Does this card allow access to this door?\n  It makes this decision in milliseconds, without calling the front desk.\n  Stateless: the reader has no memory of previous cards.\n\nResource server (your API):\n  Each protected endpoint verifies the JWT.\n  Middleware checks: is the signature valid? Is it expired?\n  Does this token include the required role for this endpoint?\n  It makes this decision in microseconds, without calling the auth server.\n  Stateless: it verifies the token against the public key locally.\n\nWhy this is fast:\n  JWT verification is a local cryptographic operation.\n  No network call to the auth server.\n  No database lookup.\n  At 10,000 requests per second, this matters.\n\nWhy this creates revocation difficulty:\n  The reader cannot know a card has been cancelled.\n  The resource server cannot know a token has been revoked.\n  Both just check the card/token against their local knowledge.',
+
+  floors:'FLOOR ACCESS CONTROL  ->  RBAC\n\nHotel:\n  Standard room key: opens room 312. Not the executive lounge.\n  Executive guest key: opens room 712 AND the executive lounge.\n  Staff key: opens staff areas. Not guest rooms.\n  Manager key: opens everything.\n\n  Each door reader enforces the right level for that door.\n  The guest does not decide what their card can open.\n  The front desk encodes the access level when issuing the card.\n\nRBAC (Role-Based Access Control):\n  Regular user token: roles=["user"]. Can read their own bookings.\n  Staff token: roles=["user","staff"]. Can also view all bookings.\n  Admin token: roles=["user","staff","admin"]. Can also issue refunds.\n\n  Each API endpoint enforces the right role for that endpoint.\n  requireRole("admin") on /admin/refund\n  requireRole("user") on /bookings/:id (plus ownership check)\n\n  The user does not choose their roles.\n  The auth server encodes them when issuing the token.\n  The resource server enforces them.',
+
+  concierge:'CONCIERGE PASS  ->  OAUTH2\n\nHotel:\n  You want to book a personal training session at the gym.\n  The trainer needs: your name and that you are a hotel guest.\n  They do NOT need: your room number, checkout date, room key.\n  The concierge issues a limited gym pass: "guest, gym access, today only."\n  You give this pass to the trainer, not your room key.\n\nOAuth2:\n  A third-party app (the trainer) needs access to your data (your profile).\n  It does NOT need your password or full access to your account.\n  You log in to Google/GitHub/etc (the concierge).\n  You grant specific scopes: "read:profile email" (gym pass).\n  Google issues an access token to the app with those scopes.\n  The app uses that token, not your credentials.\n\n  Key properties:\n  -> App never sees your password\n  -> Access is scoped to exactly what was granted\n  -> You can revoke the app\'s access at any time\n  -> The token expires\n\n  This is what "Login with Google" actually does.',
+
+  revoke:'LOST CARD  ->  TOKEN REVOCATION\n\nHotel:\n  Guest loses their key card at 14:00.\n  Receptionist issues a new card.\n  But the old card still works until midnight (checkout time on the card).\n  The door readers do not call the front desk to check if a card is valid.\n  They just check the card\'s expiry date.\n\nJWT revocation:\n  User account is banned at 14:00.\n  Auth server invalidates their sessions.\n  But their existing JWT still works until it expires (e.g. 14:15).\n  The resource server does not call the auth server on each request.\n  It just checks the token signature and expiry.\n\nThe fix options:\n  1. Short expiry (15 min): the window is small. Lost card expires soon.\n  2. Blocklist: front desk adds the card ID to a "cancelled" list.\n     Door readers check this list on every tap. (Adds state back.)\n  3. Accept it: for most apps, 15 minutes of exposure is acceptable.\n\nFor security-critical systems:\n  Implement option 2 (blocklist in Redis) AND option 1 (short expiry).\n  This is the cost of stateless authentication.',
+};
+function showHotel(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showHotel'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('hotel-output').textContent=HOTEL[k];
+}
+showHotel('checkin');
+
+// VIZ 2: JWT anatomy
+var JWT_DATA={
+  user:'REGULAR USER TOKEN\n\nRaw JWT (3 parts separated by dots):\n  eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9\n  .eyJzdWIiOiJ1c3JfNDU2Iiwicm9sZXMiOlsidXNlciJdLCJpc3MiOiJodHRwczovL2F1dGgu\n  ZXhhbXBsZS5jb20iLCJhdWQiOiJib29raW5nLWFwaSIsImlhdCI6MTY5MjI3NzIwMCwiZXhwIjo\n  xNjkyMjc4MTAwfQ\n  .<signature>\n\nDecoded header:\n  { "alg": "RS256", "typ": "JWT" }\n\nDecoded payload:\n  {\n    "sub": "usr_456",          <- user ID (subject)\n    "roles": ["user"],          <- custom claim\n    "iss": "https://auth.example.com",  <- issuer\n    "aud": "booking-api",       <- intended audience\n    "iat": 1692277200,          <- issued at (Unix)\n    "exp": 1692278100           <- expires at (iat + 900s = 15 min)\n  }\n\nSignature:\n  RSASSA-PKCS1-v1_5-SHA256(base64(header) + "." + base64(payload), privateKey)\n\nNote: payload is visible to anyone who has the token.\n  Do NOT put PII, passwords, or sensitive data in JWT payloads.',
+
+  admin:'ADMIN TOKEN\n\nDecoded payload:\n  {\n    "sub": "usr_001",\n    "roles": ["user", "staff", "admin"],\n    "permissions": [\n      "bookings:read",\n      "bookings:write",\n      "bookings:delete",\n      "payments:read",\n      "refunds:issue",\n      "users:manage"\n    ],\n    "iss": "https://auth.example.com",\n    "aud": "booking-api",\n    "iat": 1692277200,\n    "exp": 1692278100\n  }\n\nHow RBAC uses this:\n  requireRole("admin") checks roles.includes("admin")\n  requirePermission("refunds:issue") checks permissions array\n\nTrade-off:\n  Larger payload = more bytes on every request.\n  Consider keeping roles small and deriving permissions server-side\n  rather than embedding a large permissions array in every token.',
+
+  service:'SERVICE-TO-SERVICE TOKEN\n\nUsed in client_credentials OAuth2 flow:\n  Service A calls Service B using its own identity,\n  not on behalf of any user.\n\nDecoded payload:\n  {\n    "sub": "checkout-service",    <- service identity (not a user)\n    "iss": "https://auth.example.com",\n    "aud": "inventory-service",   <- only valid for inventory-service\n    "iat": 1692277200,\n    "exp": 1692280800,            <- 1 hour (longer for service tokens)\n    "scope": "inventory:read inventory:hold"\n  }\n\nKey differences from user tokens:\n  -> sub is a service name, not a user ID\n  -> aud is the specific downstream service\n  -> No "roles" claim (services use scopes instead)\n  -> Longer expiry acceptable (no interactive session)\n\nVerification on inventory-service:\n  jwt.verify(token, publicKey, {\n    algorithms: ["RS256"],\n    audience:   "inventory-service",  <- rejects tokens meant for others\n    issuer:     "https://auth.example.com",\n  });',
+
+  expired:'EXPIRED TOKEN\n\nDecoded payload of an expired token:\n  {\n    "sub": "usr_456",\n    "roles": ["user"],\n    "iss": "https://auth.example.com",\n    "aud": "booking-api",\n    "iat": 1692277200,\n    "exp": 1692278100   <- this was 15 minutes after iat\n  }\n\nWhat happens at verification (current time: 1692278200):\n  jwt.verify() checks: current_time > exp?\n  1692278200 > 1692278100  <- YES, expired 100 seconds ago\n  Throws: TokenExpiredError: jwt expired\n\nCorrect client response:\n  1. Access token expired\n  2. Send refresh token to POST /auth/refresh\n  3. Auth server returns new access token (if refresh token valid)\n  4. Retry original request with new access token\n  5. If refresh also fails: redirect to login\n\nCommon mistake:\n  Catching TokenExpiredError and letting the request through anyway.\n  Or not checking exp at all and trusting the signature is enough.',
+
+  attack_none:'alg:none ATTACK\n\nAttacker crafts a token with no signature:\n\n  Header (base64decoded):\n  { "alg": "none", "typ": "JWT" }\n\n  Payload (base64decoded):\n  {\n    "sub": "usr_999",\n    "roles": ["admin"],    <- attacker promotes themselves to admin\n    "exp": 9999999999\n  }\n\n  Signature: (empty string)\n\n  Full token: eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c3JfOTk5In0.\n\nVulnerable server code:\n  jwt.verify(token, secret)  <- no algorithm specified\n  // Some JWT libraries accept alg:none if not explicitly rejected\n\nSafe server code:\n  jwt.verify(token, publicKey, {\n    algorithms: ["RS256"],   <- explicit allowlist prevents alg:none\n  });\n  // TokenExpiredError, JsonWebTokenError — but NOT "none" acceptance\n\nPrevention:\n  Always pass an explicit algorithms array to jwt.verify().\n  Never allow the token header to dictate the verification algorithm.\n  Treat any token with alg:none as immediately invalid.',
+};
+function showJWT(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showJWT'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('jwt-output').textContent=JWT_DATA[k];
+}
+showJWT('user');
+
+// VIZ 3: OAuth flows
+var OAUTH={
+  auth_code_pkce:'AUTHORIZATION CODE + PKCE\nUse for: all user-facing web and mobile apps\n\n1. App generates: code_verifier = random(32 bytes)\n                  code_challenge = sha256(code_verifier) base64url-encoded\n\n2. App redirects user to auth server:\n   GET https://auth.example.com/authorize?\n     client_id=app123\n     &redirect_uri=https://myapp.com/callback\n     &response_type=code\n     &scope=openid email profile\n     &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK...\n     &code_challenge_method=S256\n\n3. User logs in on auth server. Auth server redirects back:\n   GET https://myapp.com/callback?code=SplxlOBeZQQYbYS6WxSbIA\n\n4. App exchanges code for tokens (sending the verifier):\n   POST https://auth.example.com/token\n   Body: grant_type=authorization_code\n         &code=SplxlOBeZQQYbYS6WxSbIA\n         &code_verifier=dBjftJeZ4CVP...  <- proves app started this flow\n         &redirect_uri=https://myapp.com/callback\n\n5. Auth server verifies: sha256(code_verifier) == code_challenge?\n   If yes: returns access_token + refresh_token + id_token\n\nWhy PKCE:\n   Intercepted code is useless without the code_verifier.\n   Only the app that started the flow has it.',
+
+  client_creds:'CLIENT CREDENTIALS\nUse for: service-to-service auth (no user involved)\n\nFlow:\n  POST https://auth.example.com/token\n  Authorization: Basic base64(client_id:client_secret)\n  Body: grant_type=client_credentials\n        &scope=inventory:read inventory:hold\n\n  Response:\n  {\n    "access_token": "eyJ...",\n    "token_type": "Bearer",\n    "expires_in": 3600,\n    "scope": "inventory:read inventory:hold"\n  }\n\nUsage:\n  checkout-service stores its client_id and client_secret securely.\n  On startup (or when token expires), fetches a new access token.\n  Passes it as: Authorization: Bearer eyJ...\n  inventory-service verifies and sees aud="inventory-service".\n\nKey properties:\n  No user involved. Service acts as itself.\n  Token is scoped to what the service needs.\n  Short-lived (1 hour typical). Auto-refresh before expiry.\n  Client secret must be rotated regularly — stored in secrets manager.',
+
+  refresh:'TOKEN REFRESH FLOW\nPrevents forcing users to log in every 15 minutes\n\nInitial auth: user gets\n  access_token  (15 min expiry, used in API calls)\n  refresh_token (7 day expiry, stored in HttpOnly cookie)\n\nWhen access token expires:\n  1. App tries API call. Gets 401 Unauthorized.\n  2. App sends refresh token to auth server:\n     POST /auth/refresh\n     Cookie: refresh_token=abc123...  <- HttpOnly, browser sends automatically\n\n  3. Auth server checks:\n     -> Is this refresh token in our valid set?\n     -> Has it been used before (rotation check)?\n     -> Is it expired?\n\n  4. If valid, auth server:\n     -> Issues new access_token\n     -> Issues NEW refresh_token (rotation)\n     -> Invalidates the old refresh_token\n     -> Returns new tokens\n\n  5. App retries original request with new access_token.\n\nRefresh token rotation:\n  Each use issues a new refresh token.\n  If an attacker steals a refresh token and uses it,\n  the legitimate user\'s next refresh will fail\n  (old token invalidated) -> they get logged out -> they notice.',
+
+  oidc:'OPENID CONNECT (OIDC)\nOAuth2 + identity layer\n\nOAuth2 gives you: "this app can access these resources on behalf of the user"\nOIDC adds:        "and here is who the user is"\n\nOIDC adds an ID token to the OAuth2 flow:\n  access_token  <- what the app can do (OAuth2)\n  id_token      <- who the user is (OIDC)\n  refresh_token <- get new tokens\n\nID token (decoded):\n  {\n    "iss": "https://accounts.google.com",\n    "sub": "110169484474386276334",  <- stable Google user ID\n    "aud": "your-client-id.apps.googleusercontent.com",\n    "email": "user@example.com",\n    "email_verified": true,\n    "name": "Alice Smith",\n    "picture": "https://lh3.googleusercontent.com/...",\n    "iat": 1692277200,\n    "exp": 1692280800\n  }\n\nYour app uses:\n  sub        <- stable identifier to look up/create the user in YOUR database\n  email      <- display, not used as primary key (emails can change)\n  name, picture <- profile display\n\nNever use email as the primary key for a user from an OAuth2 provider.\n  Use sub. Emails change. sub is permanent for that provider.',
+};
+function showOAuth(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showOAuth'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('oauth-output').textContent=OAUTH[k];
+}
+showOAuth('auth_code_pkce');
+
+// VIZ 4: RBAC
+var RBAC={
+  viewer:'VIEWER ROLE\n\nWho has it: public embed widgets, read-only API consumers\n\nPermissions:\n  GET  /events                  [OK] read event listings\n  GET  /events/:id              [OK] read event details\n  GET  /venues/:id              [OK] read venue info\n  GET  /bookings/:id            [DENIED] cannot read any bookings\n  POST /bookings                [DENIED] cannot create bookings\n  GET  /admin/*                 [DENIED] no admin access\n\nTypical JWT claims:\n  "roles": ["viewer"]\n\nUse case:\n  Embeddable event widgets on third-party sites.\n  Public API consumers who need read access to event data.',
+
+  user:'USER ROLE\n\nWho has it: authenticated end users\n\nPermissions:\n  GET  /events                  [OK]\n  GET  /bookings/:id            [OK if booking.userId === req.user.sub]\n  GET  /bookings/my             [OK] list own bookings\n  POST /bookings                [OK] create a booking\n  PUT  /bookings/:id/cancel     [OK if own booking and cancellable]\n  GET  /bookings/:id            [DENIED if not their booking]\n  GET  /admin/*                 [DENIED]\n  GET  /bookings (all users)    [DENIED]\n\nTypical JWT claims:\n  "roles": ["user"]\n\nNote the two-level check:\n  Level 1 (middleware): role "user" is allowed on /bookings/:id\n  Level 2 (handler):    booking.userId must match req.user.sub\n  Both required. Middleware alone cannot enforce ownership.',
+
+  staff:'STAFF ROLE\n\nWho has it: customer support agents, event managers\n\nPermissions (inherits user +):\n  GET  /bookings                [OK] list all bookings\n  GET  /bookings/:id            [OK] view any booking\n  PUT  /bookings/:id/notes      [OK] add support notes\n  GET  /users/:id               [OK] view user details\n  POST /bookings/:id/reassign   [OK] reassign to different seat\n  POST /admin/refund            [DENIED] cannot issue refunds\n  DELETE /bookings/:id          [DENIED] cannot delete bookings\n\nTypical JWT claims:\n  "roles": ["user", "staff"]\n\nDesign note:\n  Staff inherits user permissions (staff can still book for themselves).\n  Each added permission is explicit, not assumed.',
+
+  admin:'ADMIN ROLE\n\nWho has it: platform administrators, finance team (limited)\n\nPermissions (inherits staff +):\n  POST /admin/refund            [OK]\n  DELETE /bookings/:id          [OK]\n  PUT  /users/:id/ban           [OK]\n  GET  /admin/reports           [OK]\n  PUT  /events/:id              [OK] manage events\n  GET  /admin/audit-log         [OK]\n  PUT  /admin/system-config     [DENIED - superadmin only]\n\nTypical JWT claims:\n  "roles": ["user", "staff", "admin"]\n\nCaution:\n  Avoid the "superuser" anti-pattern: one admin role that can do everything.\n  Finance admin should be able to issue refunds but not ban users.\n  Event admin should manage events but not access financial data.\n  Consider separate roles for separate domains within "admin".',
+
+  service:'SERVICE ACCOUNT\n\nWho has it: backend services authenticating via client_credentials\n\nPermissions (scoped by service):\n  checkout-service:\n    inventory:hold    [OK] hold seats during checkout\n    inventory:release [OK] release holds on failure\n    payments:charge   [OK] initiate charges\n\n  email-service:\n    bookings:read     [OK] read booking data to build email\n    users:email       [OK] read user email addresses\n\n  analytics-service:\n    bookings:read     [OK]\n    events:read       [OK]\n    users:read        [DENIED] no PII access\n\nKey difference from user roles:\n  Scopes instead of roles.\n  Each service gets minimum necessary permissions.\n  Service tokens do not have "sub" of a user.\n  JWT aud = the specific downstream service being called.',
+};
+function showRBAC(k){document.getElementById('rbac-output').textContent=RBAC[k];}
+
+// VIZ 5: Revocation
+var REVOKE={
+  short_expiry:'SHORT EXPIRY + REFRESH TOKENS\n\nAccess token: 15 minutes\nRefresh token: 7 days, stored in HttpOnly cookie, rotated on each use\n\nRevocation scenario:\n  User account banned at 14:00.\n  Auth server: marks refresh token as revoked in its store.\n\n  14:01: User tries to use existing access token. WORKS (not expired yet).\n  14:15: Access token expires. User requests new one using refresh token.\n  Auth server: refresh token is revoked. Returns 401.\n  14:15: User is effectively locked out. (15 minute window of exposure)\n\nAdvantages:\n  No blocklist needed for access tokens\n  No Redis lookup on every request\n  Scales horizontally without session state\n\nDisadvantages:\n  15-minute window after revocation\n  Complexity of refresh token management\n  Refresh token store is stateful (can still fail)\n\nBest for: most consumer applications',
+
+  blocklist:'REDIS TOKEN BLOCKLIST\n\nOn token issue:\n  Store jti (JWT ID) claim in every token\n  jti = crypto.randomUUID()\n\nOn revocation (logout, ban, password change):\n  await redis.set(\n    "revoked:jti:" + token.jti,\n    "1",\n    "EX", token.exp - Math.floor(Date.now() / 1000)\n  );\n  // TTL = remaining token lifetime\n\nOn every request:\n  const payload = jwt.verify(token, publicKey, { algorithms: ["RS256"] });\n  const revoked = await redis.get("revoked:jti:" + payload.jti);\n  if (revoked) return res.status(401).json({ error: "token_revoked" });\n\nAdvantages:\n  Instant revocation\n  No window of exposure after ban/logout\n\nDisadvantages:\n  Redis lookup on EVERY request (latency + Redis availability)\n  Redis becomes a critical dependency for ALL auth\n  At 10K req/sec: 10K Redis lookups/sec\n  Effectively re-creates stateful sessions\n\nBest for: high-security systems requiring instant revocation',
+
+  accept:'ACCEPT THE WINDOW\n\nPolicy: 15-minute access tokens, no revocation mechanism.\n\nWhat this means:\n  A user who logs out can still use their token for up to 15 minutes.\n  A banned user can still use their token for up to 15 minutes.\n  A user who changes their password still has valid old tokens for 15 min.\n\nWhen this is acceptable:\n  Consumer web apps where 15-minute exposure is manageable.\n  Internal tools where the risk is low.\n  Applications without high-value targets (no financial transactions).\n\nWhen this is NOT acceptable:\n  Banking, payments, healthcare, legal -- regulated industries.\n  Any system where a 15-minute breach window has significant impact.\n  Applications with known threat models requiring instant revocation.\n\nPragmatic advice:\n  For most applications, accept the window for access tokens.\n  Add revocation only for refresh tokens (stateful, but fewer lookups).\n  This is the "15 minutes of fame" model for attackers:\n  they have a limited window, then the token is gone.',
+
+  compare:'COMPARISON\n\n                    Short+Refresh    Blocklist       Accept Window\nRevocation speed:   ~15 min          Instant         ~15 min\nRevocation cost:    Refresh store    Redis/lookup    None\nRequest overhead:   None             Redis lookup    None\nScale-out:          Easy             Redis becomes   Trivial\n                                    bottleneck\nComplexity:         Medium           High            Low\nSecurity level:     Good             High            Acceptable\n\nRecommendation by use case:\n\n  Consumer app (e-commerce, social):\n    Short expiry + refresh token rotation. Accept 15-min window.\n    Most users never notice. Risk is manageable.\n\n  Internal tooling / admin panel:\n    Server-side sessions (instant revocation, simple, low traffic).\n    No need for JWT complexity at low request volumes.\n\n  High-security (banking, healthcare):\n    Short expiry + refresh + Redis blocklist for critical operations.\n    Accept the Redis dependency as a necessary cost.\n\n  API-first / microservices:\n    Short expiry (15 min). No blocklist for access tokens.\n    Revoke refresh tokens on auth server on password change/ban.\n    Accept 15-min window for access tokens.',
+};
+function showRevoke(k){document.getElementById('revoke-output').textContent=REVOKE[k];}
+
+// VIZ 6: Attacks
+var ATTACKS={
+  alg_none:'alg:none ATTACK\n\nSeverity: CRITICAL — complete authentication bypass\n\nHow it works:\n  1. Attacker takes any valid JWT and decodes the header.\n  2. Changes "alg": "RS256" to "alg": "none".\n  3. Removes or empties the signature part.\n  4. Modifies the payload (promotes self to admin, extends expiry).\n  5. Re-encodes header and payload as base64url.\n  6. Sends: eyJhbGciOiJub25lIn0.eyJzdWIiOiJhdHRhY2tlciIsInJvbGVzIjpbImFkbWluIl19.\n\nVulnerable code:\n  jwt.verify(token, secret);\n  // No algorithm specified. Library reads alg from header. Accepts "none".\n\nSafe code:\n  jwt.verify(token, publicKey, { algorithms: ["RS256"] });\n  // Library ignores the header\'s alg claim. Uses RS256. Rejects "none".\n\nReal-world impact:\n  Auth0 had an alg:none vulnerability in 2015.\n  Multiple JWT libraries have had this bug.\n  Always specify algorithms explicitly. Every time. No exceptions.',
+
+  alg_confusion:'ALGORITHM CONFUSION (RS256 to HS256)\n\nSeverity: CRITICAL — complete authentication bypass\n\nHow it works:\n  Server is configured to accept both RS256 AND HS256.\n  Server uses RS256 public key for verification.\n  The public key is... public. Anyone can get it.\n\n  Attacker:\n  1. Obtains the server\'s RS256 public key (from JWKS endpoint, etc.)\n  2. Creates a new JWT with alg: "HS256"\n  3. Signs it with HMAC-SHA256 using the public key as the HMAC secret\n  4. Server verifies: "HS256 signature is correct!" (using public key as secret)\n  5. Server accepts the forged token.\n\nVulnerable code:\n  jwt.verify(token, getKey(token.header.alg));\n  // Accepts both RS256 and HS256. Uses public key for RS256 verification.\n  // Attacker uses public key as HS256 secret = valid signature.\n\nSafe code:\n  jwt.verify(token, publicKey, { algorithms: ["RS256"] });\n  // Accepts ONLY RS256. Rejects HS256 tokens regardless of signature.\n\nPrevention:\n  Never accept multiple algorithms.\n  If you use RS256, ONLY RS256. If you use ES256, ONLY ES256.',
+
+  weak_secret:'WEAK HS256 SECRET\n\nSeverity: HIGH — offline brute force possible\n\nHow it works:\n  HS256 signs tokens with an HMAC secret.\n  If the secret is weak, an attacker can brute force it offline.\n\n  1. Attacker captures any valid JWT.\n  2. Runs offline attack: tries millions of candidate secrets.\n     john --wordlist=rockyou.txt --format=HMAC-SHA256 token.txt\n  3. When the HMAC matches: secret found.\n  4. Attacker can now sign any token they want.\n\nWeak secrets (vulnerable):\n  "secret"     <- wordlist hit in seconds\n  "password"   <- wordlist hit in seconds\n  "development" <- wordlist hit in seconds\n  "jwt-secret" <- short, guessable\n  Any human-readable string\n\nStrong secret:\n  require("crypto").randomBytes(32).toString("hex")\n  <- 256 bits of randomness, not brute-forceable in practice\n\nBetter solution:\n  Use RS256/ES256 (asymmetric). Private key cannot be brute forced\n  because the attacker does not see the private key -- only the public key.',
+
+  missing_aud:'MISSING AUDIENCE VALIDATION\n\nSeverity: MEDIUM-HIGH — token reuse across services\n\nHow it works:\n  booking-service issues tokens with aud: "booking-api"\n  payment-service does NOT validate aud claim.\n\n  1. Attacker finds XSS on booking-service frontend.\n  2. Steals a user\'s JWT issued for booking-api.\n  3. Replays that token against payment-service.\n  4. payment-service verifies signature (valid!) and does not check aud.\n  5. Attacker can now call payment-service as that user.\n\nVulnerable code:\n  jwt.verify(token, publicKey, { algorithms: ["RS256"] });\n  // No audience check. Any token from this issuer is accepted.\n\nSafe code:\n  jwt.verify(token, publicKey, {\n    algorithms: ["RS256"],\n    audience:   "payment-service",   <- reject if aud != this\n    issuer:     "https://auth.example.com",\n  });\n\nPrevention:\n  Always validate aud. Always validate iss.\n  Each service has its own aud value.\n  Tokens issued for service A cannot be used against service B.\n  This is what the aud claim exists to prevent.',
+};
+function showAttack(k){document.getElementById('attack-output').textContent=ATTACKS[k];}
+</script>
+</body>
+</html>

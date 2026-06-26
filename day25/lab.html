@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 25 Lab: A Banned User Is Still Booking Tickets</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:48px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--purple));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;margin:16px 0;}
+.choice-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin:24px 0;}
+.choice-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;}
+.choice-q{font-size:15px;color:var(--text);font-weight:500;margin-bottom:16px;line-height:1.5;}
+.choice-btn{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:12px 16px;border-radius:6px;cursor:pointer;font-size:14px;transition:all .12s;margin-bottom:8px;line-height:1.5;}
+.choice-btn:hover{border-color:var(--accent);color:var(--text);}
+.choice-result{background:var(--bg3);border-radius:6px;padding:14px 16px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.7;display:none;}
+.learned{background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--purple);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}.learned-text strong{color:var(--text);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day25" class="back-link">&#8592; Day 25: Auth — JWT, OAuth2, RBAC</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">Auth Bypass &nbsp;·&nbsp; Token Revocation &nbsp;·&nbsp; JWT Stateless</div>
+  <h2>A user was banned for fraud. They are still booking tickets 40 minutes later.</h2>
+  <div class="incident-meta">Trust & Safety escalation · usr_8821 · access_token expiry: 60 minutes</div>
+  <p>The trust and safety team banned user <code>usr_8821</code> at 14:00 for confirmed ticket fraud — they were reselling tickets at 10x face value. The ban was applied in the users database: <code>UPDATE users SET banned=true WHERE id='usr_8821'</code>. The trust team expected the user to be locked out immediately.</p>
+  <p>At 14:40, the user successfully books four more tickets. The booking service has no idea the user is banned. Their JWT is valid: correct signature, correct issuer, not expired. The <code>banned</code> field is in the database, not in the token. The booking service never checks the database — it trusts the token.</p>
+  <p>The root cause: access tokens were set to 60-minute expiry. No revocation mechanism. The hotel key card does not expire until checkout time.</p>
+</div>
+
+<h3>Step 1: Understand why this happened</h3>
+<div class="mono-out">-- The token issued at 13:55 (before the ban):
+{
+  "sub": "usr_8821",
+  "roles": ["user"],
+  "iss": "https://auth.example.com",
+  "aud": "booking-api",
+  "iat": 1692277200,  // 13:55
+  "exp": 1692280800   // 14:55 (60 minutes later)
+}
+
+-- The ban applied at 14:00:
+UPDATE users SET banned=true, banned_at=NOW() WHERE id='usr_8821';
+-- Rows affected: 1
+
+-- The booking at 14:40:
+POST /bookings
+Authorization: Bearer eyJ... (the same token from 13:55)
+
+-- Booking service middleware:
+jwt.verify(token, publicKey, { algorithms: ['RS256'], audience: 'booking-api' });
+// Returns: { sub: 'usr_8821', roles: ['user'], exp: 1692280800 }
+// Valid signature. Not expired. Proceeds.
+// Never checks: is this user banned?</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Diagnosis</div>
+  <div class="choice-q">What is the root cause, and why is this an inherent property of JWTs rather than a bug?</div>
+  <button class="choice-btn" onclick="showC('q1','a')">(A) The booking service has a bug — it should check the banned field on every request.</button>
+  <button class="choice-btn" onclick="showC('q1','b')">(B) JWTs are stateless and self-contained. The token cannot be cancelled without either adding state (a revocation mechanism) or waiting for expiry. The 60-minute expiry makes this window 60 minutes. This is not a bug — it is the inherent trade-off of stateless tokens.</button>
+  <button class="choice-btn" onclick="showC('q1','c')">(C) The auth server should have deleted the token from its database when the ban was applied.</button>
+  <div class="choice-result" id="q1-result"></div>
+</div>
+
+<h3>Step 2: What should have been in place</h3>
+<div class="choice-panel">
+  <div class="choice-label">Prevention</div>
+  <div class="choice-q">Which combination of changes would have limited the window to at most 15 minutes?</div>
+  <button class="choice-btn" onclick="showC('q2','a')">(A) Reduce access token expiry to 15 minutes. On ban, revoke the refresh token so the user cannot get a new access token after it expires.</button>
+  <button class="choice-btn" onclick="showC('q2','b')">(B) Check the users database on every booking request to see if the user is banned.</button>
+  <button class="choice-btn" onclick="showC('q2','c')">(C) Switch to server-side sessions so the session can be deleted instantly on ban.</button>
+  <div class="choice-result" id="q2-result"></div>
+</div>
+
+<h3>Step 3: The immediate fix for right now</h3>
+<div class="choice-panel">
+  <div class="choice-label">Immediate mitigation</div>
+  <div class="choice-q">The user is currently active. Their token expires at 14:55. It is 14:42. You need to stop them NOW. What do you do?</div>
+  <button class="choice-btn" onclick="showC('q3','a')">(A) Nothing can be done until 14:55. Accept the remaining 13 minutes.</button>
+  <button class="choice-btn" onclick="showC('q3','b')">(B) Add the token jti to a Redis blocklist with TTL of 13 minutes. Deploy a middleware update that checks the blocklist on every booking request. This requires a deploy but closes the window immediately.</button>
+  <button class="choice-btn" onclick="showC('q3','c')">(C) Add a banned check to the booking handler that queries the users database on each booking creation. This closes the window without needing a blocklist.</button>
+  <div class="choice-result" id="q3-result"></div>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Token expiry IS your revocation window.</strong> A 60-minute expiry means a 60-minute breach window after any ban, password change, or account compromise. 15 minutes is the industry standard for a reason. The shorter the expiry, the smaller the inherent breach window of stateless JWTs.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Revoke refresh tokens first, access tokens second.</strong> The correct hierarchy: on ban, immediately revoke the refresh token (the auth server has state over this). The user cannot get new access tokens. The existing access token expires naturally within its window. This is the right trade-off for most applications.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Option C (DB check on each booking) is a valid immediate fix but has a cost.</strong> Checking the banned status on every booking creation is correct for this specific operation — it adds one DB lookup per booking, which is acceptable. Checking on every API request (including reads) at 10,000 req/sec is a different story. Segment where you check: for write operations with high fraud risk, a DB check is appropriate. For reads, accept the token window.</span></div>
+</div>
+
+</div>
+<script>
+var CHOICES={
+  'q1-a': 'Partially correct, but misses the deeper point.\n\nYes, the booking service COULD check the database on each request. But framing this as a "bug" suggests there is a clean fix. There is not. The real issue: if the booking service checks the database on every request, it has re-created stateful sessions — every service now depends on a database lookup for auth decisions, which is exactly what JWTs were designed to avoid.\n\nThe root cause is the 60-minute expiry combined with no revocation mechanism. The fix is to reduce expiry and add refresh token revocation — not to add database lookups to every request.',
+
+  'q1-b': '[OK] Correct. This is the fundamental trade-off of stateless JWT authentication.\n\nThe JWT was cryptographically valid at the time the booking service checked it:\n  - Correct signature (RS256)\n  - Valid issuer\n  - Not expired (14:40 < 14:55)\n  - Correct audience\n\nThe booking service did exactly what it was supposed to do. The token said "this is a valid user" and the token was not lying — it was truthful at the time of issuance. The ban happened after issuance. The token cannot know about post-issuance events.\n\nThis is not a JWT bug. It is the inherent property of any stateless, self-contained credential. A physical hotel key card has the same property. The fix is process (short expiry + refresh token revocation), not code.',
+
+  'q1-c': 'Incorrect framing. JWTs are not stored by the auth server. The auth server issues tokens and forgets about them. That is the entire point — stateless. If the auth server stored every token and could "delete" them, you would have a session store. You would not have JWTs. You would have stateful sessions with extra base64 encoding.\n\nThe auth server DOES have state over refresh tokens (which are stored). Revoking the refresh token prevents new access tokens from being issued — but cannot cancel the existing access token.',
+
+  'q2-a': '[OK] Correct. This is the standard approach.\n\nThe two-part fix:\n  1. Reduce access token expiry: 60 min -> 15 min\n     Maximum breach window: 15 minutes (vs 60 minutes currently)\n\n  2. On ban: revoke the refresh token\n     await authService.revokeRefreshToken(userId);\n     // Auth server marks it invalid in its refresh token store\n\nResult:\n  14:00 - Ban applied, refresh token revoked\n  14:15 - Existing access token expires\n  14:15 - User tries to refresh -> auth server: "refresh token invalid" -> 401\n  14:15 - User is fully locked out (15-minute window, not 60)\n\nThis requires no blocklist, no DB lookup on every request, and scales horizontally. The only state is in the auth server\'s refresh token store — which already needs to exist for refresh token rotation.',
+
+  'q2-b': 'This would work but it is not the right primary solution. Checking the database on every API request converts your stateless JWT auth into stateful auth with extra steps. At 10,000 req/sec, that is 10,000 database reads per second just for ban checking.\n\nA better approach: reduce token expiry to 15 minutes and revoke refresh tokens on ban. The database check on the booking creation handler (for write operations with fraud risk) is a reasonable additional layer, but it should not be the primary revocation mechanism.',
+
+  'q2-c': 'Server-side sessions would solve this specific problem (instant revocation). But sessions have their own costs: all services need access to the session store, horizontal scaling requires a distributed session store (Redis), and cross-service auth becomes more complex.\n\nFor a microservices architecture, switching to sessions means every service needs access to the session Redis. This is operationally heavy. The short-expiry + refresh token revocation approach achieves "mostly instant" revocation (15-minute window) without adding session infrastructure to every service.',
+
+  'q3-a': 'In principle, you are right that you cannot truly revoke the existing access token without state. However, "nothing can be done" is not quite accurate. Two options exist right now:\n\nOption 1: Add a banned check to the booking creation handler (DB lookup per booking write). Fast to deploy, no new infrastructure.\n\nOption 2: Add the jti to a Redis blocklist and deploy a middleware update. More infrastructure but instant across all endpoints.\n\nBoth require a deploy. Neither is "nothing." The 13-minute window is real but not unavoidable.',
+
+  'q3-b': 'Valid approach, but the most complex to deploy quickly. It requires:\n  1. Adding jti claim to existing tokens (may not be present if not already configured)\n  2. Deploying Redis blocklist middleware\n  3. Deploying a booking service update\n\nIf jti is not already in your tokens, this cannot be done immediately. If it is, this is a clean solution that closes the window without changing your auth architecture.',
+
+  'q3-c': '[OK] Correct for the immediate fix — and actually the right long-term layer too.\n\nFor booking CREATION specifically:\n  async function createBooking(req, res) {\n    // After JWT verification, before any business logic:\n    const user = await db.findUser(req.user.sub);\n    if (!user || user.banned) {\n      return res.status(403).json({ error: "account_suspended" });\n    }\n    // proceed with booking creation\n  }\n\nWhy this is appropriate here:\n  - Booking creation is a write operation with real business impact\n  - One DB lookup per booking is acceptable (not per every API request)\n  - Booking rate is much lower than read rate (100x fewer calls typically)\n  - The user object is often needed anyway (for user details)\n\nLong-term: reduce token expiry to 15 min AND revoke refresh tokens on ban.\nThe DB check is an additional safety layer, not the primary mechanism.',
+};
+function showC(q,opt){
+  var el=document.getElementById(q+'-result');
+  el.textContent=CHOICES[q+'-'+opt]||'';
+  el.style.display='block';
+}
+</script>
+</body>
+</html>
