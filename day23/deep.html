@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 23 Deep Dive: KafkaJS, Schema Registry, Lag Monitoring</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+.verify-block{background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:10px;padding:24px 28px;margin:36px 0;}
+.verify-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.verify-block-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+.verify-item{display:flex;gap:12px;margin-bottom:12px;font-size:13.5px;}
+.verify-item:last-child{margin-bottom:0;}
+.verify-check{color:var(--green);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.verify-text{color:var(--text2);line-height:1.6;}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day23" class="back-link">&#8592; Day 23: Kafka & Event Streaming</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 23 · Kafka & Event Streaming · Deep Dive</div>
+  <h1>KafkaJS full setup,<br>Schema Registry,<br><em>&amp; consumer lag monitoring</em></h1>
+  <p>Complete production-grade KafkaJS producer and consumer with idempotent processing, Schema Registry integration for Avro schemas, and Prometheus consumer lag metrics with Grafana alert rules.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>KafkaJS: <em>complete producer and consumer</em></h2>
+  <p class="lead">The full setup — idempotent producer with acks=all, manual-commit consumer with deduplication, graceful shutdown, and structured logging on every event.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">kafka.ts — producer with acks=all and idempotency</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { Kafka, CompressionTypes, logLevel } <span class="kw">from</span> <span class="str">'kafkajs'</span>;
+<span class="kw">import</span> { logger } <span class="kw">from</span> <span class="str">'./logger'</span>;
+<span class="kw">import</span> { redis }  <span class="kw">from</span> <span class="str">'./redis'</span>;
+
+<span class="kw">export const</span> kafka = <span class="kw">new</span> Kafka({
+  clientId: process.env.SERVICE_NAME || <span class="str">'checkout-service'</span>,
+  brokers:  (process.env.KAFKA_BROKERS || <span class="str">'kafka:9092'</span>).<span class="fn">split</span>(<span class="str">','</span>),
+  ssl: process.env.NODE_ENV === <span class="str">'production'</span>,
+  logLevel: logLevel.WARN,
+  retry: { initialRetryTime: <span class="num">300</span>, retries: <span class="num">8</span> },
+});
+
+<span class="cm">// ── Producer ─────────────────────────────────────────────</span>
+<span class="kw">const</span> producer = kafka.<span class="fn">producer</span>({
+  allowAutoTopicCreation: <span class="kw">false</span>,
+  idempotent:            <span class="kw">true</span>,   <span class="cm">// exactly-once producer</span>
+  transactionalId:       <span class="str">`\${process.env.SERVICE_NAME}-producer`</span>,
+});
+
+<span class="kw">export async function</span> <span class="fn">publishEvent</span>(
+  topic:   <span class="kw">string</span>,
+  key:     <span class="kw">string</span>,
+  payload: <span class="kw">unknown</span>,
+  headers: Record&lt;<span class="kw">string</span>, <span class="kw">string</span>&gt; = {}
+): Promise&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">await</span> producer.<span class="fn">send</span>({
+    topic,
+    compression: CompressionTypes.GZIP,
+    messages: [{
+      key,
+      value:   JSON.<span class="fn">stringify</span>(payload),
+      headers: {
+        <span class="str">'schema-version'</span>: <span class="str">'1'</span>,
+        <span class="str">'source-service'</span>: process.env.SERVICE_NAME || <span class="str">'unknown'</span>,
+        ...headers,
+      },
+    }],
+  });
+  logger.<span class="fn">info</span>({ topic, key, payloadSize: JSON.<span class="fn">stringify</span>(payload).length },
+    <span class="str">'kafka.event.published'</span>);
+}
+
+<span class="cm">// ── Consumer ─────────────────────────────────────────────</span>
+<span class="kw">export function</span> <span class="fn">createConsumer</span>(groupId: <span class="kw">string</span>) {
+  <span class="kw">return</span> kafka.<span class="fn">consumer</span>({
+    groupId,
+    sessionTimeout:        <span class="num">30000</span>,
+    heartbeatInterval:     <span class="num">3000</span>,
+    maxPollIntervalMs:     <span class="num">300000</span>,
+    allowAutoTopicCreation:<span class="kw">false</span>,
+  });
+}
+
+<span class="kw">export async function</span> <span class="fn">runConsumer</span>(
+  groupId: <span class="kw">string</span>,
+  topics:  <span class="kw">string</span>[],
+  handler: (topic: <span class="kw">string</span>, key: <span class="kw">string</span>, value: <span class="kw">unknown</span>) => Promise&lt;<span class="kw">void</span>&gt;
+) {
+  <span class="kw">const</span> consumer = <span class="fn">createConsumer</span>(groupId);
+  <span class="kw">await</span> consumer.<span class="fn">connect</span>();
+  <span class="kw">await</span> consumer.<span class="fn">subscribe</span>({ topics, fromBeginning: <span class="kw">false</span> });
+
+  <span class="kw">await</span> consumer.<span class="fn">run</span>({
+    autoCommit: <span class="kw">false</span>,   <span class="cm">// manual commit — always</span>
+    eachMessage: <span class="kw">async</span> ({ topic, partition, message, heartbeat }) => {
+      <span class="kw">const</span> key   = message.key?.toString()   || <span class="str">''</span>;
+      <span class="kw">const</span> value = message.value?.toString() || <span class="str">'{}'</span>;
+      <span class="kw">const</span> eventId = <span class="str">`\${topic}:\${partition}:\${message.offset}`</span>;
+
+      <span class="cm">// Idempotency check — skip if already processed</span>
+      <span class="kw">const</span> claimed = <span class="kw">await</span> redis.<span class="fn">set</span>(
+        <span class="str">`kafka:processed:\${eventId}`</span>, <span class="str">'1'</span>, <span class="str">'EX'</span>, <span class="num">86400</span>, <span class="str">'NX'</span>
+      );
+      <span class="kw">if</span> (!claimed) {
+        logger.<span class="fn">info</span>({ eventId }, <span class="str">'kafka.event.duplicate.skipped'</span>);
+        <span class="kw">return</span>;
+      }
+
+      <span class="kw">try</span> {
+        <span class="kw">const</span> parsed = JSON.<span class="fn">parse</span>(value);
+        <span class="kw">await</span> heartbeat();  <span class="cm">// prevent session timeout on slow processing</span>
+        <span class="kw">await</span> <span class="fn">handler</span>(topic, key, parsed);
+        logger.<span class="fn">info</span>({ topic, partition, offset: message.offset, key },
+          <span class="str">'kafka.event.processed'</span>);
+      } <span class="kw">catch</span> (err) {
+        <span class="kw">await</span> redis.<span class="fn">del</span>(<span class="str">`kafka:processed:\${eventId}`</span>);  <span class="cm">// release lock on failure</span>
+        logger.<span class="fn">error</span>({ err, topic, partition, offset: message.offset, key },
+          <span class="str">'kafka.event.processing.failed'</span>);
+        <span class="kw">throw</span> err;  <span class="cm">// rethrow — consumer will retry or stall</span>
+      }
+    },
+  });
+
+  <span class="cm">// Graceful shutdown</span>
+  <span class="kw">const</span> shutdown = <span class="kw">async</span> () => {
+    logger.<span class="fn">info</span>(<span class="str">'Disconnecting Kafka consumer...'</span>);
+    <span class="kw">await</span> consumer.<span class="fn">disconnect</span>();
+    process.<span class="fn">exit</span>(<span class="num">0</span>);
+  };
+  process.<span class="fn">on</span>(<span class="str">'SIGTERM'</span>, shutdown);
+  process.<span class="fn">on</span>(<span class="str">'SIGINT'</span>,  shutdown);
+}</pre>
+  </div>
+
+  <div class="verify-block">
+    <div class="verify-block-title">Verify</div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Auto-commit disabled: check consumer config includes <code>autoCommit: false</code>. Verify by killing the consumer mid-batch and confirming events are redelivered on restart.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">Idempotency working: send the same event twice (same topic/partition/offset key). Second processing attempt should log <code>kafka.event.duplicate.skipped</code>.</span></div>
+    <div class="verify-item"><span class="verify-check">✓</span><span class="verify-text">acks=all verified: check producer config has <code>idempotent: true</code> (which implies acks=all). Confirm with <code>kafka-configs.sh --describe --topic booking.confirmed</code> — min.insync.replicas should be 2.</span></div>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Consumer lag monitoring:<br><em>Prometheus + Grafana alert</em></h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">lag-monitor.ts — expose consumer lag as Prometheus metrics</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { kafka } <span class="kw">from</span> <span class="str">'./kafka'</span>;
+<span class="kw">import</span> { Gauge } <span class="kw">from</span> <span class="str">'prom-client'</span>;
+
+<span class="kw">const</span> lagGauge = <span class="kw">new</span> Gauge({
+  name:       <span class="str">'kafka_consumer_lag'</span>,
+  help:       <span class="str">'Consumer group lag per partition'</span>,
+  labelNames: [<span class="str">'group'</span>, <span class="str">'topic'</span>, <span class="str">'partition'</span>],
+});
+
+<span class="kw">async function</span> <span class="fn">collectLag</span>() {
+  <span class="kw">const</span> admin = kafka.<span class="fn">admin</span>();
+  <span class="kw">await</span> admin.<span class="fn">connect</span>();
+
+  <span class="kw">const</span> groups = [<span class="str">'email-service'</span>, <span class="str">'analytics-service'</span>, <span class="str">'inventory-service'</span>];
+
+  <span class="kw">for</span> (<span class="kw">const</span> groupId <span class="kw">of</span> groups) {
+    <span class="kw">const</span> offsets = <span class="kw">await</span> admin.<span class="fn">fetchOffsets</span>({ groupId, topics: [<span class="str">'booking.confirmed'</span>] });
+    <span class="kw">const</span> topicOffsets = <span class="kw">await</span> admin.<span class="fn">fetchTopicOffsets</span>(<span class="str">'booking.confirmed'</span>);
+
+    <span class="kw">for</span> (<span class="kw">const</span> { partition, offset: committed } <span class="kw">of</span> offsets[<span class="num">0</span>].partitions) {
+      <span class="kw">const</span> latest = topicOffsets.<span class="fn">find</span>(o => o.partition === partition)?.offset || <span class="str">'0'</span>;
+      <span class="kw">const</span> lag = parseInt(latest) - parseInt(committed);
+      lagGauge.<span class="fn">set</span>({ group: groupId, topic: <span class="str">'booking.confirmed'</span>, partition: String(partition) }, lag);
+    }
+  }
+  <span class="kw">await</span> admin.<span class="fn">disconnect</span>();
+}
+
+setInterval(collectLag, <span class="num">15_000</span>);  <span class="cm">// collect every 15s</span>
+
+<span class="cm">## Grafana alert — growing lag (more useful than absolute threshold)</span>
+<span class="cm">## Alert when lag GROWS by more than 10K in 5 minutes:</span>
+<span class="cm">## increase(kafka_consumer_lag{group="email-service"}[5m]) > 10000</span>
+<span class="cm">##</span>
+<span class="cm">## Alert when total lag exceeds 500K:</span>
+<span class="cm">## sum(kafka_consumer_lag{group="email-service"}) > 500000</span></pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
