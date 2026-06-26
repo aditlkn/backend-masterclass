@@ -735,7 +735,6 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     </div>
   </div>
   <div class="hero-meta" style="margin-top:28px">
->
     <div class="hero-meta-item"><div class="hero-meta-dot"></div> ~60 min read</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div> 6 interactive demos</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div> Production-grade code</div>
@@ -748,7 +747,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
   <h2>Your request's journey, checkpoint by checkpoint</h2>
 
   <!-- STEP-THROUGH ANIMATION: plays first, prose reveals below each step -->
-  <div class="inline-viz" id="journey-anim" style="padding:0;overflow:hidden">
+  <div class="inline-viz" id="journey-anim" style="padding:0;overflow:hidden;border-color:rgba(91,143,255,.4)">
     <div style="padding:16px 20px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
       <span class="iviz-label" style="margin:0">Every request passes through five checkpoints</span>
       <div>
@@ -758,27 +757,27 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     </div>
     <!-- Five checkpoint cards -->
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-bottom:1px solid var(--border)">
-      <div class="jcp" id="jcp-0" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+      <div class="jcp" id="jcp-0" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.45;transition:opacity .4s,background .4s">
         <div style="font-size:22px;margin-bottom:8px">🛫</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px">DNS</div>
         <div style="font-size:12px;color:var(--text3)">Departure board</div>
       </div>
-      <div class="jcp" id="jcp-1" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+      <div class="jcp" id="jcp-1" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.45;transition:opacity .4s,background .4s">
         <div style="font-size:22px;margin-bottom:8px">🛂</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--purple);margin-bottom:4px">TLS</div>
         <div style="font-size:12px;color:var(--text3)">Passport control</div>
       </div>
-      <div class="jcp" id="jcp-2" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+      <div class="jcp" id="jcp-2" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.45;transition:opacity .4s,background .4s">
         <div style="font-size:22px;margin-bottom:8px">🎫</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">TCP</div>
         <div style="font-size:12px;color:var(--text3)">Boarding gate</div>
       </div>
-      <div class="jcp" id="jcp-3" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+      <div class="jcp" id="jcp-3" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.45;transition:opacity .4s,background .4s">
         <div style="font-size:22px;margin-bottom:8px">✈️</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--orange);margin-bottom:4px">HTTP</div>
         <div style="font-size:12px;color:var(--text3)">The flight</div>
       </div>
-      <div class="jcp" id="jcp-4" style="padding:18px 14px;opacity:.25;transition:opacity .4s,background .4s">
+      <div class="jcp" id="jcp-4" style="padding:18px 14px;opacity:.45;transition:opacity .4s,background .4s">
         <div style="font-size:22px;margin-bottom:8px">🔁</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">POOL</div>
         <div style="font-size:12px;color:var(--text3)">Connecting flight</div>
@@ -786,7 +785,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     </div>
     <!-- Prose panel — reveals one checkpoint at a time -->
     <div id="journey-prose" style="padding:22px 24px;min-height:120px;transition:opacity .3s">
-      <p style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:12px">Press play \u2014 or click any checkpoint above.</p>
+      <p style="color:var(--text2);font-size:14px">Hit <strong>Play journey</strong> above to walk through each checkpoint — or click any card directly.</p>
     </div>
   </div>
 
@@ -4044,7 +4043,7 @@ function journeyReset() {
     el.style.background = '';
   }
   var prose = document.getElementById('journey-prose');
-  if (prose) prose.innerHTML = '<p style="color:var(--text3);font-family:\'JetBrains Mono\',monospace;font-size:12px">Press play \u2014 or click any checkpoint above.</p>';
+  if (prose) prose.innerHTML = '<p style="color:var(--text3);font-family:\'JetBrains Mono\',monospace;font-size:12px">Press play — or click any checkpoint above.</p>';
   resetTCP();
 }
 
