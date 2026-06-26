@@ -718,9 +718,24 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
 <!-- HERO -->
 <div class="hero" id="hero">
   <div class="hero-eyebrow">Week 1 &bull; Day 1 &bull; Networking &amp; APIs</div>
-  <h1>Every HTTP request<br>is a passenger.<br><em>Here's their journey.</em></h1>
-  <p class="hero-sub">You've been making HTTP requests since day one. But have you ever thought about what they actually go through? Before a single byte of your application gets transmitted, your request travels through systems you've never thought about — and every one of them adds time. This is the story of that journey.</p>
-  <div class="hero-meta">
+  <h1>Your API is slow.<br><em>Your code may<br>be innocent.</em></h1>
+  <p class="hero-sub">Before your backend handles a single byte, the request finds a server, opens a connection, proves identity, negotiates encryption — and only then sends your HTTP request. Every step adds time your profiler will never show you.</p>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:28px 0 0">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--green)">5ms</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Your handler</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--orange)">220ms</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Network overhead</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--accent)">5 steps</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Before data moves</div>
+    </div>
+  </div>
+  <div class="hero-meta" style="margin-top:28px">
+>
     <div class="hero-meta-item"><div class="hero-meta-dot"></div> ~60 min read</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div> 6 interactive demos</div>
     <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div> Production-grade code</div>
@@ -732,20 +747,51 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
   <div class="section-eyebrow">Section 01</div>
   <h2>Your request's journey, checkpoint by checkpoint</h2>
 
-  <p><strong>First: check-in and the departure board.</strong> You arrive at the airport and look up at the departure board. You don't know which gate you need until you look it up. Gate B47. Terminal 2. Good for the next hour — after that, check again in case it changes.</p>
+  <!-- STEP-THROUGH ANIMATION: plays first, prose reveals below each step -->
+  <div class="inline-viz" id="journey-anim" style="padding:0;overflow:hidden">
+    <div style="padding:16px 20px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <span class="iviz-label" style="margin:0">Every request passes through five checkpoints</span>
+      <div>
+        <button class="iviz-btn" id="journey-play-btn" onclick="journeyPlay()">&#9654; Play journey</button>
+        <button class="iviz-btn" onclick="journeyReset()">&#8635; Reset</button>
+      </div>
+    </div>
+    <!-- Five checkpoint cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-bottom:1px solid var(--border)">
+      <div class="jcp" id="jcp-0" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+        <div style="font-size:22px;margin-bottom:8px">🛫</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px">DNS</div>
+        <div style="font-size:12px;color:var(--text3)">Departure board</div>
+      </div>
+      <div class="jcp" id="jcp-1" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+        <div style="font-size:22px;margin-bottom:8px">🛂</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--purple);margin-bottom:4px">TLS</div>
+        <div style="font-size:12px;color:var(--text3)">Passport control</div>
+      </div>
+      <div class="jcp" id="jcp-2" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+        <div style="font-size:22px;margin-bottom:8px">🎫</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">TCP</div>
+        <div style="font-size:12px;color:var(--text3)">Boarding gate</div>
+      </div>
+      <div class="jcp" id="jcp-3" style="padding:18px 14px;border-right:1px solid var(--border);opacity:.25;transition:opacity .4s,background .4s">
+        <div style="font-size:22px;margin-bottom:8px">✈️</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--orange);margin-bottom:4px">HTTP</div>
+        <div style="font-size:12px;color:var(--text3)">The flight</div>
+      </div>
+      <div class="jcp" id="jcp-4" style="padding:18px 14px;opacity:.25;transition:opacity .4s,background .4s">
+        <div style="font-size:22px;margin-bottom:8px">🔁</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">POOL</div>
+        <div style="font-size:12px;color:var(--text3)">Connecting flight</div>
+      </div>
+    </div>
+    <!-- Prose panel — reveals one checkpoint at a time -->
+    <div id="journey-prose" style="padding:22px 24px;min-height:120px;transition:opacity .3s">
+      <p style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:12px">Press play \u2014 or click any checkpoint above.</p>
+    </div>
+  </div>
 
-  <p>That's <strong>DNS resolution</strong>. Your code knows the name <code>api.payments.com</code> but has no idea which server to connect to. It asks the DNS system — the departure board — and gets back an IP address and a TTL: how long this answer can be trusted before checking again. A gate assignment can change. So can an IP. The TTL is how long you can assume your information is still valid.</p>
-
-  <p><strong>Second: passport control.</strong> Before you reach the gate, you go through passport control. An officer examines your passport — is it real? Is it issued by a government they trust? Are you on any lists? If everything checks out, they stamp your entry and you proceed. If not, you go no further, regardless of where you're trying to go.</p>
-
-  <p>That's <strong>TLS</strong>. Before any data flows, the server presents a certificate — its passport. Your client checks: is this certificate signed by a trusted authority? Has it expired? Does it match the domain? If everything checks out, both sides negotiate encryption keys and proceed. A forged certificate is a fake passport. TLS catches it before your data is ever exposed.</p>
-
-  <p><strong>Third: the boarding gate.</strong> You walk to gate B47. An agent scans your boarding pass — seat 23C, economy, flight confirmed — and you join the jet bridge. Only now, with identity verified and seat assigned, does the physical journey begin.</p>
-
-  <p>That's the <strong>TCP handshake</strong>. Three packets — SYN, SYN-ACK, ACK — establish the reliable channel between client and server before a byte of application data moves. Your boarding pass is your HTTP request headers: method, path, content-type, authorization token. Your frequent flyer card is your cookies — they travel with you automatically and unlock a different experience based on who you are.</p>
-
-  <!-- INLINE VIZ: TCP handshake -->
-  <div class="inline-viz" id="tcp-viz">
+  <!-- TCP handshake inline viz (appears after TCP prose reveals) -->
+  <div class="inline-viz" id="tcp-viz" style="margin-top:12px">
     <div class="iviz-label">TCP three-way handshake — 1 round-trip time</div>
     <div class="iviz-stage">
       <div class="iviz-col">
@@ -776,29 +822,23 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
       </div>
     </div>
     <div style="text-align:center;margin-top:10px">
-      <button class="iviz-btn" onclick="runTCP()">▶ Run handshake</button>
-      <button class="iviz-btn" onclick="resetTCP()">↺ Reset</button>
+      <button class="iviz-btn" onclick="runTCP()">&#9654; Run handshake</button>
+      <button class="iviz-btn" onclick="resetTCP()">&#8635; Reset</button>
       <span id="tcp-cost" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-left:12px"></span>
     </div>
   </div>
 
-  <p><strong>Fourth: the flight itself.</strong> Doors close. Plane accelerates. You're airborne. For the first time since leaving home, you're actually moving toward your destination.</p>
-
-  <p>That's the <strong>HTTP request and response</strong> — your application protocol, finally running. The server receives your request, runs your code, queries your database, and sends back a response. The flight duration is your server's processing time. Everything before this was the airport. This is the only phase your backend code controls.</p>
-
-  <p><strong>Fifth: the connecting flight.</strong> You land in Dubai. In ninety minutes you board again to Mumbai. Nobody suggests you leave the airport, go home, come back through departures, check in again, clear passport control again, and find a new gate. You have a connecting flight — you stay airside. Walk to the next gate. Board. Done. The second flight costs almost nothing extra to start.</p>
-
-  <p>That's <strong>HTTP keep-alive and connection pooling</strong>. When your application needs to make multiple requests to the same server — and it almost always does — there's no reason to tear down the TCP connection after each one and rebuild it from scratch. The connection stays open. The next request skips DNS, skips the TCP handshake, skips TLS negotiation, and goes straight to sending data. On a 50ms round-trip link, each reused connection saves 100-200ms. I've watched teams cut API latency by 80% purely by enabling connection pooling. No server changes. No code changes. Just not leaving the airport between flights.</p>
-
-  <div class="callout insight">
+  <!-- Where the analogy breaks -->
+  <div class="callout insight" style="margin-top:28px">
     <div class="callout-icon">✈️</div>
     <div class="callout-inner">
       <strong>Where airports stop being useful</strong>
-      <p>At a real airport, the gate agent doesn't generate a correlation ID — a unique reference number that travels with your request through every downstream system so you can trace exactly what happened to it. HTTP does. At a real airport, passport control can't decide to send 5% of passengers to a different destination. An API gateway can route 5% of requests to a canary deployment for testing. The airport is a perfect mental model for <em>what</em> happens; it breaks down for the programmable, observable, dynamic parts of HTTP that make it powerful as an application protocol. Keep that distinction.</p>
+      <p>At a real airport, the gate agent doesn't generate a correlation ID — a unique reference number that travels with your request through every downstream system so you can trace exactly what happened to it. HTTP does. At a real airport, passport control can't decide to send 5% of passengers to a different destination. An API gateway can route 5% of requests to a canary deployment for testing. Keep that distinction.</p>
     </div>
   </div>
 
-  <p>Your phone in Bangalore, talking to a server in Mumbai: each round-trip is 40-80ms. Before your server has processed a single byte, you've potentially spent <strong>200-400ms in overhead</strong>. Your 5ms handler is irrelevant to the user if the checkpoints took 350ms. Section 2 shows you how to measure exactly which one — in 10 seconds.</p>
+  <!-- Latency stack — after all five checkpoints are understood -->
+  <p style="margin-top:28px">Your phone in Bangalore, talking to a server in Mumbai: each round-trip is 40-80ms. Before your server has processed a single byte, you've potentially spent <strong>200-400ms in overhead</strong>. Your 5ms handler is irrelevant to the user if the checkpoints took 350ms. Section 2 shows you how to measure exactly which one — in 10 seconds.</p>
 
   <!-- INLINE VIZ: latency stack -->
   <div class="inline-viz" id="latency-viz">
@@ -832,6 +872,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
     </div>
     <div class="lstack-total">Total: ~225ms &nbsp;·&nbsp; <span style="color:var(--green)">Server: 5ms (2%)</span> &nbsp;·&nbsp; <span style="color:var(--orange)">Protocol overhead: 220ms (98%)</span></div>
   </div>
+</div>
 </div>
 
 <!-- VIZ: Airport → HTTP mapping (replaces old waterfall builder as opening interactive) -->
@@ -1203,6 +1244,17 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
   <h3>How keep-alive works</h3>
   <p>In HTTP/1.1, connections are persistent by default (<code>Connection: keep-alive</code>). After a request/response cycle, the connection is held open and returned to a pool. The next request to the same host can skip DNS + TCP + TLS and go straight to sending the HTTP request.</p>
   <p>The TCP connection already has its congestion window warmed up. You're essentially skipping 1-3 RTTs and multiple milliseconds of cryptographic setup. For an API that makes 10 requests per user action, this compounds dramatically.</p>
+
+  <!-- PRODUCTION FAILURE ANIMATION: pooling disabled vs enabled -->
+  <div class="inline-viz" id="pool-anim">
+    <div class="iviz-label" style="margin-bottom:12px">Five requests to the same server — with and without connection pooling</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="iviz-btn active" id="pool-btn-no"  onclick="showPool(false)">No pooling</button>
+      <button class="iviz-btn"        id="pool-btn-yes" onclick="showPool(true)">Connection pool</button>
+    </div>
+    <div id="pool-bars" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="pool-total" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"></div>
+  </div>
 
   <h3>Node.js: where the default bites you</h3>
   <p>Here's the thing about Node.js's built-in <code>fetch</code> and older <code>http.request</code>: by default, connections are <em>not</em> pooled. Every request creates a new TCP connection. In 2024 this is still biting people who use <code>node-fetch</code> or raw <code>https.request</code> without an agent.</p>
@@ -3907,6 +3959,156 @@ function updateTimeout() {
 }
 setTimeout(updateTimeout, 100);
 
+
+
+// ── Journey step-through animation ──────────────────────────────────
+var JOURNEY_PROSE = [
+  {
+    col: "var(--accent)",
+    html: "<p><strong>The departure board — DNS.</strong> You arrive at the airport and look up at the departure board. Gate B47. Terminal 2. Good for the next hour — after that, check again in case the gate changes.</p><p style=\"margin-top:8px\">That's DNS resolution. Your code knows <code>api.payments.com</code> but not the IP address. DNS answers and gives a TTL: how long this can be trusted. A cold DNS miss adds 50-200ms before you've even opened a connection. Connection pooling eliminates it for repeat requests.</p>"
+  },
+  {
+    col: "var(--purple)",
+    html: "<p><strong>Passport control — TLS.</strong> Before the gate, a passport officer checks your identity. Real passport? Issued by a trusted government? Anything suspicious? Only then do you proceed.</p><p style=\"margin-top:8px\">That's TLS. The server presents a certificate. Your client checks: trusted CA? Not expired? Matches the domain? If everything passes, both sides exchange encryption keys. A forged certificate is a fake passport — TLS catches it before your data is ever exposed.</p>"
+  },
+  {
+    col: "var(--green)",
+    html: "<p><strong>The boarding gate — TCP.</strong> An agent scans your boarding pass. Seat 23C confirmed. You join the jet bridge. Only now does the physical journey begin.</p><p style=\"margin-top:8px\">That's the TCP handshake — three packets, one round-trip, before a byte of application data moves. See the animation below.</p>"
+  },
+  {
+    col: "var(--orange)",
+    html: "<p><strong>The flight — HTTP.</strong> Doors close. You're airborne. For the first time since leaving home, you're actually moving toward your destination.</p><p style=\"margin-top:8px\">That's the HTTP request and response. The server runs your code, queries your database, sends back a response. This is the only phase your backend code controls. Everything before this was the airport.</p>"
+  },
+  {
+    col: "var(--green)",
+    html: "<p><strong>The connecting flight — Keep-alive.</strong> You land in Dubai. Ninety minutes until Mumbai. Nobody suggests you leave the airport, go through departures again, clear passport control, find a new gate. You have a connecting flight — you stay airside.</p><p style=\"margin-top:8px\">That's connection pooling. The next request skips DNS, TCP, and TLS entirely. On a 50ms link, each reused connection saves 100-200ms. You left the airport after every flight — and that is the bug.</p>"
+  }
+]
+
+var journeyStep = -1;
+var journeyTimers = [];
+var journeyPlaying = false;
+
+function journeyActivate(i) {
+  journeyStep = i;
+  // Highlight checkpoint cards
+  for (var k = 0; k < 5; k++) {
+    var el = document.getElementById('jcp-' + k);
+    if (!el) continue;
+    el.style.opacity = k === i ? '1' : k < i ? '0.55' : '0.25';
+    el.style.background = k === i ? 'rgba(255,255,255,0.04)' : '';
+  }
+  // Show prose
+  var prose = document.getElementById('journey-prose');
+  if (prose && JOURNEY_PROSE[i]) {
+    prose.style.opacity = '0';
+    setTimeout(function() {
+      prose.innerHTML = JOURNEY_PROSE[i].html;
+      prose.style.opacity = '1';
+    }, 150);
+  }
+  // Auto-run TCP animation when step 2 (TCP) activates
+  if (i === 2) {
+    setTimeout(function() { resetTCP(); runTCP(); }, 400);
+  }
+}
+
+function journeyPlay() {
+  journeyReset();
+  journeyPlaying = true;
+  document.getElementById('journey-play-btn').textContent = '... playing';
+  for (var i = 0; i < 5; i++) {
+    (function(idx) {
+      journeyTimers.push(setTimeout(function() {
+        journeyActivate(idx);
+        if (idx === 4) {
+          journeyPlaying = false;
+          document.getElementById('journey-play-btn').textContent = '\u25B6 Play journey';
+        }
+      }, idx * 1400));
+    })(i);
+  }
+}
+
+function journeyReset() {
+  journeyTimers.forEach(clearTimeout);
+  journeyTimers = [];
+  journeyPlaying = false;
+  journeyStep = -1;
+  var btn = document.getElementById('journey-play-btn');
+  if (btn) btn.textContent = "\u25B6 Play journey";
+  for (var k = 0; k < 5; k++) {
+    var el = document.getElementById('jcp-' + k);
+    if (!el) continue;
+    el.style.opacity = '0.25';
+    el.style.background = '';
+  }
+  var prose = document.getElementById('journey-prose');
+  if (prose) prose.innerHTML = '<p style="color:var(--text3);font-family:\'JetBrains Mono\',monospace;font-size:12px">Press play \u2014 or click any checkpoint above.</p>';
+  resetTCP();
+}
+
+// Make checkpoint cards clickable
+(function() {
+  var KEYS = ['dns','tls','tcp','http','keepalive'];
+  for (var i = 0; i < 5; i++) {
+    (function(idx) {
+      var el = document.getElementById('jcp-' + idx);
+      if (el) {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function() { journeyActivate(idx); });
+      }
+    })(i);
+  }
+})();
+
+// ── Pooling failure animation ────────────────────────────────────────
+var poolShowing = false;
+function showPool(pooled) {
+  poolShowing = pooled;
+  document.getElementById('pool-btn-no').classList.toggle('active', !pooled);
+  document.getElementById('pool-btn-yes').classList.toggle('active', pooled);
+
+  var bars = document.getElementById('pool-bars');
+  var phases = pooled
+    ? [
+        ['Req 1', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]],
+        ['Req 2', [['HTTP','var(--green)',25]]],
+        ['Req 3', [['HTTP','var(--green)',25]]],
+        ['Req 4', [['HTTP','var(--green)',25]]],
+        ['Req 5', [['HTTP','var(--green)',25]]]
+      ]
+    : [
+        ['Req 1', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]],
+        ['Req 2', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]],
+        ['Req 3', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]],
+        ['Req 4', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]],
+        ['Req 5', [['DNS','var(--accent)',80],['TCP','var(--purple)',40],['TLS','var(--orange)',80],['HTTP','var(--green)',25]]]
+      ];
+
+  var maxTotal = 225;
+  bars.innerHTML = phases.map(function(row) {
+    var label = row[0];
+    var segs  = row[1];
+    var total = segs.reduce(function(s,sg){return s+sg[2];},0);
+    var segHtml = segs.map(function(sg) {
+      var w = Math.round(sg[2] / maxTotal * 100);
+      return '<div title="' + sg[0] + ': ' + sg[2] + 'ms" style="height:100%;width:' + w + '%;background:' + sg[1] + ';display:inline-block;vertical-align:top;transition:width .5s"></div>';
+    }).join('');
+    return '<div style="display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center">' +
+      '<div style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">' + label + '</div>' +
+      '<div style="height:24px;background:var(--border);border-radius:4px;overflow:hidden">' + segHtml + '</div>' +
+      '<div style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text2);text-align:right">' + total + 'ms</div>' +
+    '</div>';
+  }).join('');
+
+  var totalMs = phases.reduce(function(s,r){return s+r[1].reduce(function(ss,sg){return ss+sg[2];},0);},0);
+  document.getElementById('pool-total').innerHTML = pooled
+    ? 'Total: <strong style="color:var(--green)">' + totalMs + 'ms</strong> &nbsp;·&nbsp; You stayed airside. Four requests cost almost nothing to start.'
+    : 'Total: <strong style="color:var(--red)">' + totalMs + 'ms</strong> &nbsp;·&nbsp; You left the airport after every flight.';
+}
+
+showPool(false);
 
 // ── TCP handshake animation ──────────────────────────────
 var tcpTimers = [];
