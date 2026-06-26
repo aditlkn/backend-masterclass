@@ -753,19 +753,19 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
         <div class="iviz-lane client-lane"></div>
       </div>
       <div class="iviz-mid">
-        <div class="tcp-packet" id="tcp-p1">
+        <div class="tcp-packet" id="tcp-p1" style="opacity:0;transition:opacity .4s ease">
           <div class="tcp-arrow right">SYN →</div>
           <div class="tcp-note">I want to connect</div>
         </div>
-        <div class="tcp-packet" id="tcp-p2">
+        <div class="tcp-packet" id="tcp-p2" style="opacity:0;transition:opacity .4s ease">
           <div class="tcp-arrow left">← SYN-ACK</div>
           <div class="tcp-note">Acknowledged. Ready.</div>
         </div>
-        <div class="tcp-packet" id="tcp-p3">
+        <div class="tcp-packet" id="tcp-p3" style="opacity:0;transition:opacity .4s ease">
           <div class="tcp-arrow right">ACK →</div>
           <div class="tcp-note">Confirmed. Let's go.</div>
         </div>
-        <div class="tcp-packet" id="tcp-p4" style="opacity:0;transition:opacity .3s .1s">
+        <div class="tcp-packet" id="tcp-p4" style="opacity:0;transition:opacity .4s ease">
           <div class="tcp-arrow right" style="color:var(--green);border-color:var(--green)">DATA → → →</div>
           <div class="tcp-note" style="color:var(--green)">First byte of your application</div>
         </div>
@@ -3168,23 +3168,23 @@ var AIRPORT_DATA = {
     left: ['You arrive at the airport', 'Look at the departure board', '"Where is gate B47?"', 'Board displays: B47, Terminal 2', 'Good for 60 minutes (TTL)'],
     right: ['fetch("https://api.payments.com/v1/charge")', 'DNS resolution: "what IP?"', 'Resolver answers: 93.184.216.34', 'Cached for TTL seconds', '→ Next call may skip this entirely'],
     arrow: ['hostname', '→', 'IP address'],
-    explain: '<strong style="color:var(--accent)">Departure board → DNS resolution.</strong> Your code knows the name <code>api.payments.com</code> but not the IP address. DNS is the airport's departure board — it translates names to destinations. A cold DNS miss (no cache) adds 50-200ms before you've even opened a connection. <strong>Connection pooling eliminates this entirely</strong> for repeat requests — the pool already knows the IP, like a frequent flyer who knows the airport layout by heart.'
+    explain: '<strong style="color:var(--accent)">Departure board → DNS resolution.</strong> Your code knows the name <code>api.payments.com</code> but not the IP address. DNS is the airport\'s departure board — it translates names to destinations. A cold DNS miss (no cache) adds 50-200ms before you\'ve even opened a connection. <strong>Connection pooling eliminates this entirely</strong> for repeat requests — the pool already knows the IP, like a frequent flyer who knows the airport layout by heart.'
   },
   tls: {
-    left: ['Passport officer checks your identity', 'Verifies it against trusted authority (Interpol)', 'Stamps your passport', 'Now you're authenticated', 'Everything inside is secure'],
+    left: ['Passport officer checks your identity', 'Verifies it against trusted authority (Interpol)', 'Stamps your passport', 'Now you\'re authenticated', 'Everything inside is secure'],
     right: ['Server sends its certificate', 'Your client checks: trusted CA signed this?', 'Keys exchanged, encryption established', 'Identity verified ✓', 'All subsequent data encrypted'],
     arrow: ['identity', '↔', 'verified'],
     explain: '<strong style="color:var(--purple)">Passport control → TLS handshake.</strong> Before data flows, the server proves it is who it claims to be, using a certificate signed by a trusted authority (like a passport signed by a government). Both sides then negotiate encryption keys. TLS 1.3 does this in 1 round-trip; TLS 1.2 takes 2. Session resumption (frequent flyer fast-track) brings it to 0. <strong>An invalid certificate is a fake passport</strong> — TLS catches it before your data is exposed.'
   },
   tcp: {
-    left: ['Agent scans your boarding pass', '"23C, economy, B47"', 'Logged in the system', 'You're officially in the queue', 'Gate is now reserved for you'],
-    right: ['Client → SYN (I want to connect)', 'Server → SYN-ACK (acknowledged, here's my number)', 'Client → ACK (confirmed, connection open)', 'TCP channel established', 'Exactly 1 round-trip time'],
+    left: ['Agent scans your boarding pass', '"23C, economy, B47"', 'Logged in the system', 'You\'re officially in the queue', 'Gate is now reserved for you'],
+    right: ['Client → SYN (I want to connect)', 'Server → SYN-ACK (acknowledged, here\'s my number)', 'Client → ACK (confirmed, connection open)', 'TCP channel established', 'Exactly 1 round-trip time'],
     arrow: ['SYN', '↔', 'ACK'],
-    explain: '<strong style="color:var(--green)">Boarding gate → TCP handshake.</strong> Three packets establish the reliable channel: SYN, SYN-ACK, ACK. This costs exactly 1 round-trip time — at 40ms RTT, that's 40ms just for the handshake, before a byte of your application data moves. HTTP headers are your boarding pass: method, URL, content-type, authorization token. Cookies are your frequent flyer card — they travel with you automatically and change what experience you get.'
+    explain: '<strong style="color:var(--green)">Boarding gate → TCP handshake.</strong> Three packets establish the reliable channel: SYN, SYN-ACK, ACK. This costs exactly 1 round-trip time — at 40ms RTT, that\'s 40ms just for the handshake, before a byte of your application data moves. HTTP headers are your boarding pass: method, URL, content-type, authorization token. Cookies are your frequent flyer card — they travel with you automatically and change what experience you get.'
   },
   http: {
-    left: ['You board, find seat 23C', 'Plane takes off', 'You're in the air — data moving', 'Flight duration = journey time', 'Arrive at destination'],
-    right: ['POST /v1/charge HTTP/2', 'Server processes your request', 'Database queries, business logic', 'Server time = your code's contribution', '200 OK — response received'],
+    left: ['You board, find seat 23C', 'Plane takes off', 'You\'re in the air — data moving', 'Flight duration = journey time', 'Arrive at destination'],
+    right: ['POST /v1/charge HTTP/2', 'Server processes your request', 'Database queries, business logic', 'Server time = your code\'s contribution', '200 OK — response received'],
     arrow: ['request', '→', 'response'],
     explain: '<strong style="color:var(--orange)">The flight → HTTP request/response.</strong> Finally — your application protocol runs. This is the only phase your backend code controls. The flight duration is your server processing time. <strong>Everything before this was the airport.</strong> In a real profiling session: a server taking 22ms to process a request looks great in isolation — but if DNS + TCP + TLS cost 180ms, the user experienced 202ms and your "fast" server was only 11% of it.'
   },
@@ -3222,7 +3222,7 @@ function showAirport(key) {
   var col = colors[key];
 
   document.getElementById('airport-left').innerHTML =
-    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px">✈️ AIRPORT</div>' +
+    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:\'JetBrains Mono\',monospace;margin-bottom:8px">✈️ AIRPORT</div>' +
     d.left.map(function(l) { return '<div>' + l + '</div>'; }).join('');
 
   document.getElementById('airport-arrow').innerHTML =
@@ -3231,7 +3231,7 @@ function showAirport(key) {
     '<div style="color:' + col + ';font-size:11px;font-weight:600">' + d.arrow[2] + '</div>';
 
   document.getElementById('airport-right').innerHTML =
-    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px">🌐 HTTP</div>' +
+    '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:\'JetBrains Mono\',monospace;margin-bottom:8px">🌐 HTTP</div>' +
     d.right.map(function(l) { return '<div style="color:' + col + '">' + l + '</div>'; }).join('');
 
   document.getElementById('airport-explain').innerHTML = d.explain;
@@ -3909,40 +3909,41 @@ setTimeout(updateTimeout, 100);
 
 
 // ── TCP handshake animation ──────────────────────────────
-var tcpTimer = null;
+var tcpTimers = [];
+function showPacket(id, delay, isFinal) {
+  tcpTimers.push(setTimeout(function() {
+    var el = document.getElementById(id);
+    if (el) el.style.opacity = '1';
+    if (isFinal) {
+      var cost = document.getElementById('tcp-cost');
+      if (cost) cost.textContent = '1 round-trip = ~40ms at 40ms RTT. Connection open.';
+    }
+  }, delay));
+}
 function runTCP() {
   resetTCP();
-  var packets = ['tcp-p1','tcp-p2','tcp-p3','tcp-p4'];
-  var delays  = [200, 700, 1200, 1800];
-  var labels  = ['', '', '', ''];
-  packets.forEach(function(id, i) {
-    tcpTimer = setTimeout(function() {
-      var el = document.getElementById(id);
-      if (el) { el.classList.add('visible'); el.style.opacity = '1'; }
-      if (i === 3) {
-        var cost = document.getElementById('tcp-cost');
-        if (cost) cost.textContent = '1 round-trip = ~40ms at 40ms RTT. Connection open.';
-      }
-    }, delays[i]);
-  });
+  showPacket('tcp-p1', 300,  false);
+  showPacket('tcp-p2', 800,  false);
+  showPacket('tcp-p3', 1300, false);
+  showPacket('tcp-p4', 1900, true);
 }
 function resetTCP() {
-  if (tcpTimer) clearTimeout(tcpTimer);
+  tcpTimers.forEach(function(t) { clearTimeout(t); });
+  tcpTimers = [];
   ['tcp-p1','tcp-p2','tcp-p3','tcp-p4'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) { el.classList.remove('visible'); el.style.opacity = '0'; }
+    if (el) el.style.opacity = '0';
   });
   var cost = document.getElementById('tcp-cost');
   if (cost) cost.textContent = '';
 }
-// Auto-run on scroll into view
-var tcpObserver = new IntersectionObserver(function(entries) {
-  entries.forEach(function(e) {
-    if (e.isIntersecting) { runTCP(); tcpObserver.disconnect(); }
-  });
-}, { threshold: 0.5 });
+// Auto-run when scrolled into view
 var tcpViz = document.getElementById('tcp-viz');
-if (tcpViz) tcpObserver.observe(tcpViz);
+if (tcpViz && window.IntersectionObserver) {
+  new IntersectionObserver(function(entries, obs) {
+    if (entries[0].isIntersecting) { runTCP(); obs.disconnect(); }
+  }, { threshold: 0.4 }).observe(tcpViz);
+}
 
 </script>
 </body>
