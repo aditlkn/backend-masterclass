@@ -297,6 +297,18 @@
     {
       "source": "/day23/deep",
       "destination": "/day23/deep.html"
+    },
+    {
+      "source": "/day24",
+      "destination": "/day24/index.html"
+    },
+    {
+      "source": "/day24/lab",
+      "destination": "/day24/lab.html"
+    },
+    {
+      "source": "/day24/deep",
+      "destination": "/day24/deep.html"
     }
   ]
 }

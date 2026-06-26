@@ -29,29 +29,41 @@ def flip_card(day_num, href, title, tags_html, meta="~55 min|8 interactives"):
     # Find the card wrapper opening tag before this day string
     before = c[max(0, idx-400):idx]
     card_open = None
-    for m in re.finditer(r'<(div|a)\s[^>]*class="card[^"]*"[^>]*>', before):
+    for m in re.finditer(r'<(div|a)\b[^>]*class="card[^"]*"[^>]*>', before):
         card_open = m
     if not card_open:
         print(f"ERROR: no card wrapper found before {day_str}"); return False
 
     base = max(0, idx-400)
     open_pos = base + card_open.start()
+    open_end = base + card_open.end()
     tag = card_open.group(1)
 
-    # Walk forward to find the matching closing tag
-    depth, i = 0, open_pos
+    # Find matching close tag by scanning forward with proper tag boundary
+    # Use regex to find all open/close tags of this type
+    depth = 1  # we start after the opening tag
+    i = open_end
+    close_pos = len(c)
+    open_re  = re.compile(r'<' + tag + r'\b')
+    close_re = re.compile(r'</' + tag + r'>')
     while i < len(c):
-        if re.match(r'<' + tag + r'[\s>]', c[i:]):
-            depth += 1; i += 1
-        elif re.match(r'</' + tag + r'>', c[i:]):
-            depth -= 1; i += len(tag) + 3
-            if depth == 0: break
+        om = open_re.match(c, i)
+        cm = close_re.match(c, i)
+        if cm:
+            depth -= 1
+            if depth == 0:
+                close_pos = cm.end()
+                break
+            i = cm.end()
+        elif om:
+            depth += 1
+            i = om.end()
         else:
             i += 1
 
-    old = c[open_pos:i]
+    old = c[open_pos:close_pos]
     print(f"Old ({len(old)}b): {repr(old[:70])}...")
-    new_c = c[:open_pos] + new_card + c[i:]
+    new_c = c[:open_pos] + new_card + c[close_pos:]
 
     with open('index.html', 'w') as f:
         f.write(new_c)

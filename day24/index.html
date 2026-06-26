@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 24: Microservices & Boundaries — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--green);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--green);color:var(--green);background:rgba(62,207,142,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 24 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Kitchen</a>
+  <a href="#s-boundaries">Drawing Boundaries</a>
+  <a href="#s-data">Data Ownership</a>
+  <a href="#s-contracts">Service Contracts</a>
+  <a href="#s-comms">Communication Patterns</a>
+  <a href="#s-mono">Monolith First</a>
+  <a href="#s-bad">Anti-patterns</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day24/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day24/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 4 · Day 24 · Microservices & Boundaries</div>
+  <h1>The question is never<br>"microservices or monolith".<br><em>It's where to draw the lines.</em></h1>
+  <p class="hero-sub">Every system is a collection of responsibilities. The only real decision is whether those responsibilities live in one process or many — and if many, exactly where one ends and the next begins. Draw the lines in the wrong place and you get a distributed monolith: all the complexity of microservices with none of the benefits. Draw them right and each service can be deployed, scaled, and replaced independently.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~55 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>7 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>Boundaries · DDD · Contracts · Communication</div>
+  </div>
+</div>
+
+<!-- S1: ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The restaurant kitchen — and why stations exist</h2>
+
+  <p><strong>A busy restaurant kitchen is not one chef doing everything.</strong> It has stations: grill, sauté, pastry, cold prep. Each station owns its own tools, its own ingredients, its own techniques. The grill chef does not walk into the pastry section and use their oven. The pastry chef does not touch the grill. Each station is a self-contained unit of expertise.</p>
+
+  <p><strong>They communicate through the pass.</strong> When the grill station completes a steak, it goes to the pass — the counter between the kitchen and the service area. The head chef calls the ticket, coordinates timing, and assembles the plate. No station needs to know how another station works. The grill chef does not know the pastry chef's recipe for the dessert. They only know: the dessert will arrive at the pass correctly when called. That is the contract.</p>
+
+  <p><strong>Each station fails independently.</strong> If the pastry section runs out of cream and cannot serve desserts tonight, the rest of the kitchen keeps running. Tables still get their starters and mains. The failure is contained. In a kitchen where one chef does everything, a dropped dessert stops the whole service.</p>
+
+  <p><strong>Each station scales independently.</strong> On a busy Saturday, you add a second grill chef for the grill station. You do not add a second pastry chef — the dessert demand does not require it. You scale the bottleneck, not the whole kitchen.</p>
+
+  <p><strong>A new station can be added without reorganising the whole kitchen.</strong> The restaurant decides to add a wood-fired pizza station. It gets its own corner, its own oven, its own ingredients. It communicates through the pass like everyone else. No existing station changes what it does.</p>
+
+  <p>That is microservices. Each service is a station — owning its own data, its own logic, its own deployment. The API is the pass. The contract is what one station promises to deliver, not how it delivers it. Independence at the station level is what lets the whole kitchen keep running when one part breaks.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">🍳</div>
+    <div class="callout-inner">
+      <strong>Where the kitchen analogy breaks</strong>
+      <p>A real kitchen has a head chef who sees the whole plate and coordinates timing in real time. In microservices, that coordination is the hardest problem — distributed transactions, saga patterns, eventual consistency. No single "head chef" sees the whole state. Each service sees only its own data and what other services tell it through their APIs. The kitchen analogy explains boundaries well. It undersells the coordination cost of crossing them.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Kitchen -> Microservices mapping -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Kitchen -> microservices — click each concept</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showKitchen('station')">Station -> Service</button>
+      <button class="viz-btn" onclick="showKitchen('pass')">The pass -> API</button>
+      <button class="viz-btn" onclick="showKitchen('tools')">Station tools -> Database</button>
+      <button class="viz-btn" onclick="showKitchen('contract')">The ticket -> Contract</button>
+      <button class="viz-btn" onclick="showKitchen('failure')">Station failure -> Isolation</button>
+      <button class="viz-btn" onclick="showKitchen('newstation')">New station -> New service</button>
+    </div>
+    <div id="kitchen-output" class="mono-out" style="min-height:160px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S2: BOUNDARIES -->
+<div class="section" id="s-boundaries">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>How do you know where one service ends and the next begins?</h2>
+
+  <p>This is the question that microservices architecture mostly fails to answer well. "Make them small" is not an answer. "One service per team" is closer but still not a principle. The correct answer comes from Domain-Driven Design: <strong>a service boundary should match a bounded context</strong> — a part of the business domain that has its own language, its own rules, and its own data model.</p>
+
+  <h3>Bounded contexts — the DDD way</h3>
+  <p>In a ticket booking system, the word "customer" means something different to the billing team (a payer with a credit card), the marketing team (a segment profile with preferences), and the support team (a person with a history of complaints). These are different models of the same entity. If you build one <code>Customer</code> model shared across all three, it becomes a mess of fields that nobody fully understands. If you separate them into bounded contexts, each team owns its own clean model.</p>
+
+  <p>The practical test: <strong>if two teams argue constantly about what a field in a shared model means, that model crosses a bounded context boundary.</strong> Split it. Each team gets their own model. They translate between models at the boundary — a process DDD calls the anti-corruption layer.</p>
+
+  <h3>The strangler fig — migrating without a rewrite</h3>
+  <p>The strangler fig pattern is how you extract services from a monolith without stopping the world. You put a proxy in front of the monolith. New functionality is built as services. Existing functionality is gradually moved out — one bounded context at a time — and the proxy routes traffic to the new service instead. Eventually the monolith is empty and removed. The service grows around the monolith like a fig tree around a host.</p>
+
+  <h3>Signs your boundaries are wrong</h3>
+  <ul>
+    <li><strong>Chatty services:</strong> Service A makes 8 calls to Service B to complete one operation. The data belongs together. The boundary is in the wrong place.</li>
+    <li><strong>Shotgun changes:</strong> Every new feature requires changes to 5 services simultaneously. The boundary cuts across a logical unit of change.</li>
+    <li><strong>Shared database:</strong> Two services read and write the same tables. There is no real boundary — just a distributed monolith with extra network hops.</li>
+    <li><strong>Versioning coupling:</strong> Services must be deployed in a specific order. They are not actually independent.</li>
+  </ul>
+</div>
+
+<!-- VIZ 2: Boundary finder -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Is this a good boundary? Diagnose the signals</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showBoundary('good')">Good boundary</button>
+      <button class="viz-btn" onclick="showBoundary('chatty')">Chatty services</button>
+      <button class="viz-btn" onclick="showBoundary('shotgun')">Shotgun changes</button>
+      <button class="viz-btn" onclick="showBoundary('shared_db')">Shared database</button>
+      <button class="viz-btn" onclick="showBoundary('deploy_order')">Deploy ordering</button>
+    </div>
+    <div id="boundary-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S3: DATA OWNERSHIP -->
+<div class="section" id="s-data">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Data ownership — the rule that makes microservices real</h2>
+
+  <p>The single most important rule in microservices architecture: <strong>each service owns its data, and no other service touches it directly.</strong> A service's database is an implementation detail. Other services do not get to query it, join against it, or write to it. They ask the service for data through its API. The service decides what to expose and how.</p>
+
+  <p>This rule sounds simple. It is consistently the hardest one to enforce. The temptation to "just join the tables" is overwhelming when you need data from two services and the databases happen to be on the same host. Every shortcut here creates coupling that eventually forces services to be deployed together, upgraded together, and understood together — destroying the independence that made microservices worthwhile.</p>
+
+  <h3>What does a service own?</h3>
+  <p>A service owns the data that represents the truth about its domain. The <strong>booking service</strong> owns booking records — it is the authoritative source for whether a booking exists and what state it is in. The <strong>payment service</strong> owns payment records — it knows whether a payment was authorised and for how much. The booking service does not own payment data. When it needs to know if a booking has been paid, it asks the payment service.</p>
+
+  <h3>The read model problem</h3>
+  <p>Respecting data ownership creates a practical problem: complex queries. A dashboard that shows "bookings with their payment status and the user's name" needs data from three services. You cannot join three databases. The solution: <strong>read models</strong> (also called materialised views or query services). A separate service subscribes to events from all three domains, builds a denormalised view optimised for that specific query, and serves it. The booking dashboard service owns nothing original — it just assembles a read view from event streams.</p>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Shared database is not a boundary — it is a distributed monolith</strong>
+      <p>The most common microservices mistake: splitting services into separate processes but keeping them on a shared database. Service A and Service B both write to the <code>bookings</code> table. They cannot be deployed independently — a schema change breaks both. They cannot be scaled independently — the database is the bottleneck. They cannot be understood independently — changes to the schema affect both. You have paid all the costs of microservices (network latency, distributed transactions, operational complexity) and received none of the benefits (independent deployment, isolation, scalability). The service boundary is the database boundary, not the code boundary.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 3: Data ownership explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Data ownership — who owns what in a ticket booking system</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showOwnership('correct')">Correct ownership</button>
+      <button class="viz-btn" onclick="showOwnership('shared_db_antipattern')">Shared DB anti-pattern</button>
+      <button class="viz-btn" onclick="showOwnership('read_model')">Read model solution</button>
+      <button class="viz-btn" onclick="showOwnership('cross_service_query')">Cross-service data query</button>
+    </div>
+    <div id="ownership-output" class="mono-out" style="font-size:12px;min-height:200px"></div>
+  </div>
+</div>
+
+<!-- S4: CONTRACTS -->
+<div class="section" id="s-contracts">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Service contracts — the promise between stations</h2>
+
+  <p>A service contract is the explicit agreement between a service and its consumers: what the API accepts, what it returns, what errors it can produce, and what guarantees it makes. Without an explicit contract, services drift — the producer changes a field name, the consumer breaks, nobody knows why until 3am.</p>
+
+  <h3>Contract-first design</h3>
+  <p>Design the API before writing implementation. Define the request and response shapes, the error codes, the versioning strategy, the SLO. Consumers can build against a mock server immediately. Producer teams know exactly what they are building toward. Misunderstandings surface in design reviews, not in production.</p>
+
+  <h3>Backward compatibility — the non-negotiable rule</h3>
+  <p>Once a service is in production with consumers, every change to its contract must be backward compatible. Adding a field is safe — consumers that do not know about it ignore it. Removing a field breaks consumers that depend on it. Renaming a field is equivalent to removing the old name and adding a new one — breaking. The versioning strategy handles this: <code>/v1/bookings</code> stays stable, new incompatible changes go to <code>/v2/bookings</code>, and v1 is maintained until all consumers have migrated.</p>
+
+  <h3>Consumer-driven contract testing</h3>
+  <p>The producer cannot know what every consumer depends on. Consumer-driven contract testing (Pact) inverts this: each consumer writes a contract test describing what it expects from the producer. The producer runs all consumer contracts as part of its test suite. If a producer change breaks any consumer's contract, the test fails before deployment. Consumers define the contract, producers verify they meet it.</p>
+</div>
+
+<!-- VIZ 4: Contract explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Service contracts — versioning and breaking changes</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showContract('safe_change')">Safe change (additive)</button>
+      <button class="viz-btn" onclick="showContract('breaking_change')">Breaking change</button>
+      <button class="viz-btn" onclick="showContract('versioning')">Versioning strategy</button>
+      <button class="viz-btn" onclick="showContract('pact')">Consumer-driven contracts (Pact)</button>
+    </div>
+    <div id="contract-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+
+<!-- S5: COMMUNICATION -->
+<div class="section" id="s-comms">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>How should services talk to each other?</h2>
+
+  <p>Two services need to exchange data. They have three options: synchronous HTTP/gRPC (caller waits for response), asynchronous events via Kafka (caller publishes and moves on), or choreography via shared events (services react to what happened without anyone directing them). The choice determines coupling, latency, resilience, and complexity.</p>
+
+  <h3>Synchronous: use it when the caller needs the answer now</h3>
+  <p>The checkout service needs to reserve a seat before confirming the booking. It cannot move on without the answer — reserved or not. This is a synchronous call: checkout calls inventory, waits for a response, then decides what to do. The tradeoff: the checkout service is now coupled to inventory's availability. If inventory is slow, checkout is slow. If inventory is down, checkout fails (Day 18's circuit breaker applies here).</p>
+
+  <h3>Asynchronous events: use it when the caller does not need the answer now</h3>
+  <p>After a booking is confirmed, the email service needs to send a confirmation, the analytics service needs to record the event, and the partner webhook service needs to notify external systems. None of these need to complete before the API responds to the user. The checkout service publishes a <code>booking.confirmed</code> event (Day 23) and is done. Each downstream service handles it in its own time, at its own pace, with its own retry logic.</p>
+
+  <h3>Choreography vs orchestration</h3>
+  <p><strong>Choreography:</strong> Services react to events without a central coordinator. Booking confirmed event fires. Email service reacts. Analytics service reacts. No service tells another what to do — they all just watch the event stream and act on what they see. Highly decoupled, hard to trace when things go wrong.</p>
+  <p><strong>Orchestration:</strong> A workflow service explicitly calls each step in sequence. After booking, the orchestrator calls email service, waits for success, calls analytics, waits for success. Clear trace of what happened and in what order. More coupling — the orchestrator must know about every downstream service.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pattern</th><th>Use when</th><th>Tradeoff</th></tr></thead>
+      <tbody>
+        <tr><td>Sync HTTP/gRPC</td><td>Caller needs the result to continue</td><td>Couples availability — if downstream is down, caller fails</td></tr>
+        <tr><td>Async events</td><td>Caller does not need immediate result</td><td>Eventual consistency — downstream may lag</td></tr>
+        <tr><td>Choreography</td><td>Simple fan-out, loose coupling preferred</td><td>Hard to trace, no single view of overall state</td></tr>
+        <tr><td>Orchestration (Saga)</td><td>Multi-step transactions requiring rollback</td><td>Orchestrator becomes a bottleneck and single point of failure</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The saga pattern — distributed transactions without distributed transactions</h3>
+  <p>When a business operation spans multiple services — book seat, charge payment, send confirmation — you cannot use a database transaction. The data lives in separate databases. Instead, you use a saga: a sequence of local transactions, each publishing an event that triggers the next step. If any step fails, compensating transactions undo the previous steps. The booking saga: reserve seat (inventory), charge card (payment), confirm booking (booking service). If payment fails, the compensating transaction releases the reserved seat.</p>
+</div>
+
+<!-- VIZ 5: Communication pattern selector -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Which communication pattern fits?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showComms('seat_reservation')">Seat reservation</button>
+      <button class="viz-btn" onclick="showComms('send_email')">Send confirmation email</button>
+      <button class="viz-btn" onclick="showComms('booking_saga')">Full booking saga</button>
+      <button class="viz-btn" onclick="showComms('report_query')">Dashboard data query</button>
+    </div>
+    <div id="comms-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S6: MONOLITH FIRST -->
+<div class="section" id="s-mono">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Start with a monolith. Extract when you feel the pain.</h2>
+
+  <p>The single most consistent piece of advice from engineers who have built both: <strong>do not start with microservices.</strong> A monolith that works is infinitely better than microservices that do not. The reasons are numerous but they reduce to one: you do not know your bounded contexts until you have built the system. The pain of wrong boundaries in a monolith is refactoring. The pain of wrong boundaries in microservices is a distributed systems problem requiring team coordination, data migration, and potentially months of work to fix.</p>
+
+  <p>The signals that a monolith is ready to be split:</p>
+  <ul>
+    <li><strong>Deploy bottleneck:</strong> All teams must coordinate on every deployment. A single team's changes block everyone else.</li>
+    <li><strong>Scale mismatch:</strong> One part of the system (e.g. the search service) needs 10x the resources of everything else, but you can only scale the whole monolith.</li>
+    <li><strong>Team autonomy blocked:</strong> Teams routinely conflict over shared code and cannot ship independently.</li>
+    <li><strong>Technology lock-in:</strong> A specific component would genuinely benefit from a different language, database, or runtime.</li>
+  </ul>
+
+  <p>If you do not feel these pains, the monolith is fine. Adding microservices to solve problems you do not have is one of the most expensive engineering mistakes you can make.</p>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>The modular monolith — the best of both</strong>
+      <p>A modular monolith has strict internal boundaries — modules that own their own data models and expose clean interfaces — but deploys as a single process. The BookMyShow booking system at scale started as a modular monolith with well-defined internal modules. When specific components needed independent scaling, they were extracted as services — already cleanly separated because the monolith enforced the boundary. The extraction cost one sprint per service. Building microservices from scratch in year one would have taken six months and produced the wrong boundaries anyway.</p>
+    </div>
+  </div>
+</div>
+
+<!-- S7: ANTI-PATTERNS -->
+<div class="section" id="s-bad">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>The failure modes nobody warns you about</h2>
+
+  <h3>The distributed monolith</h3>
+  <p>Services that share a database, deploy together, and cannot be understood independently. The worst of both worlds: you pay the operational complexity of microservices (network latency, service discovery, distributed tracing) while retaining the coupling of a monolith (shared data model, coordinated deployments). The cause: drawing boundaries at the code level without drawing them at the data level.</p>
+
+  <h3>Nanoservices</h3>
+  <p>Services so small they do one database operation each. A <code>get-user-by-id</code> service, a <code>update-user-email</code> service, a <code>delete-user</code> service. Each is a thin wrapper over a database call, introducing a network hop, a service to deploy, a container to manage, and a contract to maintain — for no benefit. The granularity is wrong. These belong in the same service.</p>
+
+  <h3>Synchronous chains</h3>
+  <p>Service A calls B, B calls C, C calls D. The checkout request travels through four services synchronously. The latency adds up: 40ms + 30ms + 50ms + 20ms = 140ms before the user gets a response. Worse: if D is slow, A is slow. If C is down, B fails, A fails. The chain amplifies failures. The fix: collapse the chain (maybe A, B, C belong in the same service) or break it with async events.</p>
+
+  <h3>Premature decomposition</h3>
+  <p>Splitting a system into microservices before understanding the domain. You draw boundaries based on database tables or API endpoints rather than business capabilities. The boundaries are wrong. Changing them later requires data migration across service databases, API versioning across teams, and coordinated deployments. The cost of wrong microservice boundaries is an order of magnitude higher than the cost of wrong module boundaries in a monolith.</p>
+</div>
+
+<!-- VIZ 6: Anti-pattern diagnosis -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Anti-pattern diagnosis — identify the failure mode</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showAntipattern('distributed_monolith')">Distributed monolith</button>
+      <button class="viz-btn" onclick="showAntipattern('nanoservices')">Nanoservices</button>
+      <button class="viz-btn" onclick="showAntipattern('sync_chain')">Synchronous chain</button>
+      <button class="viz-btn" onclick="showAntipattern('premature')">Premature decomposition</button>
+    </div>
+    <div id="antipattern-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S8: PROD REALITY -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>Service mesh — infrastructure for service-to-service communication</h3>
+  <p>At scale, service-to-service communication needs observability, retries, circuit breaking, mutual TLS, and load balancing — applied consistently across every service pair. A service mesh (Istio, Linkerd) handles this at the infrastructure level, via sidecar proxies, rather than requiring each service to implement it. The tradeoff: significant operational complexity. A service mesh is not justified until you have tens of services with serious reliability and observability requirements.</p>
+
+  <h3>Service discovery — how services find each other</h3>
+  <p>In Kubernetes, service discovery is built in: each service gets a DNS name (<code>payment-service.production.svc.cluster.local</code>) that resolves to the current pod IPs. The load balancer is the kube-proxy. Outside Kubernetes, tools like Consul handle service registration and health checking. The practical rule: if you are on Kubernetes, use its built-in service discovery. If you are not, adopt it before building a service mesh.</p>
+
+  <h3>Observability across services — the distributed tracing requirement</h3>
+  <p>A request that touches six services produces logs and metrics in six different places. Without a trace ID propagated through every service call, correlating those logs is impossible. Day 19's distributed tracing is a prerequisite for microservices in production. Every service call must propagate the trace context in headers. Every service must emit spans. Without this, debugging a cross-service failure takes hours instead of minutes.</p>
+</div>
+
+<!-- S9: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>Microservices move complexity from code to operations</h3>
+  <p>A monolith has complex code. Microservices have simpler code in each service and dramatically more complex operations: service discovery, distributed tracing, network policies, container orchestration, multi-service deployments, distributed transactions. The total complexity does not decrease — it shifts. Teams that choose microservices for "simplicity" are often surprised by the operational burden. Make the shift intentionally, with eyes open to what you are trading.</p>
+
+  <h3>Conway's Law is not optional</h3>
+  <p>Conway's Law: your system architecture will mirror your team communication structure. If you have four teams, you will end up with four services — regardless of whether those boundaries are right. This is not a design principle to follow; it is a gravity field to account for. Design your team boundaries and your service boundaries together. If the team structure is wrong, the service structure will be wrong.</p>
+
+  <h3>The two-pizza rule is a team size heuristic, not a service size heuristic</h3>
+  <p>Amazon's two-pizza rule (a team should be small enough to be fed by two pizzas) is about team size, not service granularity. It means the team that owns a service should be small enough to communicate without formal processes. It does not mean a service should be small enough to fit in two pizzas. A two-pizza team might own a service that handles half of Amazon's checkout flow. Size the team for ownership; size the service for domain boundaries.</p>
+
+  <h3>Eventual consistency is a product decision, not an engineering decision</h3>
+  <p>Asynchronous microservices produce eventual consistency: after a booking is confirmed, the analytics dashboard may show the old count for a few seconds. Whether that is acceptable is a product question, not a technical one. Engineers often implement eventual consistency without telling product that it means data may be stale. Product often makes requirements that implicitly require strong consistency without knowing it. Align on this explicitly, per feature, before building.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="section" id="s-sequence" style="margin-top:64px">
+  <div class="section-eyebrow">Decision sequence</div>
+  <h2>Should this be a separate service?</h2>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text3);margin-bottom:24px">Answer these in order before extracting anything from the monolith.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Are you actually feeling the pain that microservices solve?</div>
+        <div class="ds-detail">Deploy bottleneck? Scale mismatch? Team autonomy blocked? Technology lock-in forcing bad decisions? If none of these apply, stay in the monolith. Adding microservices to a monolith that works is pure cost with no benefit. The pain you are avoiding is theoretical. The complexity you are adding is real.
+          <br><span class="ds-tag ds-tag-warn">no pain = stay in the monolith</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Can you draw the data boundary first?</div>
+        <div class="ds-detail">Before separating code, identify what data the new service would own exclusively. If the answer is "it shares the same tables as the main service," stop — you are creating a distributed monolith. The service boundary is the database boundary. If you cannot identify clean data ownership, the boundary is in the wrong place.
+          <br><span class="ds-tag ds-tag-stop">no data boundary = no real service boundary</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Does this capability change for independent reasons?</div>
+        <div class="ds-detail">The core question in bounded context identification: does this capability change when other things change, or does it change for its own reasons? Payment logic changes when payment regulations change. Inventory logic changes when venue seating changes. These are different reasons — good candidate for separation. If they always change together, they probably belong together.
+          <br><span class="ds-tag ds-tag-info">same change reason = same service</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Does the team structure support independent ownership?</div>
+        <div class="ds-detail">A service with no clear owner is a service that will be neglected. Before extracting a service, identify which team owns it, what their on-call rotation looks like, and who reviews its contracts and SLOs. If the answer is "everyone and no one," the service will drift. Conway applies: team boundaries and service boundaries must align.
+          <br><span class="ds-tag ds-tag-warn">no owner = service becomes a liability</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Design the contract before writing the service</div>
+        <div class="ds-detail">Define the API (request shape, response shape, error codes, SLO) before writing a line of implementation. Share it with consumers. Find the mismatches in design reviews, not in production. Use OpenAPI for REST or protobuf for gRPC. Register the schema. The contract is the permanent artifact — implementations can be rewritten, contracts cannot be broken.
+          <br><span class="ds-tag ds-tag-ok">contract first = mismatches caught early</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Use the strangler fig — do not rewrite, extract</div>
+        <div class="ds-detail">Put a proxy in front of the monolith. Route new functionality to the new service. Gradually migrate existing functionality — one endpoint at a time, with traffic comparison to verify correctness. Do not stop serving traffic from the monolith until the new service is verified in production. A big-bang migration is how you break things. A strangler fig is how you do it safely.
+          <br><span class="ds-tag ds-tag-ok">strangler fig = zero-downtime extraction</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">The payment service reads the bookings table directly. Now we cannot deploy either.</div>
+    <div style="font-size:13px;color:var(--text2)">Shared database diagnosis · data ownership fix · strangler fig extraction plan</div>
+  </div>
+  <a href="/day24/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Pact contract testing, OpenAPI schema, saga implementation</div>
+    <div style="font-size:13px;color:var(--text2)">Consumer-driven contracts · OpenAPI spec · choreography saga pattern</div>
+  </div>
+  <a href="/day24/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Microservices readiness checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">OWN</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Data ownership</div><p style="font-size:12.5px;color:var(--text3);margin:0">Each service has its own database. No other service reads or writes its tables directly. Enforced, not just documented.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">CTR</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Contract defined</div><p style="font-size:12.5px;color:var(--text3);margin:0">API contract specified (OpenAPI or protobuf) before implementation. Consumer-driven contract tests in CI. Breaking changes blocked.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">TRC</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Distributed tracing</div><p style="font-size:12.5px;color:var(--text3);margin:0">Trace IDs propagated across all service calls. Every service emits spans. Cross-service request traceable end-to-end.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">OWR</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Clear owner</div><p style="font-size:12.5px;color:var(--text3);margin:0">Each service has a named owning team with on-call responsibility. No "shared" services without explicit joint ownership.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">IDP</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Independent deploy</div><p style="font-size:12.5px;color:var(--text3);margin:0">Service can be deployed without coordinating with other services. If it cannot, it is not really a service yet.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">SLO</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Service SLO</div><p style="font-size:12.5px;color:var(--text3);margin:0">Each service has a defined SLO. Consumers know the availability and latency guarantee. Error budget tracked per service.</p></div>
+  </div>
+</div>
+
+<!-- CLOSING HOOK -->
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    The grill station does not care how the pastry section makes its desserts. It only cares that the dessert arrives at the pass when called. That separation — owning your own domain, communicating only through defined interfaces — is what makes the whole kitchen run even when one station has a bad night.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:56px">
+    The next time you are deciding whether to split a service — ask: <em style="color:var(--accent)">can each part fail, scale, and deploy without the other knowing?</em> If not, the lines are not drawn yet.
+  </p>
+</div>
+<div style="height:40px"></div>
+</article>
+</div>
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){if(s.id&&s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Kitchen mapping
+var KITCHEN={
+  station:'STATION  ->  MICROSERVICE\n\nKitchen:\n  The grill station owns its grill, its meat, its sauces.\n  No other station uses its equipment or touches its ingredients.\n  The grill chef owns everything needed to produce a grilled dish.\n  The station is self-contained.\n\nMicroservice:\n  The booking service owns its database, its business logic, its deployment.\n  No other service reads its database directly.\n  The booking team owns everything needed to operate the service.\n  The service is self-contained.\n\nKey property:\n  Independence. The station (service) can be changed, scaled,\n  or replaced without reorganising the rest of the kitchen (system).\n  A new head chef at the grill station does not affect the pastry section.',
+
+  pass:'THE PASS  ->  API\n\nKitchen:\n  The pass is the counter between stations and the service area.\n  No station walks into another station\'s space.\n  Everything goes through the pass.\n  The pass enforces the boundary between production and service.\n\nMicroservice:\n  The API is the only way into a service.\n  No service accesses another service\'s database directly.\n  Everything goes through the API.\n  The API enforces the service boundary.\n\nKey property:\n  The pass (API) is where contracts live.\n  The grill station promises a steak at a certain temperature — it does not\n  reveal the recipe or the technique. The booking service promises a\n  booking object in a certain shape — it does not expose its schema.\n  Implementation is hidden. Interface is the contract.',
+
+  tools:'STATION TOOLS  ->  DATABASE\n\nKitchen:\n  The pastry section has its own oven, its own mixing bowls, its own refrigerator.\n  The grill chef does not use the pastry oven.\n  The pastry chef does not use the grill.\n  Each station\'s tools are private to that station.\n\nMicroservice:\n  Each service has its own database (or schema).\n  Other services cannot query it, join against it, or write to it.\n  The database is a private implementation detail.\n\nWhy this matters:\n  If two services share a database, a schema change in one breaks the other.\n  They cannot be deployed independently.\n  They cannot be understood independently.\n  They are not services — they are a distributed monolith.\n  The database boundary IS the service boundary.',
+
+  contract:'THE TICKET  ->  SERVICE CONTRACT\n\nKitchen:\n  A ticket arrives at the pass: "Table 4: medium-rare ribeye, no onions."\n  The grill station does not decide what "medium-rare" means differently\n  from table to table. The contract is the ticket format.\n  If the ticket format changes, the whole kitchen needs to know.\n\nMicroservice:\n  An API request arrives: POST /bookings { eventId, userId, seatId }\n  The booking service does not decide what fields mean differently\n  per caller. The contract is the API spec.\n  If the API changes in a breaking way, all consumers need to know.\n\nKey rule:\n  Contracts must be backward compatible.\n  Adding a field: safe (consumers ignore unknown fields).\n  Removing a field: breaking (consumers that read it will fail).\n  Renaming a field: breaking (equivalent to remove + add).\n  Version the API (/v2/) when making breaking changes.',
+
+  failure:'STATION FAILURE  ->  SERVICE ISOLATION\n\nKitchen:\n  The pastry section runs out of cream. No desserts tonight.\n  The grill station keeps cooking steaks.\n  The sauté station keeps cooking fish.\n  Tables still receive their starters and mains.\n  One station\'s failure does not stop the whole kitchen.\n\nMicroservice:\n  The notification service is down. No emails tonight.\n  The booking service keeps accepting bookings.\n  The payment service keeps processing charges.\n  Users can still complete transactions.\n  One service\'s failure does not stop the whole system.\n\nHow this works:\n  Circuit breaker (Day 18) opens when notification service is unhealthy.\n  Booking service returns success without waiting for notification.\n  Notifications are queued (Day 21) for when the service recovers.\n  Isolation is designed in, not accidental.',
+
+  newstation:'NEW STATION  ->  NEW SERVICE\n\nKitchen:\n  Restaurant adds a wood-fired pizza station.\n  It gets its own corner, its own oven, its own dough recipe.\n  It communicates through the pass like every other station.\n  No existing station changes what it does.\n  The head chef adds it to the menu.\n\nMicroservice:\n  System adds a recommendation service.\n  It gets its own database, its own model, its own deployment pipeline.\n  It communicates through the API like every other service.\n  No existing service changes what it does.\n  The API gateway adds new routes to it.\n\nKey property:\n  Adding a service should not require changes to existing services.\n  If adding a new service requires changing 4 existing services,\n  the boundaries are wrong — the new service\'s domain is tangled\n  with existing domains.',
+};
+function showKitchen(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showKitchen'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('kitchen-output').textContent=KITCHEN[k];
+}
+showKitchen('station');
+
+// VIZ 2: Boundary finder
+var BOUNDARY={
+  good:'GOOD BOUNDARY\n\nSignals:\n  Services are deployed independently without coordination.\n  A change in Service A rarely requires a change in Service B.\n  Each service has clear data ownership — no shared tables.\n  Service API calls are few and coarse-grained per business operation.\n\nExample (ticket booking system):\n  Booking service: creates/manages booking records\n  Payment service: processes charges, records payment state\n  Inventory service: manages seat availability\n  Notification service: sends emails, SMS, push\n\n  These change for different reasons:\n  - Booking changes when booking rules change\n  - Payment changes when payment regulations change\n  - Inventory changes when venue seating changes\n  - Notification changes when communication channels change\n\n  They are deployed independently.\n  A schema change in payments does not affect bookings.\n  This is a good boundary.',
+
+  chatty:'CHATTY SERVICES — boundary in wrong place\n\nSymptom:\n  To complete a "get booking details" request, Service A makes\n  8 synchronous calls to Service B before it can respond.\n\nExample:\n  GET /bookings/123\n  -> bookingService.getSeat(bookingId)        call 1\n  -> bookingService.getUser(bookingId)        call 2\n  -> bookingService.getEvent(bookingId)       call 3\n  -> bookingService.getVenue(bookingId)       call 4\n  -> bookingService.getPayment(bookingId)     call 5\n  -> bookingService.getTicketPdf(bookingId)   call 6\n  ... etc\n\nDiagnosis:\n  The data being assembled belongs together.\n  The boundary has split what should be one data model\n  into many fragments requiring reassembly on every request.\n\nFix:\n  Either consolidate into one service (if the data belongs together)\n  or build a read model (Day 26 CQRS) that pre-assembles the view.\n  8 synchronous calls is a sign the services were split too finely.',
+
+  shotgun:'SHOTGUN CHANGES — boundary cuts a logical unit\n\nSymptom:\n  Every new feature requires simultaneous changes to 5 services.\n  Teams cannot ship independently. Everything deploys together.\n\nExample:\n  "Add group booking support" requires changes to:\n  - booking-service (new group booking record type)\n  - payment-service (split payment across group)\n  - inventory-service (hold multiple seats atomically)\n  - notification-service (group booking email template)\n  - billing-service (group invoice generation)\n\nDiagnosis:\n  "Group booking" is a coherent domain concept that has been\n  spread across 5 services. It changes as a unit but lives in\n  5 places. This is a shotgun change pattern.\n\nFix:\n  Consider whether "group booking" deserves its own service\n  that orchestrates the others. Or reconsider whether the\n  service boundaries match the domain boundaries at all.\n  The team must coordinate every deploy — not independence.',
+
+  shared_db:'SHARED DATABASE — distributed monolith\n\nSymptom:\n  Two "services" both read and write the same database tables.\n  Schema changes require coordinating both teams.\n  Cannot deploy either service without risk to the other.\n\nExample:\n  booking-service: SELECT * FROM bookings WHERE user_id = ?\n  payment-service: SELECT amount FROM bookings WHERE id = ?\n  Both write to: INSERT INTO bookings (...) VALUES (...)\n\nDiagnosis:\n  There is no real boundary. Two processes share one data model.\n  Adding a column to bookings may break both services.\n  You cannot change the schema without a coordinated deploy.\n  You have paid the operational cost of microservices\n  (network latency, distributed systems) with none of the benefit\n  (independent deployment, isolation, data model flexibility).\n\nFix:\n  Establish data ownership: bookings table belongs to booking-service.\n  Payment-service asks booking-service for booking data via API.\n  Never via direct database access.',
+
+  deploy_order:'DEPLOY ORDERING — hidden coupling\n\nSymptom:\n  "We must deploy payment-service before booking-service, otherwise\n  the booking service will fail on the new payment status field."\n\nDiagnosis:\n  Services that must deploy in a specific order are not independent.\n  They share an implicit contract that is not versioned.\n  The "newer" service assumes the "older" service has already changed.\n\nExample of what went wrong:\n  booking-service calls: GET /payments/{id}\n  payment-service response now includes a new required field.\n  booking-service crashes if payment-service is not deployed first.\n\nFix:\n  Make changes backward compatible.\n  Deploy payment-service with the new field (optional at first).\n  Update booking-service to use the new field.\n  Remove the old field only after all consumers have updated.\n  This is the expand-contract (parallel change) pattern.\n  Services can now deploy in any order.',
+};
+function showBoundary(k){document.getElementById('boundary-output').textContent=BOUNDARY[k];}
+
+// VIZ 3: Data ownership
+var OWNERSHIP={
+  correct:'CORRECT DATA OWNERSHIP\n\nbooking-service  owns: bookings table\n  CREATE TABLE bookings (\n    id UUID PRIMARY KEY,\n    user_id UUID NOT NULL,\n    event_id UUID NOT NULL,\n    seat_id UUID NOT NULL,\n    status TEXT NOT NULL,\n    created_at TIMESTAMPTZ\n  );\n  -> Other services NEVER query this table directly\n  -> They ask booking-service via API: GET /bookings/{id}\n\npayment-service  owns: payments table\n  CREATE TABLE payments (\n    id UUID PRIMARY KEY,\n    booking_id UUID NOT NULL,  <- reference, not a FK to booking table\n    amount_cents INTEGER NOT NULL,\n    status TEXT NOT NULL,\n    gateway_ref TEXT\n  );\n  -> booking-service does not read this table\n  -> It asks: GET /payments?bookingId={id}\n\ninventory-service  owns: seat_availability table\n  CREATE TABLE seat_availability (\n    seat_id UUID PRIMARY KEY,\n    event_id UUID NOT NULL,\n    held_by_booking UUID,\n    available BOOLEAN NOT NULL\n  );\n  -> booking-service calls: POST /seats/{id}/hold\n  -> Not: UPDATE seat_availability SET available=false WHERE seat_id=?',
+
+  shared_db_antipattern:'SHARED DATABASE ANTI-PATTERN\n\nWhat you see in the codebase:\n\n  // booking-service/src/checkout.ts\n  const payment = await db.query(\n    "SELECT amount, status FROM payments WHERE booking_id = $1",\n    [bookingId]\n  );\n  // Direct SQL query into payment-service\'s table!\n\n  // payment-service/src/refund.ts\n  const booking = await db.query(\n    "SELECT status, user_id FROM bookings WHERE id = $1",\n    [bookingId]\n  );\n  // Direct SQL query into booking-service\'s table!\n\nConsequences:\n  -> Cannot rename a column without changing two codebases\n  -> Cannot migrate the payments table to a separate database\n  -> Cannot change booking status values without checking payment code\n  -> Must deploy both services together on schema changes\n  -> Integration tests require both services running against same DB\n\nThis is a monolith that has been split into two processes.\n  The code boundary is a fiction. The data boundary does not exist.',
+
+  read_model:'READ MODEL SOLUTION\n\nProblem:\n  Dashboard needs: booking + payment status + user name\n  Data lives in: booking-service, payment-service, user-service\n  Cannot JOIN across three databases\n\nSolution: a read model service\n\n  dashboard-query-service:\n    Subscribes to events:\n    - booking.confirmed (from booking-service via Kafka)\n    - payment.completed (from payment-service via Kafka)\n    - user.profile.updated (from user-service via Kafka)\n\n    Builds and owns a denormalised read table:\n    CREATE TABLE booking_dashboard_view (\n      booking_id   UUID PRIMARY KEY,\n      user_name    TEXT,\n      event_name   TEXT,\n      amount_cents INTEGER,\n      payment_status TEXT,\n      booking_status TEXT,\n      updated_at   TIMESTAMPTZ\n    );\n\n    Serves: GET /dashboard/bookings\n    No joins needed. Single fast query.\n\nTrade-off:\n  Data is eventually consistent (seconds behind real time).\n  If payment.completed event is delayed, dashboard shows old status.\n  Acceptable for a dashboard. Not acceptable for a payment confirmation.',
+
+  cross_service_query:'CROSS-SERVICE DATA QUERY\n\nWhen booking-service needs payment status for a booking:\n\n  // WRONG: direct database access\n  const payment = await paymentDb.query(\n    "SELECT status FROM payments WHERE booking_id = $1"\n  );\n\n  // CORRECT: API call\n  const payment = await fetch(\n    `http://payment-service/v1/payments?bookingId=${bookingId}`,\n    { headers: { Authorization: serviceToken } }\n  ).then(r => r.json());\n\n  // payment-service decides what to expose:\n  // { bookingId, status, amountCents, createdAt }\n  // NOT: the full internal record with gateway refs and audit fields\n\nWhat the API call gives you:\n  -> payment-service controls what data it exposes\n  -> Schema can change internally without breaking callers\n  -> Rate limiting, auth, and logging applied at the boundary\n  -> payment-service can be rewritten; API contract stays stable\n\nCost:\n  -> Network latency (40-100ms vs <1ms for DB query)\n  -> Failure surface (payment-service could be down)\n  -> Mitigations: circuit breaker (Day 18), caching, async events (Day 23)',
+};
+function showOwnership(k){document.getElementById('ownership-output').textContent=OWNERSHIP[k];}
+
+// VIZ 4: Contracts
+var CONTRACT={
+  safe_change:'SAFE CHANGE — additive only\n\nOriginal response (v1.4.2):\n  {\n    "bookingId": "ord_123",\n    "status": "confirmed",\n    "userId": "usr_456"\n  }\n\nNew response (v1.5.0) — adding a field:\n  {\n    "bookingId": "ord_123",\n    "status": "confirmed",\n    "userId": "usr_456",\n    "eventName": "Coldplay Mumbai"   <- NEW FIELD\n  }\n\nWhy this is safe:\n  Consumers that do not know about eventName: ignore it.\n  Consumers that want eventName: opt in to using it.\n  No consumer breaks. No version bump required.\n  This is backward compatible.\n\nRule: additions are safe. Removals and renames are breaking.\n\nAlso safe:\n  -> Making a required field optional\n  -> Adding new enum values (if consumers handle unknown values)\n  -> Adding new endpoints\n  -> Relaxing validation (accepting more input than before)',
+
+  breaking_change:'BREAKING CHANGE — what breaks consumers\n\nOriginal response:\n  {\n    "userId": "usr_456",\n    "bookingStatus": "confirmed"\n  }\n\nBroken new response:\n  {\n    "userId": "usr_456",\n    "status": "confirmed"          <- RENAMED from bookingStatus\n  }\n\nWhy this breaks:\n  Every consumer that reads response.bookingStatus gets undefined.\n  They may silently fail, or produce wrong output, or crash.\n  They will not know until they run against the new version.\n\nOther breaking changes:\n  -> Removing a field\n  -> Changing a field\'s type (string -> integer)\n  -> Making an optional field required\n  -> Changing error codes or error response shape\n  -> Changing authentication requirements\n  -> Removing an endpoint\n\nHow to make this change safely:\n  1. Release v1.5.0 with BOTH bookingStatus AND status\n  2. Notify consumers: "bookingStatus deprecated, use status"\n  3. Give consumers time to migrate (weeks to months)\n  4. Release v2.0.0 removing bookingStatus\n  5. Maintain /v1/ until all consumers on /v2/',
+
+  versioning:'VERSIONING STRATEGY\n\nURL versioning (most common for REST):\n  /v1/bookings/{id}  <- stable, maintained\n  /v2/bookings/{id}  <- new incompatible shape\n\nHeader versioning:\n  GET /bookings/{id}\n  Accept: application/vnd.bookings.v2+json\n\nGrpc:\n  package booking.v1;  // v1 package, never changed\n  package booking.v2;  // new package for breaking changes\n\nPolicy that works:\n  1. Never break /v1/ once it has consumers\n  2. Add /v2/ for incompatible changes\n  3. Run both versions simultaneously for a migration period\n  4. Sunset /v1/ only after all consumers confirmed on /v2/\n  5. Sunset notice: minimum 3 months, prefer 6 months\n\nWhat "never break" means:\n  -> Fields can be added (additive)\n  -> Fields cannot be removed or renamed\n  -> Types cannot change\n  -> Required fields cannot be added to requests\n  -> Error shapes cannot change\n\nVersion in the URL is visible, cacheable, and debuggable.\n  Prefer it over header-based versioning for REST APIs.',
+
+  pact:'CONSUMER-DRIVEN CONTRACT TESTING (Pact)\n\nProblem:\n  The producer cannot know what every consumer depends on.\n  Producer changes a field. Consumers break. Caught in production.\n\nSolution: consumers define contracts, producers verify them.\n\nConsumer (email-service) writes a Pact test:\n  // What email-service expects from booking-service\n  await provider\n    .given("booking ord_123 exists")\n    .uponReceiving("a request for booking ord_123")\n    .withRequest({ method: "GET", path: "/bookings/ord_123" })\n    .willRespondWith({\n      status: 200,\n      body: {\n        bookingId: "ord_123",\n        userId: "usr_456",\n        eventName: like("Coldplay Mumbai"),  // type-checked\n        status: term({ generate: "confirmed", matcher: "confirmed|pending" })\n      }\n    });\n  // This generates a pact file (JSON)\n\nProducer (booking-service) runs contract verification:\n  // In booking-service CI pipeline:\n  await new Verifier({\n    provider: "booking-service",\n    pactUrls: [pactBrokerUrl],  // fetch all consumer contracts\n  }).verifyProvider();\n  // Fails if booking-service response does not match any consumer contract\n\nResult:\n  Booking-service CANNOT deploy if it breaks email-service\'s contract.\n  Caught in CI, not in production.',
+};
+function showContract(k){document.getElementById('contract-output').textContent=CONTRACT[k];}
+
+// VIZ 5: Communication patterns
+var COMMS={
+  seat_reservation:'SEAT RESERVATION\n\nPattern: SYNCHRONOUS HTTP\n\nWhy:\n  The checkout service cannot confirm a booking without knowing\n  if the seat is available. The answer is needed RIGHT NOW,\n  before responding to the user.\n\nFlow:\n  1. User: POST /checkout { eventId, seatId }\n  2. checkout-service: POST /inventory/seats/hold { seatId, bookingId }\n     -> waits for response\n  3. inventory-service: checks availability, marks as held\n     -> returns: { held: true, expiresAt: "..." } or { held: false }\n  4. checkout-service: if held, proceed to payment; else return 409\n\nCoupling accepted:\n  If inventory-service is down, checkout fails.\n  Mitigation: circuit breaker (Day 18) + short timeout\n  Fallback: "seats temporarily unavailable, try again"\n\nWhy not async:\n  If checkout fired an event and moved on, it would not know\n  if the seat was actually held. Two users could book the same seat.',
+
+  send_email:'SEND CONFIRMATION EMAIL\n\nPattern: ASYNC EVENT (Kafka, Day 23)\n\nWhy:\n  The user does not need to wait for the email to be sent\n  before seeing "Booking confirmed." The email can arrive\n  seconds or minutes later. The user is already on the\n  confirmation page.\n\nFlow:\n  1. checkout-service confirms booking\n  2. checkout-service: publish "booking.confirmed" to Kafka\n     -> returns HTTP 200 to user immediately\n  3. (seconds later) email-service consumes "booking.confirmed"\n  4. email-service sends confirmation email\n  5. If email fails: retried up to 4x with exponential backoff\n     If exhausted: DLQ alert -> manual resend\n\nNo coupling:\n  If email-service is down, checkout still succeeds.\n  Emails queue up and are sent when email-service recovers.\n  Adding a new consumer (sms-service) requires zero changes to checkout.',
+
+  booking_saga:'FULL BOOKING SAGA\n\nPattern: CHOREOGRAPHY SAGA (multi-step distributed transaction)\n\nProblem:\n  Booking spans three services: inventory, payment, booking.\n  If payment fails after inventory is held, seat must be released.\n  No distributed transaction available.\n\nChoreography saga flow:\n  1. checkout-service: publish "booking.initiated"\n\n  2. inventory-service consumes "booking.initiated":\n     -> holds seat\n     -> publishes "seat.held" (success)\n     -> OR publishes "seat.hold.failed" (unavailable)\n\n  3. payment-service consumes "seat.held":\n     -> charges card\n     -> publishes "payment.completed" (success)\n     -> OR publishes "payment.failed" (declined)\n\n  4a. booking-service consumes "payment.completed":\n      -> creates confirmed booking record\n      -> publishes "booking.confirmed"\n\n  4b. inventory-service consumes "payment.failed":\n      -> releases seat hold (compensating transaction)\n      -> publishes "seat.released"\n\nThe saga handles failure:\n  Payment failed? Inventory compensates by releasing the seat.\n  No two-phase commit. No distributed lock.\n  Each service handles its own undo.',
+
+  report_query:'DASHBOARD DATA QUERY\n\nPattern: READ MODEL (CQRS, Day 26)\n\nProblem:\n  A report needs: booking status, payment amount, user name, event name.\n  Data lives across 4 services.\n  Cannot join 4 databases.\n  Calling 4 APIs synchronously: slow + fragile.\n\nSolution: a dedicated read model\n\n  reporting-service:\n  -> Subscribes to all relevant events via Kafka\n  -> Maintains a denormalised view table:\n     booking_id | user_name | event_name | payment_amount | status\n\n  Query:\n  GET /reports/bookings?from=2024-08-01&to=2024-08-31\n  -> Single query to reporting-service\'s own table\n  -> Sub-10ms response, even across millions of rows\n\nTrade-off:\n  Eventual consistency: the view may lag events by seconds.\n  Acceptable for a dashboard. Not for a live booking confirmation.\n\nWhen to use:\n  Complex cross-service queries that need to be fast and frequent.\n  Analytics, reporting, search indexes.',
+};
+function showComms(k){document.getElementById('comms-output').textContent=COMMS[k];}
+
+// VIZ 6: Anti-patterns
+var ANTIPATTERN={
+  distributed_monolith:'DISTRIBUTED MONOLITH\n\nDefinition:\n  Multiple services that cannot be deployed, understood, or\n  scaled independently because they share state or tight coupling.\n\nSymptoms:\n  -> Services share a database (most common)\n  -> Deploy order matters: "deploy payment before booking"\n  -> A change to one service always requires changes to others\n  -> Integration tests require all services running together\n  -> One service being slow makes all calls to it slow with no fallback\n\nHow you got here:\n  Split a monolith by technical layer (API service, DB service)\n  rather than by domain boundary.\n  Or: extracted services but kept the shared database as a shortcut.\n\nCost:\n  All the operational complexity of microservices:\n  network latency, service discovery, distributed tracing, containers\n  None of the benefits:\n  independent deployment, isolation, independent scaling\n\nFix:\n  Establish hard data ownership (one service per table group).\n  Replace cross-database queries with API calls.\n  This is painful and takes time — hence the value of doing it right first.',
+
+  nanoservices:'NANOSERVICES\n\nDefinition:\n  Services so granular they do one database operation each.\n  Often created by engineers who misunderstood "small services."\n\nExample:\n  get-user-by-id-service\n  update-user-email-service\n  delete-user-service\n  get-user-bookings-service\n  add-user-booking-service\n\nWhat you actually have:\n  5 network hops to do what one service could do in one method call.\n  5 containers to manage, monitor, deploy, and debug.\n  5 contracts to maintain and version.\n  5x the failure surface.\n  For no business-domain reason.\n\nWhy these belong together:\n  User management is a single bounded context.\n  All these operations share a data model, a domain, and a reason to change.\n  They should be operations in one user-service, not 5 separate services.\n\nRule of thumb:\n  A service should handle a complete business capability,\n  not a single operation. "User management" is a capability.\n  "Get user by ID" is an operation inside that capability.',
+
+  sync_chain:'SYNCHRONOUS CHAIN\n\nDefinition:\n  A request travels through multiple services synchronously,\n  each waiting for the next before responding.\n\nExample:\n  User request: GET /booking-summary/123\n  -> checkout-service calls booking-service (40ms)\n  -> booking-service calls inventory-service (30ms)\n  -> inventory-service calls venue-service (50ms)\n  -> venue-service calls map-service (25ms)\n  -> Response chain unwinds: 145ms total latency minimum\n\nProblems:\n  1. Latency: each hop adds round-trip time\n  2. Failure amplification: if map-service is down, the whole\n     chain fails even if the user only needs booking info\n  3. Tight coupling: checkout-service implicitly depends on\n     map-service\'s availability, even though it never calls it directly\n\nFix options:\n  A. Consolidate services if the data belongs together\n     (all booking summary data in one service)\n  B. Break the chain with events and a read model\n     (booking-summary-service pre-builds the view from events)\n  C. Parallelize calls where dependencies allow\n  D. Cache aggressively at each hop',
+
+  premature:'PREMATURE DECOMPOSITION\n\nDefinition:\n  Splitting a system into services before understanding the domain.\n  Boundaries based on tables, endpoints, or intuition instead of\n  business capabilities and change reasons.\n\nHow it happens:\n  Day 1 of a new system. Architect draws boxes on a whiteboard.\n  "We\'ll have a user service, a booking service, an event service,\n  a venue service, a seat service, a ticket service."\n  These seem logical. They may be completely wrong for the actual domain.\n\nConsequences:\n  Wrong boundaries discovered in year 2 when:\n  - Every feature touches 6 services (shotgun changes)\n  - Teams cannot ship independently\n  - Cross-service data assembly is complex and slow\n\nThe cost of fixing:\n  Moving data between service databases.\n  Migrating consumers to new API shapes.\n  Coordinating 4 teams on a data ownership change.\n  Much more expensive than refactoring a module in a monolith.\n\nPrevention:\n  Start with a modular monolith.\n  Let the domain reveal itself through real usage.\n  Extract services when you feel the specific pain they solve.\n  Wrong boundaries in a monolith: hours to fix.\n  Wrong boundaries in microservices: months.',
+};
+function showAntipattern(k){document.getElementById('antipattern-output').textContent=ANTIPATTERN[k];}
+</script>
+</body>
+</html>
