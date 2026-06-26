@@ -727,12 +727,12 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
   <div class="callout insight">
     <div class="callout-icon">✈️</div>
     <div class="callout-inner">
-      <strong>Where the analogy breaks — and why that matters</strong>
-      <p>Every analogy has limits, and knowing the limits makes the concept sharper. At a real airport, the gate agent doesn't generate a correlation ID — a unique reference number that travels with your request through every downstream system so you can trace exactly what happened to it. HTTP does. At a real airport, passport control can't decide to send 5% of passengers to a different destination. An API gateway can route 5% of requests to a canary deployment for testing. The airport is a perfect mental model for <em>what</em> happens; it breaks down for the programmable, observable, dynamic parts of HTTP that make it powerful as an application protocol. Keep that distinction.</p>
+      <strong>Where airports stop being useful</strong>
+      <p>At a real airport, the gate agent doesn't generate a correlation ID — a unique reference number that travels with your request through every downstream system so you can trace exactly what happened to it. HTTP does. At a real airport, passport control can't decide to send 5% of passengers to a different destination. An API gateway can route 5% of requests to a canary deployment for testing. The airport is a perfect mental model for <em>what</em> happens; it breaks down for the programmable, observable, dynamic parts of HTTP that make it powerful as an application protocol. Keep that distinction.</p>
     </div>
   </div>
 
-  <p>On a mobile device in India hitting a server in Mumbai, each round-trip is 40-80ms. That means before your server has processed a single byte, you've potentially spent <strong>200-400ms in overhead</strong>. Your 5ms handler is irrelevant to the user if the checkpoints took 350ms. The <code>curl -w</code> timing breakdown in Section 2 shows you how to measure exactly which checkpoint is slow — in 10 seconds.</p>
+  <p>Your phone in Bangalore, talking to a server in Mumbai: each round-trip is 40-80ms. Before your server has processed a single byte, you've potentially spent <strong>200-400ms in overhead</strong>. Your 5ms handler is irrelevant to the user if the checkpoints took 350ms. Section 2 shows you how to measure exactly which one — in 10 seconds.</p>
 </div>
 
 <!-- VIZ: Airport → HTTP mapping (replaces old waterfall builder as opening interactive) -->
@@ -789,7 +789,7 @@ tbody td:first-child { color: var(--text); font-weight: 500; font-family: 'JetBr
   <div class="section-eyebrow">Section 02</div>
   <h2>The full request lifecycle, phase by phase</h2>
 
-  <p>Let's walk through exactly what happens when a Node.js service calls <code>fetch('https://api.payments.com/v1/charge')</code>.</p>
+  <p>Now let's follow that passenger all the way through — this time with exact timings, real packet traces, and the numbers that actually show up in <code>curl -w</code>. Here's what happens when a Node.js service calls <code>fetch('https://api.payments.com/v1/charge')</code>.</p>
 
   <h3>Phase 1: DNS Resolution</h3>
   <p>Your OS has a stub resolver. It checks its local cache first (TTL-controlled). If not cached, it queries the recursive resolver (usually your ISP's or Google's 8.8.8.8). The recursive resolver walks the DNS tree: root → .com → payments.com → api.payments.com. Each hop is a network round-trip. A cache miss on a cold server can easily add 50-150ms before you've opened a single socket.</p>
@@ -914,16 +914,16 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
 <!-- ─── SECTION 3: VERSIONS ─── -->
 <div class="section" id="s-versions">
   <div class="section-eyebrow">Section 03</div>
-  <h2>HTTP/1.1 vs HTTP/2 vs HTTP/3 — the real differences</h2>
+  <h2>Why did we need HTTP/2 at all?</h2>
 
   <p>This isn't just version trivia. Each version was designed to solve specific, real performance problems. Understanding what problem each solved helps you know when you're actually benefiting from it.</p>
 
-  <h3>HTTP/1.1: The good and the terrible</h3>
+  <h3>HTTP/1.1: what was so broken that the industry replaced it?</h3>
   <p>HTTP/1.1 introduced <strong>persistent connections</strong> (keep-alive) — a TCP connection could be reused for multiple requests. Before this, HTTP/1.0 opened a new TCP connection for every single request. That was fine in 1996 when pages had 3 images. By 2005, with 50+ assets per page, it was catastrophic.</p>
   <p>But HTTP/1.1's fundamental flaw is <strong>head-of-line blocking</strong>. With pipelining (which barely anyone implements correctly), requests must be processed and responded to in order. If request #3 is a slow database query, requests #4, #5, and #6 are all blocked waiting for it, even if they could be served in milliseconds.</p>
   <p>The browser workaround? Open 6 parallel TCP connections per hostname. This is why domains like <code>img1.cdn.com</code>, <code>img2.cdn.com</code> existed — domain sharding to get more parallel connections. An ugly hack that became a best practice.</p>
 
-  <h3>HTTP/2: Multiplexing changes everything</h3>
+  <h3>HTTP/2: six connections become one</h3>
   <p>HTTP/2's core innovation is <strong>multiplexing over a single TCP connection</strong>. Instead of text-based messages, HTTP/2 uses a binary framing layer where requests and responses are broken into frames, each tagged with a stream ID. Multiple streams can be interleaved on a single connection.</p>
   <p>The implications:</p>
   <ul>
@@ -934,7 +934,7 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
   </ul>
   <p><strong>But HTTP/2 has a critical flaw</strong>: it solved HTTP-level head-of-line blocking, but TCP-level head-of-line blocking still exists. TCP is a reliable byte stream — if a single packet is lost anywhere in the stream, <em>all streams</em> on that connection are stalled until that packet is retransmitted. On lossy networks (mobile, WiFi), HTTP/2 can actually perform <em>worse</em> than HTTP/1.1 with multiple connections.</p>
 
-  <h3>HTTP/3: QUIC changes the transport layer</h3>
+  <h3>HTTP/3: what happens when TCP itself is the problem?</h3>
   <p>HTTP/3 runs on <strong>QUIC</strong>, a transport protocol built on UDP, developed by Google and standardised by the IETF. QUIC bakes TLS 1.3 directly into the connection setup, achieving 0-RTT connection establishment for returning clients. More importantly, QUIC implements per-stream reliability — a lost packet only stalls the specific stream it belongs to, not all streams.</p>
   <p>QUIC also handles connection migration: if you switch from WiFi to cellular, a QUIC connection can survive the IP address change (using connection IDs instead of 4-tuple IP+port identification). This is transformative for mobile apps.</p>
   <p>The catch: QUIC uses UDP, and many corporate firewalls and middleboxes block or throttle UDP. Browsers fall back to HTTP/2 automatically when this happens. For your backend APIs over UDP-permissive networks, HTTP/3 is genuinely faster, especially for mobile clients.</p>
@@ -1001,7 +1001,7 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
 <!-- ─── SECTION 4: TLS ─── -->
 <div class="section" id="s-tls">
   <div class="section-eyebrow">Section 04</div>
-  <h2>TLS: what actually happens in that handshake</h2>
+  <h2>What actually happens in those 100ms before data flows?</h2>
 
   <p>Most backend engineers treat TLS as a checkbox: "yes, I have HTTPS." But the TLS handshake is a complex cryptographic negotiation that has huge performance implications, several common misconfiguration failure modes, and a history of vulnerabilities that came from protocol-level decisions.</p>
 
@@ -1097,7 +1097,7 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
 <!-- ─── SECTION 5: KEEP-ALIVE ─── -->
 <div class="section" id="s-keepalive">
   <div class="section-eyebrow">Section 05</div>
-  <h2>Keep-Alive &amp; connection pooling: the single biggest quick win</h2>
+  <h2>Why does your first request cost 300ms but the second costs 20ms?</h2>
 
   <p>I cannot overstate how much latency you can eliminate by simply reusing HTTP connections. I've seen APIs go from 400ms average to 60ms average purely by enabling connection pooling in the HTTP client. No server changes. No database tuning. Just not throwing away connections after each request.</p>
 
@@ -1215,7 +1215,7 @@ curl -w <span class="str">"@timing.txt"</span> -o /dev/null -s https://api.examp
 <!-- ─── SECTION 6: HEADERS ─── -->
 <div class="section" id="s-headers">
   <div class="section-eyebrow">Section 06</div>
-  <h2>Headers that actually matter in production</h2>
+  <h2>Which headers are actually doing something in production?</h2>
   <p>There are hundreds of HTTP headers. Most of them you'll never think about. Here are the ones that directly affect reliability, performance, and security — and how they interact in ways most engineers don't realise.</p>
 
   <h3>Content-Type and the sneaky parsing bugs</h3>
@@ -1440,7 +1440,7 @@ app.<span class="fn">use</span>((req, res, next) => {
 <!-- ─── SECTION 8: TIMEOUTS ─── -->
 <div class="section" id="s-timeouts">
   <div class="section-eyebrow">Section 08</div>
-  <h2>Timeouts done right — the thing everyone gets wrong</h2>
+  <h2>How many timeouts does one HTTP request have? (More than you think.)</h2>
 
   <p>Here is the single most common backend bug I've seen in production systems: a service has a "30 second timeout" configured somewhere, and yet requests hang for 5 minutes before failing. This happens because most engineers set <em>one</em> timeout and think they're covered. You're not.</p>
 
