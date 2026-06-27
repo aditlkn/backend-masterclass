@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 26 Deep Dive: PostgreSQL Event Store, Projections, Upcasting</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day26" class="back-link">&#8592; Day 26: Event Sourcing & CQRS</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 26 · Event Sourcing & CQRS · Deep Dive</div>
+  <h1>PostgreSQL event store,<br>catch-up projections,<br><em>&amp; upcasting</em></h1>
+  <p>The full implementation stack: a production-grade event store schema on PostgreSQL with optimistic concurrency, a catch-up projection handler with checkpointing, and an upcaster for schema evolution.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>PostgreSQL event store:<br><em>schema and append with optimistic locking</em></h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">event-store.sql — schema and indexes</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Core events table</span>
+<span class="kw">CREATE TABLE</span> events (
+  global_position  BIGSERIAL     <span class="kw">PRIMARY KEY</span>,
+  aggregate_id     TEXT          <span class="kw">NOT NULL</span>,
+  aggregate_type   TEXT          <span class="kw">NOT NULL</span>,
+  version          INTEGER       <span class="kw">NOT NULL</span>,
+  event_type       TEXT          <span class="kw">NOT NULL</span>,
+  event_version    INTEGER       <span class="kw">NOT NULL DEFAULT</span> <span class="num">1</span>,  <span class="cm">-- for upcasting</span>
+  payload          JSONB         <span class="kw">NOT NULL</span>,
+  metadata         JSONB         <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  created_at       TIMESTAMPTZ   <span class="kw">NOT NULL DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- Optimistic concurrency: reject concurrent appends to same aggregate</span>
+<span class="kw">ALTER TABLE</span> events
+  <span class="kw">ADD CONSTRAINT</span> events_aggregate_version_unique
+  <span class="kw">UNIQUE</span> (aggregate_id, version);
+
+<span class="cm">-- Efficient aggregate loading</span>
+<span class="kw">CREATE INDEX</span> idx_events_aggregate
+  <span class="kw">ON</span> events (aggregate_id, version <span class="kw">ASC</span>);
+
+<span class="cm">-- Projection catch-up: load events from a global position</span>
+<span class="kw">CREATE INDEX</span> idx_events_global_position
+  <span class="kw">ON</span> events (global_position <span class="kw">ASC</span>);
+
+<span class="cm">-- Snapshots table</span>
+<span class="kw">CREATE TABLE</span> snapshots (
+  aggregate_id  TEXT         <span class="kw">PRIMARY KEY</span>,
+  version       INTEGER      <span class="kw">NOT NULL</span>,
+  state         JSONB        <span class="kw">NOT NULL</span>,
+  created_at    TIMESTAMPTZ  <span class="kw">NOT NULL DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- Projection checkpoints</span>
+<span class="kw">CREATE TABLE</span> projection_checkpoints (
+  name      TEXT    <span class="kw">PRIMARY KEY</span>,
+  position  BIGINT  <span class="kw">NOT NULL DEFAULT</span> <span class="num">0</span>
+);</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">event-store.ts — append with optimistic locking and load</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">export async function</span> <span class="fn">appendEvents</span>(
+  aggregateId:   <span class="kw">string</span>,
+  aggregateType: <span class="kw">string</span>,
+  events:        DomainEvent[],
+  expectedVersion: <span class="kw">number</span>   <span class="cm">// number of events already seen</span>
+): Promise&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">const</span> client = <span class="kw">await</span> pool.<span class="fn">connect</span>();
+  <span class="kw">try</span> {
+    <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'BEGIN'</span>);
+    <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < events.length; i++) {
+      <span class="kw">const</span> version = expectedVersion + i + <span class="num">1</span>;
+      <span class="kw">try</span> {
+        <span class="kw">await</span> client.<span class="fn">query</span>(
+          <span class="str">`INSERT INTO events
+           (aggregate_id, aggregate_type, version, event_type, payload, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6)`</span>,
+          [aggregateId, aggregateType, version,
+           events[i].type, events[i].payload, events[i].metadata ?? {}]
+        );
+      } <span class="kw">catch</span> (err: <span class="kw">any</span>) {
+        <span class="kw">if</span> (err.code === <span class="str">'23505'</span>) {  <span class="cm">// unique_violation</span>
+          <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'ROLLBACK'</span>);
+          <span class="kw">throw new</span> ConcurrencyError(<span class="str">`Concurrent write on ${aggregateId} v${version}`</span>);
+        }
+        <span class="kw">throw</span> err;
+      }
+    }
+    <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'COMMIT'</span>);
+  } <span class="kw">finally</span> {
+    client.<span class="fn">release</span>();
+  }
+}
+
+<span class="kw">export async function</span> <span class="fn">loadAggregate</span>&lt;T&gt;(
+  aggregateId: <span class="kw">string</span>,
+  apply:       (state: T, event: DomainEvent) => T,
+  initial:     T
+): Promise&lt;{ state: T; version: <span class="kw">number</span> }&gt; {
+  <span class="cm">// Try snapshot first</span>
+  <span class="kw">const</span> snap = <span class="kw">await</span> pool.<span class="fn">query</span>(
+    <span class="str">'SELECT version, state FROM snapshots WHERE aggregate_id = $1'</span>,
+    [aggregateId]
+  );
+  <span class="kw">const</span> fromVersion = snap.rows[<span class="num">0</span>]?.version ?? <span class="num">0</span>;
+  <span class="kw">const</span> baseState   = snap.rows[<span class="num">0</span>]?.state   ?? initial;
+
+  <span class="cm">// Load events after snapshot</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> pool.<span class="fn">query</span>(
+    <span class="str">`SELECT version, event_type, event_version, payload
+     FROM events
+     WHERE aggregate_id = $1 AND version > $2
+     ORDER BY version ASC`</span>,
+    [aggregateId, fromVersion]
+  );
+
+  <span class="kw">const</span> events = result.rows.<span class="fn">map</span>(row => <span class="fn">upcast</span>(row));
+  <span class="kw">const</span> state  = events.<span class="fn">reduce</span>(apply, baseState);
+  <span class="kw">const</span> version = result.rows.<span class="fn">at</span>(-<span class="num">1</span>)?.version ?? fromVersion;
+
+  <span class="kw">return</span> { state, version };
+}</pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Catch-up projection:<br><em>checkpoint, replay, live</em></h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">projection-runner.ts — catch-up then live subscription</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">export async function</span> <span class="fn">runProjection</span>(
+  name:    <span class="kw">string</span>,
+  handler: (event: DomainEvent) => Promise&lt;<span class="kw">void</span>&gt;,
+  batchSize = <span class="num">500</span>
+) {
+  <span class="kw">let</span> position = <span class="kw">await</span> <span class="fn">loadCheckpoint</span>(name);
+  logger.<span class="fn">info</span>({ name, position }, <span class="str">'projection.starting'</span>);
+
+  <span class="cm">// Phase 1: catch-up from checkpoint to current head</span>
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> events = <span class="kw">await</span> pool.<span class="fn">query</span>(
+      <span class="str">`SELECT global_position, aggregate_id, event_type, event_version, payload
+       FROM events
+       WHERE global_position > $1
+       ORDER BY global_position ASC
+       LIMIT $2`</span>,
+      [position, batchSize]
+    );
+    <span class="kw">if</span> (events.rows.length === <span class="num">0</span>) <span class="kw">break</span>;  <span class="cm">// caught up</span>
+
+    <span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> events.rows) {
+      <span class="kw">const</span> event = <span class="fn">upcast</span>(row);
+      <span class="kw">try</span> {
+        <span class="kw">await</span> <span class="fn">handler</span>(event);
+      } <span class="kw">catch</span> (err) {
+        logger.<span class="fn">error</span>({ err, event }, <span class="str">'projection.handler.failed'</span>);
+        <span class="kw">throw</span> err;  <span class="cm">// stop — do not advance checkpoint past failed event</span>
+      }
+      position = row.global_position;
+      <span class="kw">await</span> <span class="fn">saveCheckpoint</span>(name, position);
+    }
+    logger.<span class="fn">info</span>({ name, position }, <span class="str">'projection.catchup.progress'</span>);
+  }
+  logger.<span class="fn">info</span>({ name, position }, <span class="str">'projection.caught_up'</span>);
+
+  <span class="cm">// Phase 2: live — poll for new events</span>
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">100</span>);  <span class="cm">// or use LISTEN/NOTIFY for lower latency</span>
+    <span class="kw">const</span> events = <span class="kw">await</span> pool.<span class="fn">query</span>(
+      <span class="str">`SELECT global_position, aggregate_id, event_type, event_version, payload
+       FROM events WHERE global_position > $1
+       ORDER BY global_position ASC LIMIT $2`</span>,
+      [position, batchSize]
+    );
+    <span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> events.rows) {
+      <span class="kw">await</span> <span class="fn">handler</span>(<span class="fn">upcast</span>(row));
+      position = row.global_position;
+      <span class="kw">await</span> <span class="fn">saveCheckpoint</span>(name, position);
+    }
+  }
+}
+
+<span class="cm">// Upcaster — transform old event shapes to current shape on read</span>
+<span class="kw">const</span> upcasters: Record&lt;<span class="kw">string</span>, Record&lt;<span class="kw">number</span>, (p: <span class="kw">any</span>) => <span class="kw">any</span>&gt;&gt; = {
+  <span class="str">'BookingConfirmed'</span>: {
+    <span class="num">1</span>: (p) => ({ ...p, confirmedAt: p.timestamp ?? p.confirmedAt }),
+    <span class="cm">// v1 used 'timestamp', v2 uses 'confirmedAt' — normalise on read</span>
+  },
+};
+
+<span class="kw">function</span> <span class="fn">upcast</span>(row: <span class="kw">any</span>): DomainEvent {
+  <span class="kw">let</span> payload = row.payload;
+  <span class="kw">const</span> chain = upcasters[row.event_type];
+  <span class="kw">if</span> (chain) {
+    <span class="kw">for</span> (<span class="kw">let</span> v = row.event_version; v < CURRENT_VERSION; v++) {
+      <span class="kw">if</span> (chain[v]) payload = chain[v](payload);
+    }
+  }
+  <span class="kw">return</span> { type: row.event_type, payload, aggregateId: row.aggregate_id };
+}</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
