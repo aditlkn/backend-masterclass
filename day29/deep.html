@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 29 Deep Dive: SSRF Validator, SQL Injection Patterns, Zod Validation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:15px;color:var(--text2);line-height:1.8;margin-bottom:28px;}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.good{color:var(--green)}.bad{color:var(--red)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day29" class="back-link">&#8592; Day 29: Security — OWASP & SSRF</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 29 · Security: OWASP & SSRF · Deep Dive</div>
+  <h1>Complete SSRF validator,<br>Zod input validation,<br><em>&amp; security middleware</em></h1>
+  <p>Production-grade implementations: a full URL validator that blocks DNS rebinding, Zod schemas for every input class, and a complete security middleware stack.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>Complete SSRF URL validator<br><em>with DNS rebinding protection</em></h2>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">ssrf-validator.ts — production-grade URL validation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> dns     <span class="kw">from</span> <span class="str">'dns/promises'</span>;
+<span class="kw">import</span> ipaddr  <span class="kw">from</span> <span class="str">'ipaddr.js'</span>;
+
+<span class="kw">const</span> BLOCKED_RANGES = [
+  <span class="str">'loopback'</span>,        <span class="cm">// 127.0.0.0/8, ::1</span>
+  <span class="str">'private'</span>,         <span class="cm">// 10.x, 172.16-31.x, 192.168.x</span>
+  <span class="str">'linkLocal'</span>,       <span class="cm">// 169.254.0.0/16 (AWS metadata)</span>
+  <span class="str">'loopback'</span>,
+  <span class="str">'multicast'</span>,
+  <span class="str">'reserved'</span>,
+  <span class="str">'unspecified'</span>,
+];
+
+<span class="kw">export async function</span> <span class="fn">validateWebhookUrl</span>(
+  urlStr: <span class="kw">string</span>,
+  options: { allowedDomains?: <span class="kw">string</span>[] } = {}
+): Promise&lt;{ safe: <span class="kw">boolean</span>; reason?: <span class="kw">string</span> }&gt; {
+  <span class="cm">// 1. Parse URL</span>
+  <span class="kw">let</span> url: URL;
+  <span class="kw">try</span> {
+    url = <span class="kw">new</span> URL(urlStr);
+  } <span class="kw">catch</span> {
+    <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'invalid_url'</span> };
+  }
+
+  <span class="cm">// 2. Protocol check — HTTPS only</span>
+  <span class="kw">if</span> (url.protocol !== <span class="str">'https:'</span>) {
+    <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'https_required'</span> };
+  }
+
+  <span class="cm">// 3. Domain allowlist (if provided)</span>
+  <span class="kw">if</span> (options.allowedDomains?.length) {
+    <span class="kw">const</span> allowed = options.allowedDomains.<span class="fn">some</span>(
+      d => url.hostname === d || url.hostname.<span class="fn">endsWith</span>(<span class="str">'.'</span> + d)
+    );
+    <span class="kw">if</span> (!allowed) <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'domain_not_allowed'</span> };
+  }
+
+  <span class="cm">// 4. Resolve hostname to IPs (catches DNS rebinding)</span>
+  <span class="kw">let</span> addresses: { address: <span class="kw">string</span> }[];
+  <span class="kw">try</span> {
+    addresses = <span class="kw">await</span> dns.<span class="fn">lookup</span>(url.hostname, { all: <span class="kw">true</span> });
+  } <span class="kw">catch</span> {
+    <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'dns_resolution_failed'</span> };
+  }
+
+  <span class="kw">if</span> (!addresses.length) {
+    <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'no_addresses'</span> };
+  }
+
+  <span class="cm">// 5. Check every resolved IP against blocked ranges</span>
+  <span class="kw">for</span> (<span class="kw">const</span> { address } <span class="kw">of</span> addresses) {
+    <span class="kw">try</span> {
+      <span class="kw">const</span> ip = ipaddr.<span class="fn">parse</span>(address);
+      <span class="kw">const</span> range = ip.<span class="fn">range</span>();
+      <span class="kw">if</span> (BLOCKED_RANGES.<span class="fn">includes</span>(range)) {
+        <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">`blocked_ip_range:${range}`</span> };
+      }
+    } <span class="kw">catch</span> {
+      <span class="kw">return</span> { safe: <span class="kw">false</span>, reason: <span class="str">'ip_parse_failed'</span> };
+    }
+  }
+
+  <span class="kw">return</span> { safe: <span class="kw">true</span> };
+}
+
+<span class="cm">// Usage with timeout and no redirect following</span>
+<span class="kw">async function</span> <span class="fn">callWebhook</span>(url: <span class="kw">string</span>, payload: <span class="kw">object</span>) {
+  <span class="kw">const</span> { safe, reason } = <span class="kw">await</span> <span class="fn">validateWebhookUrl</span>(url);
+  <span class="kw">if</span> (!safe) <span class="kw">throw new</span> Error(<span class="str">`Webhook URL blocked: ${reason}`</span>);
+
+  <span class="kw">return</span> fetch(url, {
+    method: <span class="str">'POST'</span>,
+    headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+    body: JSON.<span class="fn">stringify</span>(payload),
+    signal: AbortSignal.<span class="fn">timeout</span>(<span class="num">5000</span>),
+    redirect: <span class="str">'error'</span>,   <span class="cm">// don't follow redirects (they may lead to private IPs)</span>
+  });
+}</pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Zod input validation:<br><em>schema-first request validation</em></h2>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">validation.ts — schemas for every input class</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
+
+<span class="cm">// UUID validation — prevents IDOR via guessable IDs</span>
+<span class="kw">const</span> UUIDSchema = z.<span class="fn">string</span>().<span class="fn">uuid</span>();
+
+<span class="cm">// Booking creation — strict schema, no unknown fields</span>
+<span class="kw">export const</span> CreateBookingSchema = z.<span class="fn">object</span>({
+  eventId:  z.<span class="fn">string</span>().<span class="fn">uuid</span>(),
+  seatId:   z.<span class="fn">string</span>().<span class="fn">uuid</span>(),
+  quantity: z.<span class="fn">number</span>().<span class="fn">int</span>().<span class="fn">min</span>(<span class="num">1</span>).<span class="fn">max</span>(<span class="num">10</span>),
+}).<span class="fn">strict</span>();   <span class="cm">// .strict() rejects unknown fields (prevents mass assignment)</span>
+
+<span class="cm">// Profile update — allowlist only</span>
+<span class="kw">export const</span> UpdateProfileSchema = z.<span class="fn">object</span>({
+  name:        z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">1</span>).<span class="fn">max</span>(<span class="num">100</span>).<span class="fn">optional</span>(),
+  phoneNumber: z.<span class="fn">string</span>().<span class="fn">regex</span>(<span class="str">/^\+\d{10,15}$/</span>).<span class="fn">optional</span>(),
+  <span class="cm">// role, isAdmin, planTier — NOT included (cannot be updated by user)</span>
+}).<span class="fn">strict</span>();
+
+<span class="cm">// Webhook registration — URL validated separately</span>
+<span class="kw">export const</span> WebhookSchema = z.<span class="fn">object</span>({
+  url:        z.<span class="fn">string</span>().<span class="fn">url</span>().<span class="fn">max</span>(<span class="num">2048</span>),
+  eventTypes: z.<span class="fn">array</span>(z.<span class="fn">enum</span>([<span class="str">'booking.confirmed'</span>, <span class="str">'booking.cancelled'</span>, <span class="str">'payment.failed'</span>]))
+               .<span class="fn">min</span>(<span class="num">1</span>),
+}).<span class="fn">strict</span>();
+
+<span class="cm">// Validation middleware</span>
+<span class="kw">function</span> <span class="fn">validate</span>&lt;T&gt;(schema: z.ZodSchema&lt;T&gt;) {
+  <span class="kw">return</span> (req: Request, res: Response, next: NextFunction) => {
+    <span class="kw">const</span> result = schema.<span class="fn">safeParse</span>(req.body);
+    <span class="kw">if</span> (!result.success) {
+      <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>({
+        error: <span class="str">'validation_failed'</span>,
+        details: result.error.<span class="fn">flatten</span>().fieldErrors,
+      });
+    }
+    req.body = result.data;  <span class="cm">// replace with validated + typed data</span>
+    <span class="fn">next</span>();
+  };
+}
+
+<span class="cm">// Routes with validation</span>
+app.<span class="fn">post</span>(<span class="str">'/bookings'</span>, authenticate, <span class="fn">validate</span>(CreateBookingSchema), createBooking);
+app.<span class="fn">put</span>(<span class="str">'/users/profile'</span>, authenticate, <span class="fn">validate</span>(UpdateProfileSchema), updateProfile);
+app.<span class="fn">post</span>(<span class="str">'/webhooks'</span>, authenticate, <span class="fn">validate</span>(WebhookSchema), registerWebhook);</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

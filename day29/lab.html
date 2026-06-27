@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 29 Lab: Webhook SSRF — AWS Credentials Exfiltrated</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:48px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--orange));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;margin:16px 0;}
+.choice-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin:24px 0;}
+.choice-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;}
+.choice-q{font-size:15px;color:var(--text);font-weight:500;margin-bottom:16px;line-height:1.5;}
+.choice-btn{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:12px 16px;border-radius:6px;cursor:pointer;font-size:14px;transition:all .12s;margin-bottom:8px;line-height:1.5;}
+.choice-btn:hover{border-color:var(--accent);color:var(--text);}
+.choice-result{background:var(--bg3);border-radius:6px;padding:14px 16px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.7;display:none;}
+.learned{background:var(--bg2);border:1px solid rgba(240,96,96,.2);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--red);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}.learned-text strong{color:var(--text);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day29" class="back-link">&#8592; Day 29: Security — OWASP & SSRF</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">SSRF · AWS Credentials · Active Exploitation</div>
+  <h2>A webhook URL field is being used to fetch AWS IAM credentials from the metadata service.</h2>
+  <div class="incident-meta">Security incident · booking-service · webhook endpoint · EC2 deployment</div>
+  <p>Your security team's anomaly detection fires at 03:00: unusual S3 API calls from an IAM role (<code>booking-service-ec2-role</code>) are reading files from the customer data bucket. The calls are coming from outside your normal EC2 fleet IPs.</p>
+  <p>Investigation shows that your booking service has a webhook registration feature: organisers can register a URL that gets called when a booking is confirmed. The endpoint accepts any URL, fetches it during a test call, and logs the response. An attacker has been registering <code>http://169.254.169.254/latest/meta-data/iam/security-credentials/booking-service-ec2-role</code> as their webhook URL. Your server fetches this, returns the credentials in the webhook test response — which goes back to the attacker. They now have IAM credentials with S3 read access.</p>
+</div>
+
+<h3>Step 1: Understand the vulnerable code</h3>
+<div class="mono-out">
+// Current webhook registration endpoint
+app.post('/webhooks/register', authenticate, async (req, res) => {
+  const { url, eventTypes } = req.body;
+
+  // Store the webhook
+  await db.createWebhook({ userId: req.user.id, url, eventTypes });
+
+  // Test call to confirm the endpoint is reachable
+  try {
+    const testResponse = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'webhook.test', timestamp: Date.now() }),
+    });
+    const body = await testResponse.text();
+    res.json({ registered: true, testStatus: testResponse.status, testBody: body });
+    //                                                    ^^^^^^^^
+    //                                                    returns the response body to caller
+    //                                                    = returns AWS credentials to attacker
+  } catch (err) {
+    res.json({ registered: true, testStatus: 'unreachable' });
+  }
+});
+
+// Attacker registers:
+// { url: "http://169.254.169.254/latest/meta-data/iam/security-credentials/booking-service-ec2-role" }
+// Server fetches the metadata URL, testBody contains:
+// { "AccessKeyId": "ASIA...", "SecretAccessKey": "...", "Token": "...", "Expiration": "..." }
+// Attacker reads testBody from the response. Done.
+</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Immediate containment</div>
+  <div class="choice-q">The IAM credentials are already in the attacker's hands. What is the most urgent first action?</div>
+  <button class="choice-btn" onclick="showC('q1','a')">(A) Patch the webhook endpoint to add URL validation, then redeploy.</button>
+  <button class="choice-btn" onclick="showC('q1','b')">(B) Rotate the IAM role credentials immediately — revoke the current session tokens. The attacker has valid credentials that last hours. Patching the vulnerability does not invalidate credentials already exfiltrated.</button>
+  <button class="choice-btn" onclick="showC('q1','c')">(C) Shut down the booking service to stop further exploitation.</button>
+  <div class="choice-result" id="q1-result"></div>
+</div>
+
+<h3>Step 2: Write the URL validator</h3>
+<div class="choice-panel">
+  <div class="choice-label">Fix</div>
+  <div class="choice-q">Which validation approach correctly prevents this SSRF?</div>
+  <button class="choice-btn" onclick="showC('q2','a')">(A) Check that the hostname does not contain "169.254" or "localhost" as a string.</button>
+  <button class="choice-btn" onclick="showC('q2','b')">(B) Resolve the hostname to its IP address, then check the resolved IP against a blocklist of private/link-local ranges. Also require HTTPS and optionally domain allowlist.</button>
+  <button class="choice-btn" onclick="showC('q2','c')">(C) Require the URL to start with https:// and not contain "internal" in the domain.</button>
+  <div class="choice-result" id="q2-result"></div>
+</div>
+
+<h3>Step 3: Fix the response handling</h3>
+<div class="choice-panel">
+  <div class="choice-label">Defence in depth</div>
+  <div class="choice-q">Even with URL validation in place, returning the full webhook test response body to the caller is risky. What should the fixed endpoint return?</div>
+  <button class="choice-btn" onclick="showC('q3','a')">(A) Return the full response body so organisers can debug their webhook endpoint.</button>
+  <button class="choice-btn" onclick="showC('q3','b')">(B) Return only the HTTP status code and a boolean indicating success. Never return the response body from an outbound request to user-supplied URLs — even with URL validation, defence in depth matters.</button>
+  <button class="choice-btn" onclick="showC('q3','c')">(C) Return the first 100 characters of the response body, truncated.</button>
+  <div class="choice-result" id="q3-result"></div>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Credential rotation is more urgent than vulnerability patching.</strong> Once credentials are exfiltrated, the attacker has them regardless of what you do to the application. Patch the vulnerability, but revoke the credentials first. In AWS: rotate the role's access keys, or if using instance metadata, the credentials expire within hours — but the attacker may have already used them or moved laterally.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>The response body is as dangerous as the request.</strong> SSRF works because your server makes the request and returns the result. A URL validator that blocks the fetch is necessary. But also: never return the body of a fetch to a user-supplied URL back to the user. The combination of fetch + return body is the complete exploit chain.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Least-privilege IAM is SSRF's best mitigation.</strong> If the <code>booking-service-ec2-role</code> had only the permissions it actually needed (write to a specific SQS queue, read from a specific S3 prefix), the exfiltrated credentials would have done the attacker much less good. The credential exposure was serious. The blast radius was determined entirely by the IAM role's permissions.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>IMDSv2 would have required an extra step — not prevented this.</strong> IMDSv2 requires a PUT request to get a session token before a GET can retrieve credentials. Some HTTP clients follow this flow, making SSRF against IMDSv2 still possible. Enable IMDSv2 on all EC2 instances, but do not treat it as a substitute for URL validation.</span></div>
+</div>
+
+</div>
+<script>
+var C = {
+  'q1-a': 'Wrong priority. The vulnerability is still being exploited while you patch and redeploy. But more critically: patching the application does nothing about credentials that are already in the attacker\'s possession. Those credentials work until they expire (typically within a few hours for instance metadata credentials, but potentially longer depending on the role). Rotate first. Patch second.',
+  'q1-b': 'Correct. The sequence:\n\n  1. IMMEDIATE: Rotate IAM credentials\n     In AWS: if using instance profile, note that you cannot directly\n     revoke instance profile credentials. Options:\n     a. Modify the IAM role to remove permissions (fastest - takes effect immediately)\n     b. Add an explicit Deny policy to the role\n     c. Rotate the role\'s underlying instance profile\n\n  2. SHORT-TERM: Disable the webhook registration endpoint or add\n     an emergency blocklist (at minimum, block 169.254.169.254)\n\n  3. AUDIT: Check CloudTrail for all API calls made with the exfiltrated\n     credentials during the exposure window\n\n  4. PATCH: Implement proper URL validation and redeploy\n\n  5. POST-INCIDENT: Review all other endpoints that make outbound requests',
+  'q1-c': 'Disproportionate. The webhook registration endpoint is the attack vector, not the entire service. Booking confirmations are still working normally. Disabling the entire service stops bookings for all users to prevent an attacker from registering additional webhook URLs -- but the primary concern is the already-exfiltrated credentials, which requires credential rotation, not service shutdown.',
+
+  'q2-a': 'Insufficient. An attacker can bypass string matching with:\n  - IP address directly: http://169.254.169.254/ (no hostname to check)\n  - Hex encoding: http://0xa9fea9fe/ (same IP, different notation)\n  - Decimal encoding: http://2852039166/ (same IP as integer)\n  - DNS rebinding: hostname starts as public IP, resolves to private after validation\n  String matching against hostnames is always bypassable. Only IP-level checks are reliable.',
+  'q2-b': 'Correct. The complete validator:\n\n  import dns from \'dns/promises\';\n  import ipaddr from \'ipaddr.js\';\n\n  async function isWebhookUrlSafe(urlStr) {\n    let url;\n    try { url = new URL(urlStr); } catch { return false; }\n\n    // Require HTTPS only\n    if (url.protocol !== \'https:\') return false;\n\n    // Resolve hostname to IPs\n    const addresses = await dns.lookup(url.hostname, { all: true });\n    for (const { address } of addresses) {\n      const ip = ipaddr.parse(address);\n      // Block: private, loopback, link-local, multicast, reserved\n      if (ip.range() !== \'unicast\') return false;\n    }\n\n    // Optional: domain allowlist for webhook URLs\n    // Most legitimate webhooks go to known hosting providers\n    return true;\n  }\n\nAlso: disable redirect following, or re-validate after each redirect.',
+  'q2-c': 'Insufficient. "https://" prefix check: bypassed by https://169.254.169.254/. "internal" string check: bypassed by any hostname that does not contain the word "internal". String-based checks against URLs are always bypassable with alternative representations. The only safe approach is resolving to IP and checking the IP.',
+
+  'q3-a': 'This is the specific design decision that made SSRF exploitable in the first place. Returning the response body from a user-supplied URL converts SSRF from "attacker can trigger a request" to "attacker can read internal data." Even with URL validation, returning full response bodies is unnecessary for the stated goal (confirming the webhook is reachable) and creates a data exfiltration channel if validation is ever bypassed.',
+  'q3-b': 'Correct. The fixed response:\n\n  // After URL validation passes:\n  try {\n    const testResponse = await fetch(url, {\n      method: \'POST\',\n      headers: { \'Content-Type\': \'application/json\' },\n      body: JSON.stringify({ type: \'webhook.test\' }),\n      signal: AbortSignal.timeout(5000),  // 5 second timeout\n    });\n    res.json({\n      registered: true,\n      testStatus: testResponse.status,\n      testSuccess: testResponse.ok,\n      // testBody: REMOVED -- never return body of user-supplied URL fetch\n    });\n  } catch (err) {\n    res.json({ registered: true, testStatus: \'unreachable\', testSuccess: false });\n  }\n\nDefence in depth: even if URL validation has a gap, the attacker cannot\nread the response body -- they can only confirm their server got a request.',
+  'q3-c': 'Still dangerous. The AWS metadata credential response is ~400 characters. The first 100 characters include the AccessKeyId and the beginning of the SecretAccessKey. Truncation does not prevent exfiltration of the most sensitive parts. Do not return any portion of the response body.',
+};
+function showC(q,opt){
+  var el=document.getElementById(q+'-result');
+  el.textContent=C[q+'-'+opt]||'';
+  el.style.display='block';
+}
+</script>
+</body>
+</html>
