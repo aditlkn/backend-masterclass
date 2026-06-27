@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 28: CI/CD & Deployment Strategies — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 28 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Theatre Production</a>
+  <a href="#s-pipeline">The CI Pipeline</a>
+  <a href="#s-strategies">Deployment Strategies</a>
+  <a href="#s-flags">Feature Flags</a>
+  <a href="#s-gitops">GitOps</a>
+  <a href="#s-rollback">Rollback</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day28/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day28/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 4 · Day 28 · CI/CD & Deployment Strategies</div>
+  <h1>You do not ship code.<br>You ship confidence<br><em>that code works.</em></h1>
+  <p class="hero-sub">A deployment pipeline is not about automation. It is about moving risk left — catching failures in CI before they reach staging, in staging before they reach production, in canary before they reach all users. The goal is not to deploy faster. It is to deploy safely at whatever speed your pipeline allows.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~55 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>7 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>CI · Canary · Blue-green · Feature flags · GitOps</div>
+  </div>
+</div>
+
+<!-- S1: ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The theatre production — rehearsal before the show</h2>
+
+  <p><strong>You do not open a play on the first day of rehearsal.</strong> The script goes through readings, blocking sessions, costume fittings, technical rehearsals, dress rehearsals. Each stage exists to catch a different category of problem: does the script make sense? do the actors know their lines? does the lighting work with the costumes? does the whole thing run at the right pace? By opening night, you have found and fixed every problem you could possibly find before an audience sees it.</p>
+
+  <p>That is a CI pipeline. Every time code is pushed, the pipeline runs the equivalent of a dress rehearsal: compile, test, lint, security scan, build the container image. Problems found here cost a developer 10 minutes. Problems that reach production cost an on-call engineer 3am and cost users their trust.</p>
+
+  <p><strong>Even so, you do not open to a full house on opening night.</strong> A new production starts with a soft opening — a preview for a smaller invited audience. You watch the reactions, listen for problems, make adjustments. Only when the preview goes well do you open to the full house. This is canary deployment: route 5% of traffic to the new version, watch the error rates and latency, promote to 100% if healthy, rollback in 30 seconds if not.</p>
+
+  <p><strong>The understudy allows a scene to be swapped mid-performance.</strong> If a principal actor is sick, the understudy steps in without stopping the show. The audience barely notices. Feature flags are the understudy system for software: a feature can be enabled or disabled at runtime, per user segment, without a deploy. A bad feature can be turned off in seconds. An experiment can be limited to 10% of users. A migration can be done gradually with a flag controlling which path is taken.</p>
+
+  <p><strong>GitOps is the stage manager with the authoritative script.</strong> The stage manager has the master copy of every cue, every blocking note, every prop placement. If anything on stage does not match the script, the stage manager corrects it. GitOps does the same: Git is the single source of truth for what should be running. If the cluster state diverges from what Git says — a pod was manually scaled, a config was edited in place — the GitOps controller corrects it automatically.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">&#127914;</div>
+    <div class="callout-inner">
+      <strong>Where the theatre analogy breaks</strong>
+      <p>A play is the same every night — the goal is repeatability. Software deployments aim for repeatability too, but the production environment changes constantly: traffic patterns shift, dependencies update, data grows. A production that worked fine in rehearsal can fail in ways that could never have been anticipated. This is why observability (Day 19, 20) matters as much as the pipeline — you need to see what is happening after the show opens, not just confirm it passed the dress rehearsal.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Theatre -> CI/CD mapping -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Theatre production -> CI/CD — click each concept</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showTheatre('rehearsal')">Dress rehearsal -> CI pipeline</button>
+      <button class="viz-btn" onclick="showTheatre('preview')">Soft opening -> Canary deploy</button>
+      <button class="viz-btn" onclick="showTheatre('understudy')">Understudy -> Feature flag</button>
+      <button class="viz-btn" onclick="showTheatre('stagemanager')">Stage manager -> GitOps</button>
+      <button class="viz-btn" onclick="showTheatre('twotheaters')">Two theatres -> Blue-green</button>
+    </div>
+    <div id="theatre-output" class="mono-out" style="min-height:180px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S2: CI PIPELINE -->
+<div class="section" id="s-pipeline">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>What should every CI pipeline actually do?</h2>
+
+  <p>A CI pipeline is not just "run the tests." It is a sequential gate process where each gate catches a different category of failure. Gates run fast-first: the 10-second lint check runs before the 5-minute integration test suite. The first failure stops the pipeline — no point running expensive tests after the build fails.</p>
+
+  <h3>The four gates, in order</h3>
+  <p><strong>Gate 1 — Static analysis (seconds):</strong> Linting, type checking, dependency vulnerability scan. No runtime, no containers. Catches syntax errors, type mismatches, known vulnerable packages. Every engineer should run this locally before pushing.</p>
+  <p><strong>Gate 2 — Unit tests (30 seconds to 2 minutes):</strong> Pure functions, mocked dependencies. Fast. Catches logic errors in isolation. The fastest feedback loop in the pipeline.</p>
+  <p><strong>Gate 3 — Integration tests (2-10 minutes):</strong> Real database, real cache, real message queue — but not real downstream services. Catches interface mismatches, migration issues, connection configuration problems. Spin up dependencies with Docker Compose or testcontainers.</p>
+  <p><strong>Gate 4 — Build and push (1-5 minutes):</strong> Build the container image, push to the registry, run a final smoke test against the built image. The output of this gate is the artifact that gets deployed — the same image, without rebuilding, across all environments.</p>
+
+  <div class="callout prod">
+    <div class="callout-icon">&#9989;</div>
+    <div class="callout-inner">
+      <strong>Build once, deploy everywhere</strong>
+      <p>The container image built in CI is the exact same image deployed to staging, then production. No rebuilding. No "works in staging but not production" caused by environment-specific build behaviour. Configuration differences between environments come from ConfigMaps and Secrets — not from different build processes. If you are building the image differently per environment, you are testing something you are not deploying.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">.github/workflows/ci.yml — GitHub Actions pipeline</span><span class="code-block-lang">YAML</span></div>
+    <pre>name: CI
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+    <span class="cm"># Gate 1: Static analysis</span>
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with: { node-version: '20' }
+    - run: npm ci
+    - run: npm run lint
+    - run: npm run typecheck
+    - uses: snyk/actions/node@master  <span class="cm"># dependency vulnerability scan</span>
+      env: { SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} }
+
+    <span class="cm"># Gate 2: Unit tests</span>
+    - run: npm run test:unit -- --coverage
+    - uses: actions/upload-artifact@v4
+      with: { name: coverage, path: coverage/ }
+
+    <span class="cm"># Gate 3: Integration tests</span>
+    - name: Start test dependencies
+      run: docker compose -f docker-compose.test.yml up -d
+    - run: npm run test:integration
+    - run: docker compose -f docker-compose.test.yml down
+
+    <span class="cm"># Gate 4: Build and push</span>
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/build-push-action@v5
+      with:
+        push: ${{ github.ref == 'refs/heads/main' }}
+        tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max</pre>
+  </div>
+</div>
+
+<!-- VIZ 2: Pipeline stages -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">CI pipeline stages — what each gate catches</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showPipeline('lint')">Static analysis</button>
+      <button class="viz-btn" onclick="showPipeline('unit')">Unit tests</button>
+      <button class="viz-btn" onclick="showPipeline('integration')">Integration tests</button>
+      <button class="viz-btn" onclick="showPipeline('build')">Build & push</button>
+      <button class="viz-btn" onclick="showPipeline('slow_tests')">Slow pipeline problem</button>
+    </div>
+    <div id="pipeline-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S3: DEPLOYMENT STRATEGIES -->
+<div class="section" id="s-strategies">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Which deployment strategy fits which risk profile?</h2>
+
+  <p>Every deployment strategy is a trade-off between deployment risk and deployment cost. The higher the risk of the change, the more expensive the strategy you can justify. A one-line bug fix does not warrant a full blue-green deployment. A payment processing rewrite does.</p>
+
+  <h3>Rolling deployment — the sensible default</h3>
+  <p>Replace pods one at a time, waiting for each new pod to pass its readiness probe before removing the old one. Simple, requires no extra infrastructure, works with Kubernetes out of the box (Day 27's <code>maxUnavailable: 0</code>). The limitation: if the new version has a bug, some users saw it before you rolled back. Rollback means another rolling deploy of the old version — not instant.</p>
+
+  <h3>Blue-green — instant switch, instant rollback</h3>
+  <p>Run two identical production environments: blue (current) and green (new). Deploy to green while blue serves all traffic. Run smoke tests against green. Switch the load balancer from blue to green in seconds. If something is wrong, switch back in seconds. Blue stays live for the rollback window. Cost: you are running two full production environments simultaneously during the switch — roughly 2x infrastructure cost for the deployment window.</p>
+
+  <h3>Canary — gradual exposure with automatic rollback</h3>
+  <p>Route a small percentage of traffic (5%, 10%) to the new version while the majority stays on the old version. Watch error rates, latency, and business metrics. Promote if healthy, rollback if not. The canary catches real-world failures that tests miss — edge cases in production data, unexpected traffic patterns, third-party integrations that behave differently under real load. Requires a traffic splitting mechanism (Istio, nginx ingress weight annotations, or an API gateway).</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Strategy</th><th>Rollback speed</th><th>Cost</th><th>Blast radius</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td>Rolling</td><td>Minutes (re-deploy)</td><td>Low</td><td>Partial (some users)</td><td>Low-risk changes, stateless services</td></tr>
+        <tr><td>Blue-green</td><td>Seconds (flip LB)</td><td>2x infra during deploy</td><td>Zero (until switch)</td><td>High-risk changes, database migrations</td></tr>
+        <tr><td>Canary</td><td>Seconds (remove canary)</td><td>Low (5% extra)</td><td>5% of users</td><td>User-facing changes, A/B experiments</td></tr>
+        <tr><td>Shadow</td><td>N/A (no user impact)</td><td>2x compute</td><td>Zero</td><td>Validating new logic without user impact</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIZ 3: Strategy comparison -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Deployment strategies — step-by-step walkthrough</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showStrategy('rolling')">Rolling deploy</button>
+      <button class="viz-btn" onclick="showStrategy('bluegreen')">Blue-green</button>
+      <button class="viz-btn" onclick="showStrategy('canary')">Canary</button>
+      <button class="viz-btn" onclick="showStrategy('canary_rollback')">Canary rollback</button>
+      <button class="viz-btn" onclick="showStrategy('shadow')">Shadow traffic</button>
+    </div>
+    <div id="strategy-output" class="mono-out" style="font-size:12px;min-height:220px"></div>
+  </div>
+</div>
+
+
+<!-- S4: FEATURE FLAGS -->
+<div class="section" id="s-flags">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Feature flags — decoupling deploy from release</h2>
+
+  <p>A feature flag is a conditional in code that controls whether a feature is active. <code>if (flags.isEnabled('new-checkout-flow', userId)) { ... }</code>. The code is deployed to production but the feature is off. You turn it on for 1% of users, watch the metrics, increase to 10%, then 100%. If something breaks, you turn it off in the dashboard — no deploy, no rollback, no 3am incident.</p>
+
+  <p>Feature flags decouple two things that should have always been separate: <strong>deploying code</strong> (putting it on the server) and <strong>releasing a feature</strong> (making it available to users). Trunk-based development becomes practical — everyone commits to main, long-lived branches disappear, merge conflicts shrink. Code that is not ready for users is behind a flag, not in a branch.</p>
+
+  <h3>The four types of feature flags</h3>
+  <p><strong>Release flags:</strong> Enable a new feature gradually. Turn on for internal users first, then 1%, 10%, 100%. Clean up (remove the flag and the old code path) once fully released. These are temporary by design.</p>
+  <p><strong>Experiment flags:</strong> A/B test. 50% of users see version A, 50% see version B. Measure conversion, engagement, error rate. The winner becomes the default. The loser is removed. Requires analytics integration to know which variant the user saw.</p>
+  <p><strong>Operational flags:</strong> Kill switches. If a feature is causing problems, turn it off. If a dependency is down, switch to a fallback. These may live permanently in the codebase as circuit breakers for specific features.</p>
+  <p><strong>Permission flags:</strong> Entitlements. Premium users see this feature. Beta users get early access. Admin users see the debug panel. These are usually based on user attributes, not percentages.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">&#9888;&#65039;</div>
+    <div class="callout-inner">
+      <strong>Flag debt is real and it accumulates fast</strong>
+      <p>Every feature flag is a branch in your code. Ten flags means 2^10 = 1,024 possible combinations of active/inactive — most of which you will never test. Flags that are never cleaned up accumulate as dead code paths that maintain engineers must understand but never remove. Set a cleanup date when you create a flag. Release flags should be removed within 2-4 weeks of full release. Treat flag debt the same as technical debt.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Feature flag implementation — server-side evaluation</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">import</span> { OpenFeature } <span class="kw">from</span> <span class="str">'@openfeature/server-sdk'</span>;
+
+<span class="cm">// Initialise once at startup</span>
+OpenFeature.<span class="fn">setProvider</span>(<span class="kw">new</span> LaunchDarklyProvider(process.env.LD_SDK_KEY));
+<span class="kw">const</span> client = OpenFeature.<span class="fn">getClient</span>();
+
+<span class="cm">// In your route handler</span>
+app.<span class="fn">post</span>(<span class="str">'/checkout'</span>, authenticate, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> useNewFlow = <span class="kw">await</span> client.<span class="fn">getBooleanValue</span>(
+    <span class="str">'new-checkout-flow'</span>,
+    <span class="kw">false</span>,                       <span class="cm">// default: off</span>
+    { targetingKey: req.user.id } <span class="cm">// evaluate per user</span>
+  );
+
+  <span class="kw">if</span> (useNewFlow) {
+    <span class="kw">return</span> <span class="fn">newCheckoutHandler</span>(req, res);
+  }
+  <span class="kw">return</span> <span class="fn">legacyCheckoutHandler</span>(req, res);
+});
+
+<span class="cm">// OpenFeature is the standard SDK interface.</span>
+<span class="cm">// Swap providers without changing application code:</span>
+<span class="cm">// LaunchDarkly, Unleash, Flagsmith, GrowthBook, or your own.</span>
+
+<span class="cm">// Targeting rule (configured in the flag management UI, not code):</span>
+<span class="cm">// rule 1: userId in ['internal_users_group'] -> true</span>
+<span class="cm">// rule 2: percentage rollout: 5% -> true</span>
+<span class="cm">// default: false</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 4: Feature flag scenarios -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Feature flag patterns — when and how to use each</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showFlag('release')">Release flag rollout</button>
+      <button class="viz-btn" onclick="showFlag('experiment')">A/B experiment</button>
+      <button class="viz-btn" onclick="showFlag('killswitch')">Kill switch</button>
+      <button class="viz-btn" onclick="showFlag('cleanup')">Flag cleanup</button>
+    </div>
+    <div id="flag-output" class="mono-out" style="font-size:12px;min-height:200px"></div>
+  </div>
+</div>
+
+<!-- S5: GITOPS -->
+<div class="section" id="s-gitops">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>GitOps — Git as the source of truth for cluster state</h2>
+
+  <p>GitOps is the practice of using Git as the single source of truth for infrastructure and application configuration. The cluster state is defined in YAML files in a Git repository. A GitOps controller (Argo CD, Flux) watches the repository and ensures the cluster matches what Git says. If someone manually edits a deployment in the cluster, the controller detects the drift and corrects it back to the Git state.</p>
+
+  <h3>Why this matters</h3>
+  <p>Without GitOps, the true state of production is "what someone last deployed with kubectl" — and that state lives in someone's terminal history. With GitOps, the true state of production is "the current HEAD of the production branch in the infrastructure repo" — and that state is audited, reviewed, and reversible with <code>git revert</code>.</p>
+
+  <h3>The GitOps workflow</h3>
+  <ol>
+    <li>CI builds and pushes a new container image (<code>booking-service:abc1234</code>)</li>
+    <li>CI opens a PR updating the image tag in the Kubernetes manifests repo</li>
+    <li>A human reviews and merges the PR (or automation does it for lower environments)</li>
+    <li>Argo CD detects the manifest change and syncs the cluster to the new state</li>
+    <li>Argo CD reports success or failure back to the PR/commit</li>
+  </ol>
+
+  <h3>Pull vs push deployment</h3>
+  <p>Traditional CD pushes changes to the cluster: the pipeline runs <code>kubectl apply</code>. GitOps uses pull: the cluster controller pulls changes from Git. Pull is more secure — the cluster does not need to give CI/CD credentials access to <code>kubectl apply</code>. The controller in the cluster pulls from Git and applies changes itself, with tightly scoped RBAC for exactly what it can modify.</p>
+</div>
+
+<!-- VIZ 5: GitOps flow -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">GitOps vs traditional CD — the deployment flow</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showGitops('traditional')">Traditional push CD</button>
+      <button class="viz-btn" onclick="showGitops('gitops')">GitOps pull CD</button>
+      <button class="viz-btn" onclick="showGitops('drift')">Drift detection & correction</button>
+      <button class="viz-btn" onclick="showGitops('rollback')">GitOps rollback</button>
+    </div>
+    <div id="gitops-output" class="mono-out" style="font-size:12px;min-height:220px"></div>
+  </div>
+</div>
+
+<!-- S6: ROLLBACK -->
+<div class="section" id="s-rollback">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Rollback — making it fast enough to actually use</h2>
+
+  <p>Rollback is only useful if it is fast enough to be the first response to a production incident, not a last resort. If rollback takes 15 minutes, you will spend those 15 minutes debugging instead, making things worse. If rollback takes 30 seconds, it is the first thing you do — stop the bleeding, then investigate.</p>
+
+  <h3>What determines rollback speed?</h3>
+  <p><strong>Strategy matters:</strong> Blue-green rollback is a load balancer switch — 30 seconds. Rolling deploy rollback is a rolling update of the old image — 5-10 minutes. Canary rollback is removing the canary route — seconds. Choose your deployment strategy based partly on how fast you need to be able to roll back.</p>
+  <p><strong>The image must already exist:</strong> Rollback requires the old image to be in the registry. Keep at least 5 previous image versions. Container registries support image retention policies — configure them before you need a rollback.</p>
+  <p><strong>Database migrations complicate rollback:</strong> If a deploy includes a database migration, rolling back the application without rolling back the migration may leave the old application incompatible with the new schema. Always write forward-compatible migrations: additive only, never remove or rename columns until all application versions that depended on them are gone.</p>
+
+  <div class="callout danger">
+    <div class="callout-icon">&#128308;</div>
+    <div class="callout-inner">
+      <strong>Untested rollback is not rollback</strong>
+      <p>Rollback procedures that have never been exercised will fail at the worst possible moment. Test your rollback in staging monthly. Treat a failed rollback test as a P1 incident. The rollback procedure is part of the deployment — if you cannot roll back, you have not finished deploying safely.</p>
+    </div>
+  </div>
+</div>
+
+<!-- S7: PROD -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Production reality</h2>
+
+  <h3>DORA metrics — measuring pipeline health</h3>
+  <p>The DORA (DevOps Research and Assessment) four metrics measure delivery performance: <strong>Deployment frequency</strong> (how often you deploy to production — elite teams deploy multiple times per day), <strong>Lead time for changes</strong> (how long from commit to production — elite: less than 1 hour), <strong>Change failure rate</strong> (what percentage of deployments cause production incidents — elite: below 5%), <strong>Mean time to restore</strong> (how long to recover from incidents — elite: less than 1 hour). These four metrics are the closest thing to an objective measure of engineering delivery performance.</p>
+
+  <h3>Trunk-based development enables the pipeline</h3>
+  <p>Long-lived feature branches make CI meaningless — you are testing code that will not ship for weeks, not code in the state it will be deployed. Trunk-based development (everyone commits to main, no branches longer than a day or two) means CI is always running against the actual next deployment candidate. Feature flags handle incomplete features. The pipeline gates handle quality.</p>
+
+  <h3>Environment parity — staging must mirror production</h3>
+  <p>If staging uses a different database version, different infrastructure size, or different configuration than production, bugs will appear in production that did not appear in staging. Close the gap: same Kubernetes version, same database version, same secrets management approach. The difference should only be scale (3 replicas in production vs 1 in staging) and data (anonymised production data in staging, not synthetic data).</p>
+</div>
+
+<!-- S8: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>The pipeline is only as useful as the tests in it</h3>
+  <p>A pipeline with 5,000 tests that take 45 minutes to run will be bypassed. Engineers will push to production directly to avoid waiting. A pipeline with 200 meaningful tests that run in 3 minutes will be trusted and used. Invest in making the pipeline fast — parallel test execution, test caching, testcontainers instead of full environment spin-up. Speed is not just a convenience; it determines whether the pipeline is actually used.</p>
+
+  <h3>Canary requires metrics before it works</h3>
+  <p>Canary deployment without observability is theatre. You route 5% of traffic to the new version — and then what? If you do not have error rate and latency metrics broken out by deployment version, you cannot tell whether the canary is healthy. Implement version-tagged metrics before implementing canary deployment. The deployment strategy and the observability strategy are inseparable.</p>
+
+  <h3>Feature flags in tests are a maintenance problem</h3>
+  <p>When your code has feature flags, your tests need to cover both paths — flag on and flag off. As flags accumulate, test complexity grows quadratically. Tests that rely on specific flag states break silently when flags are cleaned up. Use a feature flag testing strategy: explicitly set flag state in tests, do not rely on default values, and remove flag-specific tests when the flag is cleaned up.</p>
+
+  <h3>Deploy frequency is a lagging indicator</h3>
+  <p>Teams celebrate "we deploy 10 times a day" as if frequency is the goal. It is not — it is a result of having a safe, fast pipeline and small, independent changes. Teams that focus directly on increasing deploy frequency often achieve it by deploying more change per deploy, which increases risk. Focus on the enabling conditions: fast CI, good test coverage, feature flags, canary deployment, fast rollback. Deploy frequency follows.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="section" id="s-sequence" style="margin-top:64px">
+  <div class="section-eyebrow">Decision sequence</div>
+  <h2>Building a deployment pipeline</h2>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text3);margin-bottom:24px">In order. Do not skip to step 4 before steps 1-3 are solid.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Fast, reliable unit and integration tests first</div>
+        <div class="ds-detail">Everything else depends on having tests that actually catch problems. A pipeline without meaningful tests is just a slow deployment script. Target: unit tests under 2 minutes, integration tests under 8 minutes, total pipeline under 15 minutes. If it is slower, engineers will bypass it.
+          <br><span class="ds-tag ds-tag-stop">slow or flaky tests = pipeline is bypassed</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Build once, tag with git SHA, deploy everywhere</div>
+        <div class="ds-detail">The container image built from a specific commit is the artifact. It gets the git SHA as its tag. The same image is promoted from staging to production — never rebuilt. Configuration changes (environment variables, secrets) come from the cluster, not the image. This ensures what you tested is what you deployed.
+          <br><span class="ds-tag ds-tag-ok">same image across all environments = no build-time surprises</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Make rollback a first-class operation</div>
+        <div class="ds-detail">Document the rollback procedure before the first production deploy. Practice it in staging. Measure how long it takes. If it takes more than 5 minutes, redesign the deployment strategy. Keep the previous 5 image versions in the registry. Write database migrations that are backward-compatible so the old application can run against the new schema.
+          <br><span class="ds-tag ds-tag-stop">untested rollback = no rollback at 3am</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Add canary deployment for high-risk changes</div>
+        <div class="ds-detail">Not every change needs a canary. A one-line bug fix in a well-tested function does not. A new payment processing flow does. Define what "high risk" means for your system — schema migrations, new external integrations, changes to core business logic — and require canary deployment for those. For everything else, rolling deploy is sufficient.
+          <br><span class="ds-tag ds-tag-info">canary for high-risk, rolling for everything else</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Add feature flags for user-facing feature releases</div>
+        <div class="ds-detail">Start with a simple in-house flag system if needed (database table with flag name and enabled percentage). Migrate to a managed service (LaunchDarkly, Unleash, GrowthBook) when you need targeting rules, analytics, and multiple environments. Set a cleanup date when you create each flag. Remove it within 30 days of full release.
+          <br><span class="ds-tag ds-tag-warn">no cleanup date = permanent technical debt</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">GitOps when you have multiple environments and teams</div>
+        <div class="ds-detail">GitOps pays dividends at scale — multiple environments, multiple teams, auditability requirements. For a single-team startup with one environment, the operational overhead of Argo CD is not justified. Add GitOps when you have the problem it solves: drift between what is deployed and what should be deployed, unclear deployment history, manual kubectl changes that do not match any PR.
+          <br><span class="ds-tag ds-tag-info">GitOps when drift becomes a problem, not before</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">A canary deploy is causing errors. The engineer disabled the wrong flag.</div>
+    <div style="font-size:13px;color:var(--text2)">Canary diagnosis · rollback decision · feature flag kill switch</div>
+  </div>
+  <a href="/day28/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">GitHub Actions pipeline, Argo CD config, canary with nginx ingress</div>
+    <div style="font-size:13px;color:var(--text2)">Full GitHub Actions workflow · Argo CD Application · nginx canary annotations</div>
+  </div>
+  <a href="/day28/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>CI/CD production checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">CI</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Pipeline &lt;15 min</div><p style="font-size:12.5px;color:var(--text3);margin:0">All four gates passing. Total runtime under 15 minutes. No flaky tests. Pipeline blocks merge on failure.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">IMG</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Build once</div><p style="font-size:12.5px;color:var(--text3);margin:0">Tagged with git SHA. Same image promoted staging to production. 5+ versions retained in registry.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">RBK</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Rollback &lt;5 min</div><p style="font-size:12.5px;color:var(--text3);margin:0">Procedure documented. Tested monthly in staging. Measured. Forward-compatible DB migrations.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">CAN</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Canary automated</div><p style="font-size:12.5px;color:var(--text3);margin:0">High-risk changes through canary. Error rate and latency metrics by version. Auto-rollback configured.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">FLG</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Flag hygiene</div><p style="font-size:12.5px;color:var(--text3);margin:0">Every flag has a cleanup date. Release flags removed within 30 days of full release. Flag count monitored.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">ENV</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Env parity</div><p style="font-size:12.5px;color:var(--text3);margin:0">Staging mirrors production infrastructure. Same K8s version, DB version, config approach. Scale differs, not structure.</p></div>
+  </div>
+</div>
+
+<!-- CLOSING HOOK -->
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    You do not open a play without a dress rehearsal. You do not open to a full house without a preview. You keep the understudy ready. The stage manager has the authoritative script. Every part of this process exists to move the risk of failure to a moment when it costs less — before users see it, before the on-call engineer wakes up, before the bad review lands.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:56px">
+    The next time a deploy goes wrong — ask: <em style="color:var(--orange)">which rehearsal would have caught this?</em>
+  </p>
+</div>
+<div style="height:40px"></div>
+</article>
+</div>
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){if(s.id&&s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1
+var THEATRE = {
+  rehearsal: "DRESS REHEARSAL  ->  CI PIPELINE\n\nTheatre:\n  Script reading: does the story make sense? (logic check)\n  Blocking rehearsal: do the actors know where to stand? (structure)\n  Costume fitting: does everything fit together? (integration)\n  Technical rehearsal: do the lights, sound, set work? (infrastructure)\n  Dress rehearsal: does the whole thing run end-to-end? (E2E test)\n  Each stage finds different categories of problem.\n  Problem found in script reading: fix in 10 minutes.\n  Problem found on opening night: lose the audience.\n\nCI pipeline:\n  Gate 1 (lint/typecheck): does the code make sense? (~30 seconds)\n  Gate 2 (unit tests): does each piece work in isolation? (~2 minutes)\n  Gate 3 (integration tests): do the pieces work together? (~8 minutes)\n  Gate 4 (build and push): does the whole thing build and run? (~5 minutes)\n  Problem found in Gate 1: fix in 10 minutes.\n  Problem found in production: 3am page, user impact, postmortem.\n\nKey principle: move risk left.\n  The earlier in the pipeline you catch a problem, the cheaper it is.",
+
+  preview: "SOFT OPENING (PREVIEW)  ->  CANARY DEPLOYMENT\n\nTheatre:\n  A new play does not open to 2,000 people on day one.\n  Preview performances: small invited audience, full production.\n  Watch the reactions. Note what lands and what does not.\n  Make adjustments. Then open to the full house.\n  If the preview is a disaster, you cancel the run before losing everyone.\n\nCanary deployment:\n  Route 5% of traffic to the new version.\n  Watch error rates, latency, business metrics for 30 minutes.\n  If healthy: promote to 25%, then 50%, then 100%.\n  If unhealthy: remove the canary in seconds. 95% of users never saw it.\n\nWhat canary catches that tests miss:\n  Real production data edge cases (nulls, empty strings, unusual formats)\n  Unexpected interaction between the new code and existing prod state\n  Performance under real traffic patterns\n  Third-party APIs behaving differently in production vs staging\n  The 0.1% of users with unusual account configurations\n\nCanary requires:\n  Traffic splitting (nginx ingress weights, Istio, API gateway)\n  Metrics tagged by version (so you can compare old vs new)\n  A clear decision threshold (promote if error rate stays under 0.1%)",
+
+  understudy: "UNDERSTUDY  ->  FEATURE FLAG\n\nTheatre:\n  The principal actor is in every rehearsal.\n  The understudy learns the exact same role.\n  On the night a principal is sick: the understudy steps in.\n  The show continues. The audience barely notices the switch.\n  The director can swap a scene without stopping the performance.\n\nFeature flag:\n  The new checkout flow is deployed to production.\n  But it is behind a flag -- disabled for all users.\n  When ready: enable for 1% of users (understudy takes the stage).\n  If it breaks: disable the flag in seconds (understudy sits back down).\n  No deploy. No rollback. No 3am incident.\n  The director (product manager) controls the flag from a dashboard.\n\nWhat this enables:\n  Deploy on Tuesday. Release on Thursday. Different teams, different timelines.\n  A/B test: 50% get understudy A, 50% get understudy B. Measure which is better.\n  Kill switch: payment provider is down, disable the affected feature path.\n  Gradual rollout: 1% -> 5% -> 25% -> 100% over a week.\n  Trunk-based development: everyone commits to main, incomplete features hidden behind flags.",
+
+  stagemanager: "STAGE MANAGER  ->  GITOPS (ARGO CD / FLUX)\n\nTheatre:\n  The stage manager has the authoritative copy of the script.\n  Every blocking note, every prop placement, every cue is written down.\n  If an actor improvises a different position: the stage manager corrects it.\n  If a prop is in the wrong place: the stage manager corrects it.\n  The script is the source of truth. The stage is the running system.\n\nGitOps:\n  Git (the repo with your Kubernetes YAML files) is the source of truth.\n  Argo CD watches Git and watches the cluster.\n  If a developer manually runs kubectl scale deployment --replicas=5:\n    the cluster drifts from what Git says.\n  Argo CD detects the drift and corrects it back to 3 replicas.\n  The correction is logged. The manual change is overwritten.\n\nBenefits:\n  Audit trail: every change to production is a git commit with author.\n  Rollback: git revert the commit, Argo CD restores the previous state.\n  Disaster recovery: re-clone the repo, point Argo CD at new cluster.\n  Drift prevention: manual kubectl changes cannot persist.\n\nSecure by design:\n  No one needs kubectl access to deploy to production.\n  Argo CD in the cluster pulls changes from Git.\n  CI only pushes to Git, not to the cluster directly.",
+
+  twotheaters: "TWO THEATRES  ->  BLUE-GREEN DEPLOYMENT\n\nTheatre:\n  You rent two identical theatres on the same street.\n  Blue: current production. 2,000 people watching the show.\n  Green: identical theatre, rehearsing the new version.\n  When green is ready: change the marquee on the street.\n  Audience buying tickets now goes to green.\n  Blue stays ready -- if green has a problem, change the marquee back.\n  The switch takes 30 seconds. Rollback takes 30 seconds.\n\nBlue-green deployment:\n  Blue environment: current version, all production traffic.\n  Green environment: new version, no traffic yet.\n  Test green with smoke tests and synthetic traffic.\n  When confident: update the load balancer to route all traffic to green.\n  Green is now production. Blue is standing by.\n  If green has a problem: flip the load balancer back to blue. Instant.\n\nCost: you are running two full environments simultaneously.\n  For the 30-minute deployment window, you pay double infrastructure.\n  Worth it for: high-stakes releases, database migrations,\n  any change where you need guaranteed instant rollback.\n\nNot needed for: routine deploys where rolling update is sufficient.",
+};
+function showTheatre(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showTheatre'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('theatre-output').textContent=THEATRE[k];
+}
+showTheatre('rehearsal');
+
+// VIZ 2
+var PIPELINE = {
+  lint: "GATE 1: STATIC ANALYSIS\nRuntime: ~30 seconds\n\nWhat it runs:\n  ESLint / Prettier         <- syntax, style, obvious errors\n  TypeScript compiler       <- type mismatches, missing properties\n  Snyk / npm audit          <- known vulnerable dependencies\n  Secret scanning           <- no API keys committed accidentally\n\nWhat it catches:\n  Undefined variables, unused imports, type errors\n  A dependency with a known CVE\n  An accidentally committed AWS key\n  Code style inconsistencies that would cause review friction\n\nWhat it does NOT catch:\n  Logic errors (that is what tests are for)\n  Performance problems\n  Integration failures\n\nWhy run it first:\n  30 seconds vs 8 minutes for integration tests.\n  No point running expensive tests on code that does not type-check.\n  Every engineer should run this locally before pushing.",
+
+  unit: "GATE 2: UNIT TESTS\nRuntime: 30 seconds to 2 minutes\n\nWhat it runs:\n  Jest / Vitest / Mocha test suite\n  All external dependencies mocked\n  No network calls, no database, no containers\n\nWhat it catches:\n  Logic errors in pure functions\n  Edge cases in business rules\n  Regressions in specific code paths\n  Missing null checks, off-by-one errors\n\nWhat it does NOT catch:\n  Integration failures (queries that work against mock but fail against real DB)\n  Infrastructure misconfigurations\n  Network-level failures\n\nMetrics to track:\n  Coverage: target 80% line coverage for business logic\n  NOT for frameworks, not for generated code, not as a vanity metric\n  Flaky tests: track flakiness rate. Flaky tests are worse than no tests.\n    They train engineers to ignore failures, destroying the pipeline signal.",
+
+  integration: "GATE 3: INTEGRATION TESTS\nRuntime: 2-10 minutes\n\nWhat it runs:\n  Tests against real PostgreSQL (testcontainers or docker compose)\n  Tests against real Redis\n  Tests against real Kafka (if applicable)\n  External services: mocked at network level (Wiremock, nock)\n\nWhat it catches:\n  SQL queries that are syntactically wrong\n  Migration that fails on real data\n  Deadlocks in concurrent test scenarios\n  Redis pipeline commands in wrong order\n  Message schema mismatches\n\nBest practice:\n  Use testcontainers: starts a real DB in a container for each test run.\n  Tests are isolated, repeatable, run on any machine.\n  No shared test database that accumulates state between runs.\n\nCommon mistake:\n  Using an in-memory SQLite for integration tests of a PostgreSQL service.\n  SQLite does not support the same SQL dialect.\n  Tests pass, production fails on PostgreSQL-specific syntax.\n  Always test against the same database engine you deploy.",
+
+  build: "GATE 4: BUILD AND PUSH\nRuntime: 1-5 minutes\n\nWhat it runs:\n  docker build (with layer caching)\n  docker push to registry\n  Smoke test: start the container, hit /health/live, verify 200\n  Container scanning: Trivy or Snyk for OS-level vulnerabilities\n\nOutput:\n  Container image tagged with the git SHA:\n  ghcr.io/myorg/booking-service:abc1234\n\nKey rule: this image is THE artifact.\n  The same image gets deployed to staging, then promoted to production.\n  Never rebuilt. Never modified. The SHA is the identity.\n  If staging tests pass on image abc1234, production deploys abc1234.\n\nImage retention policy:\n  Keep last 20 images in the registry.\n  Production rollback requires the old image to exist.\n  Tag with both SHA and semantic version:\n    booking-service:abc1234\n    booking-service:v2.4.1",
+
+  slow_tests: "SLOW PIPELINE PROBLEM\n\nSymptom:\n  CI pipeline takes 45 minutes.\n  Engineers push to production directly to avoid waiting.\n  The pipeline is theoretically protecting production but practically bypassed.\n\nRoot causes:\n  Sequential test execution (tests run one at a time)\n  No test caching (dependencies downloaded fresh each run)\n  Slow integration tests (spin up full environment per test)\n  Flaky tests that retry multiple times\n  Large Docker images built from scratch\n\nFixes:\n  Parallel test execution: split tests across 4 runners\n    (GitHub Actions: jobs.strategy.matrix)\n  Dependency caching: cache node_modules between runs\n    (actions/cache with package-lock.json hash key)\n  testcontainers instead of docker compose:\n    faster container startup, better parallelism\n  Layer caching for Docker builds:\n    docker buildx with --cache-from type=gha\n  Separate fast and slow test suites:\n    gate 1+2 on every push (30 seconds)\n    gate 3+4 on pull request to main only\n\nTarget: under 15 minutes total.\nIf you cannot get there, investigate which gate is slow and optimise it.",
+};
+function showPipeline(k){document.getElementById('pipeline-output').textContent=PIPELINE[k];}
+
+// VIZ 3
+var STRATEGY = {
+  rolling: "ROLLING DEPLOYMENT\nKubernetes default (Day 27: maxUnavailable: 0)\n\nInitial state: 3 pods running v2.4.0\n  [v2.4.0] [v2.4.0] [v2.4.0]\n\nStep 1: Deploy image update\n  kubectl set image deployment/booking-service \\\n    booking-service=registry/booking-service:v2.4.1\n\nStep 2: Kubernetes creates a new pod (maxSurge: 1)\n  [v2.4.0] [v2.4.0] [v2.4.0] [v2.4.1 STARTING]\n\nStep 3: New pod passes readiness probe\n  [v2.4.0] [v2.4.0] [v2.4.0] [v2.4.1 READY]\n\nStep 4: Old pod removed (maxUnavailable: 0)\n  [v2.4.0] [v2.4.0] [v2.4.1]\n\nRepeat until all old pods are replaced:\n  [v2.4.0] [v2.4.1] [v2.4.1]\n  [v2.4.1] [v2.4.1] [v2.4.1]\n\nRollback (if something is wrong at step 4):\n  kubectl rollout undo deployment/booking-service\n  Another rolling update, back to v2.4.0\n  Takes ~5 minutes\n\nBest for: routine deploys, stateless services, low-risk changes",
+
+  bluegreen: "BLUE-GREEN DEPLOYMENT\n\nSetup:\n  Blue deployment (current): 3 pods v2.4.0, receives 100% traffic\n  Green deployment (new):    empty, receives 0% traffic\n  Load balancer: routes all traffic to blue Service\n\nStep 1: Deploy green\n  kubectl apply -f booking-service-green.yaml\n  Green: 3 pods v2.4.1 starting up\n\nStep 2: Run smoke tests against green\n  curl https://internal-green.example.com/health/ready\n  Run automated E2E tests against green endpoint\n  Observe green metrics for 15 minutes\n\nStep 3: Switch traffic\n  kubectl patch service booking-service \\\n    -p '{\"spec\":{\"selector\":{\"version\":\"v2.4.1\"}}}'\n  Traffic now routes to green. Instant.\n\nStep 4: Monitor\n  Watch error rates and latency for 30 minutes\n\nRollback:\n  kubectl patch service booking-service \\\n    -p '{\"spec\":{\"selector\":{\"version\":\"v2.4.0\"}}}'\n  Blue is still running. Traffic back to blue. 10 seconds.\n\nCost: 2x pods during deployment window (~45 minutes)\nBest for: high-risk changes, DB migrations, guaranteed instant rollback",
+
+  canary: "CANARY DEPLOYMENT\n\nSetup: nginx ingress with traffic splitting\n\nInitial state: all traffic to stable (v2.4.0)\n\nStep 1: Deploy canary (v2.4.1) alongside stable\n  kubectl apply -f booking-service-canary.yaml\n  # canary Deployment: 1 replica of v2.4.1\n\nStep 2: Configure traffic split\n  # Ingress annotation:\n  nginx.ingress.kubernetes.io/canary: 'true'\n  nginx.ingress.kubernetes.io/canary-weight: '5'\n  # 5% of traffic goes to canary\n\nStep 3: Monitor for 30 minutes\n  Compare metrics between stable and canary:\n    error_rate{version='v2.4.1'} vs error_rate{version='v2.4.0'}\n    p99_latency{version='v2.4.1'} vs p99_latency{version='v2.4.0'}\n\nStep 4a: Promote (canary is healthy)\n  Increase weight: 5% -> 25% -> 50% -> 100%\n  Once at 100%: remove old Deployment\n\nStep 4b: Rollback (canary is unhealthy)\n  Set canary-weight: 0\n  Delete canary Deployment\n  0% of users on bad version. 95% never saw it.",
+
+  canary_rollback: "CANARY ROLLBACK\n\nScenario:\n  Canary v2.4.1 deployed at 5% traffic, 14:00\n  At 14:20: error rate on canary is 2.3% vs 0.1% on stable\n  Error: NullPointerException in new address validation logic\n\nDecision: rollback\n\nAction (30 seconds total):\n  # Option 1: nginx annotation update\n  kubectl annotate ingress booking-service \\\n    nginx.ingress.kubernetes.io/canary-weight='0' --overwrite\n  # Canary receives 0% of traffic immediately\n\n  # Option 2: delete canary Deployment\n  kubectl delete deployment booking-service-canary\n  # Canary pods terminate, all traffic to stable\n\nResult:\n  5% of users saw errors for 20 minutes\n  95% of users: unaffected throughout\n  No production incident (below SLO threshold)\n  Bug fixed, canary redeployed next day with test coverage for the case\n\nThis is why canary exists:\n  The error rate on stable v2.4.0 never changed.\n  SLO: unaffected.\n  The failure was contained to 5% of traffic.",
+
+  shadow: "SHADOW TRAFFIC\n\nWhat it is:\n  All production traffic goes to stable (v2.4.0) AND a copy goes to shadow (v2.4.1).\n  Users only see stable responses.\n  Shadow processes requests silently.\n  Shadow responses are discarded (or compared, but not returned to users).\n\nUse case:\n  You are replacing a core calculation (pricing, fraud scoring).\n  Tests pass but you are not confident the new logic handles\n  all real-world data edge cases.\n  You cannot do a canary because any failure is unacceptable.\n\nSetup:\n  Istio or nginx mirror directive sends a copy of each request to shadow:\n    nginx.ingress.kubernetes.io/mirror-host: booking-service-shadow\n\nWhat you watch:\n  shadow_error_rate vs stable_error_rate\n  shadow_response_time vs stable_response_time\n  shadow_result vs stable_result (if you capture both)\n\nCost:\n  2x compute (shadow processes every request)\n  Shadow responses do not go to users -- so bugs in shadow are safe\n  Cannot test user-facing behaviour (because users see stable)\n\nBest for:\n  Core logic replacements where any user-visible failure is unacceptable\n  Validating new ML model against production traffic\n  Database migration validation (new DB shadow vs old DB stable)",
+};
+function showStrategy(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showStrategy'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('strategy-output').textContent=STRATEGY[k];
+}
+showStrategy('rolling');
+
+// VIZ 4
+var FLAG = {
+  release: "RELEASE FLAG ROLLOUT\n\nGoal: release new checkout flow to 100% of users over one week\nCleanup date: set NOW, 2 weeks from full release\n\nWeek 1, Day 1 - Internal only:\n  Rule: userId in ['engineering_team', 'product_team'] -> true\n  Watch: are internal users completing checkouts? Any errors?\n\nWeek 1, Day 3 - 1% rollout:\n  Rule: percentage rollout 1% -> true\n  Watch: error rate on new vs old checkout (split by flag value)\n  Action: if error_rate > 2x baseline, disable flag immediately\n\nWeek 1, Day 5 - 10% rollout:\n  Rule: percentage rollout 10% -> true\n  Watch: conversion rate (are users completing checkout at same rate?)\n  Compare: checkout completion new_flow vs legacy_flow\n\nWeek 2, Day 1 - 50% rollout:\n  Watch: P99 latency (new flow adding any database overhead?)\n  Revenue comparison: same per-user revenue in both groups?\n\nWeek 2, Day 5 - 100%:\n  All users on new flow.\n  Flag disabled (everyone gets new flow as default).\n  Schedule cleanup: remove flag and old code path within 14 days.\n\nCleanup (Week 4):\n  Remove the if (flag) { } else { } branch\n  Delete old checkout code\n  Remove the flag from the management UI",
+
+  experiment: "A/B EXPERIMENT FLAG\n\nGoal: does the new booking confirmation page increase rebooking rate?\n\nSetup:\n  Flag: 'booking-confirmation-v2'\n  Distribution: 50/50 split\n  Duration: 2 weeks (enough traffic for statistical significance)\n  Primary metric: rebooking within 30 days\n  Guardrail metric: confirmation page load time (must not degrade)\n\nImplementation:\n  const variant = await flags.getStringValue(\n    'booking-confirmation-v2',\n    'control',          // default: show old confirmation\n    { targetingKey: userId }\n  );\n  // variant = 'control' or 'treatment'\n\n  // Log which variant the user saw (analytics)\n  analytics.track('confirmation_page_viewed', {\n    userId,\n    variant,\n    bookingId\n  });\n\nAnalysis after 2 weeks:\n  Rebooking rate:\n    Control:   18.2% rebooking within 30 days\n    Treatment: 21.7% rebooking within 30 days\n    Lift: +19.2% (statistically significant at p=0.02)\n\n  Decision: treatment wins. Promote to 100%.\n  Remove control code path. Flag cleaned up.\n\nKey: without flagging the variant, you cannot measure the difference.",
+
+  killswitch: "KILL SWITCH (OPERATIONAL FLAG)\n\nGoal: instant ability to disable a feature if it causes problems\n\nScenario:\n  Friday 15:00: Payment provider Stripe has a degraded API.\n  The new card validation feature is calling Stripe for every form change.\n  Stripe is slow: 3 second validation delay on every keystroke.\n  Conversion rate dropping 40%.\n\nAction (10 seconds):\n  Go to feature flag dashboard.\n  Set 'realtime-card-validation' = false for all users.\n  All users now see the old (no realtime validation) checkout.\n  Stripe latency no longer affects the user experience.\n\n  // Code has been there all along:\n  if (await flags.getBooleanValue('realtime-card-validation', false)) {\n    await validateCardRealtime(cardNumber);\n  }\n  // With flag off: skips straight to form submission\n\nFriday 17:00: Stripe recovers.\nMonday: Re-enable flag. Validate Stripe response times before enabling.\n\nThis is the understudy pattern:\n  The feature is always in the code.\n  The flag is the director who decides if it goes on stage tonight.\n  Stripe degradation = director says understudy sits this one out.",
+
+  cleanup: "FLAG CLEANUP — the discipline that keeps code clean\n\nProblem:\n  6 months of feature flagging. 47 flags in the codebase.\n  Nobody knows which are active, which are permanent, which can be removed.\n  Test coverage for combinations has become impractical.\n  New engineers are confused about which code path runs.\n\nPrevention:\n  Every flag created with:\n    name: 'new-checkout-flow'\n    owner: 'checkout-team'\n    type: 'release'               // release / experiment / operational\n    cleanup_date: '2024-09-15'    // 2 weeks after planned full release\n    jira_ticket: 'BOOK-1234'      // cleanup ticket already created\n\nCleanup process:\n  1. Promote to 100% (if not already)\n  2. Monitor for 1 week -- no rollbacks\n  3. Delete the flag from the management UI\n  4. Remove from code:\n     Before: if (flags.isEnabled('new-checkout-flow')) { newFlow() }\n             else { legacyFlow() }\n     After:  newCheckoutFlow()\n  5. Delete legacy code path\n  6. Close the cleanup ticket\n\nTool support:\n  Some flag management tools (LaunchDarkly, Unleash) will:\n  - Alert when a flag passes its cleanup date\n  - Show which flags have been 100% enabled for > 30 days\n  - Detect flag evaluations that never return false (stale flags)",
+};
+function showFlag(k){document.getElementById('flag-output').textContent=FLAG[k];}
+
+// VIZ 5
+var GITOPS = {
+  traditional: "TRADITIONAL PUSH CD\n\nFlow:\n  1. CI builds image: booking-service:abc1234\n  2. CI pushes image to registry\n  3. CI runs: kubectl set image deployment/booking-service ...\n     (or: helm upgrade, or: kustomize apply)\n  4. Kubernetes cluster receives the change\n  5. Pods are rolled out\n\nProblems:\n  CI needs cluster credentials (kubectl access to production)\n    -> credentials can be stolen, rotated, or expired\n  Someone can manually run kubectl and change production\n    -> no record of what changed, no enforcement of process\n  Cluster state is 'what was last deployed' not 'what is in version control'\n    -> if the cluster fails, reconstructing state requires tribal knowledge\n  No drift detection\n    -> if a pod is manually scaled or a config edited, nobody knows\n\nAudit trail:\n  Who deployed what? -> check CI logs (if still available)\n  What is currently deployed? -> kubectl describe (runtime state only)\n  When did this setting change? -> unknown without external logging",
+
+  gitops: "GITOPS PULL CD (ARGO CD / FLUX)\n\nRepositories:\n  app-repo:  application code + Dockerfile\n  infra-repo: Kubernetes YAML manifests (Deployment, Service, etc.)\n\nFlow:\n  1. CI builds image: booking-service:abc1234\n  2. CI pushes image to registry\n  3. CI opens PR on infra-repo:\n     image: registry/booking-service:abc1234  # was :abc1233\n  4. Engineer reviews and merges PR\n  5. Argo CD detects change in infra-repo (polling or webhook)\n  6. Argo CD applies manifests to cluster\n  7. Argo CD reports sync status back to git commit\n\nBenefits:\n  No cluster credentials in CI (Argo CD pulls, not CI pushes)\n  Every production change is a PR with author, review, merge time\n  Rollback = git revert + auto-sync\n  Disaster recovery = re-point Argo CD at the repo on a new cluster\n  Drift detection: Argo CD knows the desired state (git) and actual state\n\nSecurity model:\n  CI: write access to container registry + infra-repo only\n  Argo CD: runs inside the cluster, has cluster access\n  Engineers: PR to infra-repo (no direct cluster access required)",
+
+  drift: "DRIFT DETECTION AND CORRECTION\n\nScenario:\n  Argo CD sync is healthy: cluster matches infra-repo.\n\n  14:00: Engineer manually scales booking-service:\n  kubectl scale deployment booking-service --replicas=10 -n production\n  # Someone thought traffic was high, wanted more pods\n\n  14:01: Argo CD polling detects drift:\n    Desired (git):  replicas: 3\n    Actual (cluster): replicas: 10\n    Status: OutOfSync\n\n  Argo CD action (depends on sync policy):\n    Auto-sync: immediately corrects back to replicas: 3\n    Manual sync: creates an alert, waits for human action\n\n  Recommendation: auto-sync for most changes (deploy often, drift correct)\n  Manual approval required for: scaling changes, config changes in production\n\nWhat gets detected as drift:\n  Replica count changes\n  Image tag changes (someone kubectl set image manually)\n  ConfigMap value changes\n  Secret changes (if managed by Argo CD)\n  Resource limit changes\n\nWhat does NOT get detected:\n  Changes inside the container (process, in-memory state)\n  Node-level changes\n  PersistentVolume content",
+
+  rollback: "GITOPS ROLLBACK\n\nScenario:\n  v2.4.1 was deployed 2 hours ago. Error rate has doubled.\n  Need to roll back to v2.4.0.\n\nGitOps rollback (Argo CD):\n  Option 1: Argo CD UI / CLI\n    argocd app rollback booking-service\n    Argo CD shows history of synced revisions.\n    Select the previous revision. Argo CD rolls back to that git state.\n\n  Option 2: git revert\n    git revert abc1234    # revert the commit that changed the image tag\n    git push origin main\n    Argo CD detects the new commit, syncs, rolls back the image.\n\nAdvantage over kubectl rollout undo:\n  kubectl rollout undo only reverts the Deployment image.\n  git revert reverts ALL changes in that commit:\n    image tag, ConfigMap values, environment variables, resource limits.\n  If the bug was in a config change, not just the image,\n  kubectl rollout undo would not catch it.\n\nRollback audit:\n  The git revert is a commit with author and timestamp.\n  The PR merge that caused the problem is linked to the revert.\n  Argo CD sync history shows exactly when the rollback happened.\n  Complete audit trail, no tribal knowledge required.",
+};
+function showGitops(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showGitops'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('gitops-output').textContent=GITOPS[k];
+}
+showGitops('traditional');
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 28 Lab: Canary Deploy Causing Errors, Wrong Flag Disabled</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:48px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--orange),var(--red));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--orange);text-transform:uppercase;margin-bottom:14px;}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;margin:16px 0;}
+.choice-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin:24px 0;}
+.choice-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;}
+.choice-q{font-size:15px;color:var(--text);font-weight:500;margin-bottom:16px;line-height:1.5;}
+.choice-btn{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:12px 16px;border-radius:6px;cursor:pointer;font-size:14px;transition:all .12s;margin-bottom:8px;line-height:1.5;}
+.choice-btn:hover{border-color:var(--accent);color:var(--text);}
+.choice-result{background:var(--bg3);border-radius:6px;padding:14px 16px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.7;display:none;}
+.learned{background:var(--bg2);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--orange);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}.learned-text strong{color:var(--text);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day28" class="back-link">&#8592; Day 28: CI/CD & Deployment Strategies</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">Canary Incident &nbsp;·&nbsp; booking-service v2.4.1 &nbsp;·&nbsp; 8% error rate on canary</div>
+  <h2>The canary is causing errors. The engineer disabled the wrong feature flag. Errors continue.</h2>
+  <div class="incident-meta">Saturday 14:00 · canary at 10% traffic · booking-service v2.4.1</div>
+  <p>A canary deployment of booking-service v2.4.1 was started at 13:00, routing 10% of traffic to the new version. At 14:00 an alert fires: error rate on the canary is 8%, vs 0.2% on stable v2.4.0.</p>
+  <p>The on-call engineer logs into the feature flag dashboard and disables <code>new-payment-validation</code> — a flag that was added in v2.4.1. Error rate stays at 8%. The engineer disables a second flag, <code>enhanced-seat-selection</code>. Error rate stays at 8%. The engineer is now not sure which flag to disable, and the canary is still causing errors for 10% of users.</p>
+  <p>Work through the correct diagnosis and actions below.</p>
+</div>
+
+<h3>Step 1: Read the error logs</h3>
+<div class="mono-out">
+# Canary pod logs (last 20 errors)
+kubectl logs -n production -l app=booking-service,track=canary --tail=100 | grep ERROR
+
+[14:01:23] ERROR Cannot read properties of undefined (reading 'venueId')
+  at BookingService.createBooking (booking.service.js:127)
+  at checkout.controller.js:45
+  Request: POST /bookings { eventId: "evt_789", seatId: "seat_012" }
+
+[14:01:31] ERROR Cannot read properties of undefined (reading 'venueId')
+[14:01:45] ERROR Cannot read properties of undefined (reading 'venueId')
+[14:01:52] ERROR Cannot read properties of undefined (reading 'venueId')
+
+# Stable pod logs (same period)
+kubectl logs -n production -l app=booking-service,track=stable --tail=100 | grep ERROR
+# (empty -- no errors on stable)
+
+# Git diff: what changed in v2.4.1?
+git diff v2.4.0..v2.4.1 -- src/booking.service.js
+  - const event = await eventService.getEvent(req.body.eventId);
+  + const event = await eventService.getEventWithVenue(req.body.eventId);
+  + const venueId = event.venue.venueId;   // line 127 -- crashes if venue is null
+</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Diagnosis</div>
+  <div class="choice-q">Why did disabling feature flags not stop the errors?</div>
+  <button class="choice-btn" onclick="showC('q1','a')">(A) The feature flags were not deployed correctly. They need to be redeployed.</button>
+  <button class="choice-btn" onclick="showC('q1','b')">(B) The bug is in the core booking code path, not behind a feature flag. Disabling flags only disables optional features. The crash on line 127 happens for all bookings regardless of flag state.</button>
+  <button class="choice-btn" onclick="showC('q1','c')">(C) The feature flag service is experiencing an outage and not responding.</button>
+  <div class="choice-result" id="q1-result"></div>
+</div>
+
+<h3>Step 2: Correct immediate action</h3>
+<div class="choice-panel">
+  <div class="choice-label">Mitigation</div>
+  <div class="choice-q">Errors are ongoing. 10% of users are affected. What is the single fastest action to stop user impact?</div>
+  <button class="choice-btn" onclick="showC('q2','a')">(A) Hot-patch the code on the canary pods directly with kubectl exec.</button>
+  <button class="choice-btn" onclick="showC('q2','b')">(B) Remove the canary: set canary-weight to 0 (or delete the canary Deployment). All traffic routes to stable v2.4.0 immediately. 0 users affected within 30 seconds.</button>
+  <button class="choice-btn" onclick="showC('q2','c')">(C) Roll back the stable deployment to the previous version as well, in case it is also affected.</button>
+  <div class="choice-result" id="q2-result"></div>
+</div>
+
+<h3>Step 3: Fix and re-deploy</h3>
+<div class="choice-panel">
+  <div class="choice-label">After rollback</div>
+  <div class="choice-q">The canary is removed. Users are not affected. What is the correct fix before re-deploying?</div>
+  <button class="choice-btn" onclick="showC('q3','a')">(A) Add a null check before accessing venue.venueId, write a test that covers events with no venue, then re-run canary at 1% first before going to 10%.</button>
+  <button class="choice-btn" onclick="showC('q3','b')">(B) Put the getEventWithVenue call behind a feature flag so it can be disabled if needed.</button>
+  <button class="choice-btn" onclick="showC('q3','c')">(C) Revert to v2.4.0 permanently and delay the feature.</button>
+  <div class="choice-result" id="q3-result"></div>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Feature flags only protect features that are behind flags.</strong> Core code path changes — like changing how events are fetched — affect all requests regardless of flag state. Before a canary goes out, identify which changes are in core paths and which are gated. Core path changes carry more risk than flagged features.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Canary rollback is not rollback of the stable deployment.</strong> The engineer instinctively wanted to "roll everything back" — but stable v2.4.0 was working fine throughout. The correct action was to remove the canary only, leaving stable untouched. Touching stable when it is healthy adds risk during an incident.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Read the error before touching anything.</strong> The engineer disabled two flags before reading the error message. The error was unambiguous: <code>Cannot read properties of undefined (reading 'venueId')</code> at line 127, in the core booking path. One minute of log reading would have saved the two flag-disabling attempts and made the diagnosis immediate.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Canary saved 90% of users.</strong> Despite the confusion during the incident, the canary pattern worked: only 10% of traffic was on the buggy version. 90% of bookings during those 60 minutes completed successfully on v2.4.0. Without a canary, all users would have seen 8% errors from the moment of deploy.</span></div>
+</div>
+
+</div>
+<script>
+var C = {
+  'q1-a': 'Incorrect. Feature flags are evaluated at runtime, not at deploy time. Disabling a flag takes effect immediately (within the flag evaluation cache TTL, typically 30 seconds). The flags were responding correctly -- they were just not relevant to the bug.',
+  'q1-b': 'Correct. The error is at booking.service.js:127 -- in the core booking creation path that runs for every POST /bookings request. This code runs regardless of which feature flags are enabled. feature flags only gate specific features: new-payment-validation might gate a different payment check, enhanced-seat-selection might gate a new seat picker UI. Neither controls whether getEventWithVenue() is called.\n\nLesson: always read the error and trace it to the code before reaching for flags. Flags cannot fix crashes in unflagged code.',
+  'q1-c': 'Not supported by any evidence in the logs. The errors are consistent with the null pointer exception at line 127, not with flag evaluation failures (which would produce a different error type). Do not invent hypotheses that the logs do not support.',
+
+  'q2-a': 'Extremely bad idea. Hot-patching running containers is: not reproducible (change lost on pod restart), not auditable (no git history), not tested (you are writing code under pressure with no CI). If the patch is wrong, you have made things worse. The canary containers will be replaced by the next deploy anyway.\n\nNever edit running containers in production. Ever.',
+  'q2-b': 'Correct. This is the entire point of canary deployment.\n\n  # Option A: set weight to 0\n  kubectl annotate ingress booking-service \\\n    nginx.ingress.kubernetes.io/canary-weight=0 --overwrite\n\n  # Option B: delete canary deployment\n  kubectl delete deployment booking-service-canary -n production\n\nEffect: immediate. All traffic routes to stable v2.4.0 within seconds.\nStable has 0.2% error rate (background noise, not from this bug).\nThe 10% of users who were on canary now go to stable.\nErrors stop. Incident closed.\n\nThen: investigate root cause, fix, write test, re-canary.',
+  'q2-c': 'Incorrect. Stable v2.4.0 has been running at 0.2% error rate throughout this incident -- well within normal parameters. Touching stable when it is healthy adds risk: a rolling update of stable could cause its own brief disruption. The canary is the problem. Remove the canary only.',
+
+  'q3-a': 'Correct -- and the order matters.\n\n1. Fix: add null check\n   const venue = event.venue;\n   const venueId = venue?.venueId ?? null;\n   if (!venueId) {\n     logger.warn({ eventId }, "Event has no venue");\n     // handle gracefully\n   }\n\n2. Write the test that would have caught this:\n   test("createBooking handles event with null venue", async () => {\n     mockEventService.getEventWithVenue.mockResolvedValue({\n       id: "evt_789",\n       venue: null   // <- this test did not exist\n     });\n     await expect(bookingService.createBooking({...})).resolves.not.toThrow();\n   });\n\n3. Re-canary at 1% first, not 10%\n   The bug was caught at 10% -- it might have been caught at 1%.\n   For a fix of a production bug, start lower and promote more carefully.\n\n4. Add events-without-venues to your integration test fixtures\n   Real production data has edge cases your synthetic test data does not.',
+  'q3-b': 'Puts the wrong thing behind a flag. getEventWithVenue() is core booking logic -- it should not be toggleable. Feature flags are for optional features, not for fundamental data fetching. Putting it behind a flag means the code has two paths forever (or until flag cleanup), adding complexity without benefit. Fix the null pointer exception correctly instead.',
+  'q3-c': 'Not necessary. The bug is specific: null venue data is not handled. This is a fixable code error, not a fundamental problem with the feature direction. Reverting permanently would lose the improvements in v2.4.1 that were not related to this bug.',
+};
+function showC(q,opt){
+  var el=document.getElementById(q+'-result');
+  el.textContent=C[q+'-'+opt]||'';
+  el.style.display='block';
+}
+</script>
+</body>
+</html>

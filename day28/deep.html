@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 28 Deep Dive: GitHub Actions, Argo CD, Canary with nginx</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:32px;}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}.deep-hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day28" class="back-link">&#8592; Day 28: CI/CD & Deployment Strategies</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 28 · CI/CD & Deployment Strategies · Deep Dive</div>
+  <h1>GitHub Actions pipeline,<br>Argo CD Application,<br><em>&amp; nginx canary ingress</em></h1>
+  <p>The complete implementation: a full GitHub Actions CI/CD workflow with parallel gates, an Argo CD Application for GitOps, and canary deployment with nginx ingress weight annotations and automated rollback.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>GitHub Actions:<br><em>parallel CI with promote-on-merge</em></h2>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">.github/workflows/ci-cd.yml</span><span class="code-block-lang">YAML</span></div>
+    <pre>name: CI/CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  <span class="cm"># Gates 1 and 2 run in parallel</span>
+  static:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with: { node-version: '20', cache: 'npm' }
+    - run: npm ci
+    - run: npm run lint && npm run typecheck
+    - uses: snyk/actions/node@master
+      env: { SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} }
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with: { node-version: '20', cache: 'npm' }
+    - run: npm ci
+    - run: npm run test:unit -- --coverage --ci
+    - uses: codecov/codecov-action@v4
+
+  <span class="cm"># Gate 3 runs after gates 1+2</span>
+  integration:
+    needs: [static, unit-tests]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: test_db }
+        options: --health-cmd pg_isready
+      redis:
+        image: redis:7
+        options: --health-cmd "redis-cli ping"
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with: { node-version: '20', cache: 'npm' }
+    - run: npm ci
+    - run: npm run db:migrate:test
+      env: { DATABASE_URL: postgres://postgres:test@localhost/test_db }
+    - run: npm run test:integration
+      env:
+        DATABASE_URL: postgres://postgres:test@localhost/test_db
+        REDIS_URL: redis://localhost:6379
+
+  <span class="cm"># Gate 4: build and push (only on merge to main)</span>
+  build:
+    needs: [integration]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      sha: ${{ github.sha }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/metadata-action@v5
+      id: meta
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=sha,prefix=
+          type=semver,pattern={{version}}
+    - uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  <span class="cm"># Update infra-repo with new image tag (GitOps)</span>
+  update-manifests:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: myorg/infra-repo
+        token: ${{ secrets.INFRA_REPO_TOKEN }}
+    - name: Update image tag
+      run: |
+        sed -i "s|image: .*booking-service:.*|image: ghcr.io/myorg/booking-service:${{ needs.build.outputs.sha }}|" \
+          k8s/production/booking-service.yaml
+        git config user.email "ci@myorg.com"
+        git config user.name "CI Bot"
+        git add k8s/production/booking-service.yaml
+        git commit -m "deploy: booking-service ${{ needs.build.outputs.sha }}"
+        git push</pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Canary deployment:<br><em>nginx ingress weight annotations</em></h2>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">k8s/canary/booking-service-canary.yaml</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># Stable Ingress (always present)</span>
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: booking-service-stable
+  namespace: production
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /bookings
+        pathType: Prefix
+        backend:
+          service:
+            name: booking-service-stable
+            port: { number: 3000 }
+
+---
+<span class="cm"># Canary Ingress (deployed only during canary rollout)</span>
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: booking-service-canary
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/canary: <span class="str">"true"</span>
+    nginx.ingress.kubernetes.io/canary-weight: <span class="str">"10"</span>  <span class="cm"># 10% of traffic</span>
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /bookings
+        pathType: Prefix
+        backend:
+          service:
+            name: booking-service-canary    <span class="cm"># separate Service pointing to canary pods</span>
+            port: { number: 3000 }
+
+---
+<span class="cm"># Rollback: set canary-weight to 0 or delete canary Ingress</span>
+<span class="cm"># kubectl annotate ingress booking-service-canary \</span>
+<span class="cm">#   nginx.ingress.kubernetes.io/canary-weight=0 --overwrite</span>
+<span class="cm">#</span>
+<span class="cm"># Promote: set stable to new image, delete canary Ingress</span>
+<span class="cm"># kubectl set image deployment/booking-service-stable \</span>
+<span class="cm">#   booking-service=ghcr.io/myorg/booking-service:v2.4.1</span></pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
