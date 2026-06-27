@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 27: Kubernetes Deep Dive — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--accent);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.ds-steps{display:flex;flex-direction:column;}
+.ds-step{display:flex;position:relative;}
+.ds-step:not(:last-child) .ds-line{position:absolute;left:19px;top:40px;bottom:-1px;width:2px;background:var(--border);}
+.ds-num{width:40px;min-width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--bg2);color:var(--text3);flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .15s;}
+.ds-step:hover .ds-num{border-color:var(--accent);color:var(--accent);background:rgba(91,143,255,.08);}
+.ds-body{flex:1;padding:2px 0 28px 18px;}
+.ds-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ds-detail{font-size:13px;color:var(--text2);line-height:1.7;}
+.ds-detail code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--purple);}
+.ds-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:6px;letter-spacing:.5px;}
+.ds-tag-ok{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+.ds-tag-warn{background:rgba(245,166,35,.1);color:var(--orange);border:1px solid rgba(245,166,35,.3);}
+.ds-tag-stop{background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.3);}
+.ds-tag-info{background:rgba(91,143,255,.1);color:var(--accent);border:1px solid rgba(91,143,255,.3);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 27 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Shipping Port</a>
+  <a href="#s-objects">Core Objects</a>
+  <a href="#s-resources">Resources & Limits</a>
+  <a href="#s-probes">Health Probes</a>
+  <a href="#s-hpa">HPA & Scaling</a>
+  <a href="#s-scheduling">Scheduling</a>
+  <a href="#s-networking">Networking</a>
+  <a href="#s-prod">Production Reality</a>
+  <a href="#s-nobody">Nobody Tells You</a>
+  <a href="#s-sequence">Decision Sequence</a>
+  <a href="#s-checklist">Checklist</a>
+  <a href="/day27/lab" style="color:var(--green);display:flex;align-items:center;gap:6px;margin-top:8px"><span style="font-size:9px">&#9654;</span> Incident Lab</a>
+  <a href="/day27/deep" style="color:var(--purple);display:flex;align-items:center;gap:6px"><span style="font-size:9px">&#9654;</span> Deep Dive</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 4 · Day 27 · Kubernetes Deep Dive</div>
+  <h1>Your app is a container.<br>Kubernetes decides<br><em>where it runs.</em></h1>
+  <p class="hero-sub">Kubernetes is not a deployment tool. It is a control plane that continuously reconciles what you asked for with what actually exists. You declare desired state — three replicas of the booking service, each with 512MB memory, restart if the health check fails — and Kubernetes makes it true, keeps it true, and recovers it when reality diverges.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~55 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>7 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--orange)"></div>Pods · Resources · Probes · HPA · Scheduling</div>
+  </div>
+</div>
+
+<!-- S1: ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The shipping port — and why the port master does not care what is in the containers</h2>
+
+  <p><strong>A shipping port receives cargo containers.</strong> Each container has a declared weight and cargo type. The port master (scheduler) looks at the fleet of ships (nodes) sitting in the harbour, checks their remaining capacity, and assigns each container to a ship that can handle it. The port master does not know or care what is inside the container — only how much space it needs and what kind of ship can carry it.</p>
+
+  <p>That is Kubernetes scheduling. Your application is the cargo. The container image is the sealed container. The pod is the container on the ship. The node is the ship. The scheduler assigns pods to nodes based on available resources (CPU, memory) and any special requirements (this container needs a GPU ship, or must not share a ship with another container of the same type).</p>
+
+  <p><strong>The port has weight limits per berth.</strong> A ship rated for 50,000 tonnes cannot take a 60,000-tonne load. If you try, the berth inspector rejects it. Kubernetes resource requests are the declared weight — the scheduler will not place a pod on a node that does not have enough CPU and memory available. Resource limits are the physical limit of the container itself — if a container tries to use more than its limit, Kubernetes throttles or kills it.</p>
+
+  <p><strong>Customs inspection before cargo is cleared.</strong> When a ship arrives, customs inspects each container. Is it structurally sound? Does it contain what the manifest says? If a container fails inspection, it is offloaded and quarantined. Kubernetes liveness and readiness probes are this inspection. Liveness: is the container still alive and not deadlocked? Readiness: is it ready to receive cargo (traffic)? Fail the readiness probe and traffic is routed away. Fail the liveness probe and the container is replaced.</p>
+
+  <p><strong>Calling in more ships when the queue grows.</strong> If the port receives more containers than the current fleet can handle, the port authority calls in additional ships from the reserve fleet. When demand drops, reserve ships are sent back to minimise docking fees. That is the Horizontal Pod Autoscaler — adding pods when CPU or custom metrics exceed a threshold, removing them when demand drops.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">&#9875;</div>
+    <div class="callout-inner">
+      <strong>Where the port analogy breaks</strong>
+      <p>A shipping port is mostly stateless — once a container is offloaded, the ship moves on. Kubernetes manages both stateless workloads (Deployments) and stateful ones (StatefulSets), where the pod identity and storage must survive restarts. A stateful pod is more like a permanent resident in a specific berth with a reserved locker — it cannot simply be moved to another ship without migrating their belongings. StatefulSets handle this, but they require significantly more care than Deployments.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Port -> K8s mapping -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Shipping port -> Kubernetes — click each concept</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showPort('container')">Cargo container -> Pod</button>
+      <button class="viz-btn" onclick="showPort('ship')">Ship -> Node</button>
+      <button class="viz-btn" onclick="showPort('portmaster')">Port master -> Scheduler</button>
+      <button class="viz-btn" onclick="showPort('weight')">Weight limit -> Resources</button>
+      <button class="viz-btn" onclick="showPort('customs')">Customs -> Probes</button>
+      <button class="viz-btn" onclick="showPort('reserve')">Reserve fleet -> HPA</button>
+    </div>
+    <div id="port-output" class="mono-out" style="min-height:180px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S2: CORE OBJECTS -->
+<div class="section" id="s-objects">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Which Kubernetes object does what?</h2>
+
+  <p>Kubernetes has many object types but backend engineers primarily work with five. Understanding which layer each operates at — and why they are separate — makes the whole system click.</p>
+
+  <p><strong>Pod:</strong> The smallest deployable unit. One or more containers that share a network namespace and storage. You almost never create pods directly — you create Deployments that create and manage pods. A pod has an IP address, runs on one node, and is mortal: it will eventually die and not be restarted. The Deployment creates a new pod in its place.</p>
+
+  <p><strong>Deployment:</strong> Manages a set of identical pod replicas. Declares how many replicas you want, which container image to run, and what resources each pod needs. When a pod dies or a node fails, the Deployment controller creates a replacement. Rolling updates (new version deployed incrementally, old pods removed as new ones become ready) are a Deployment feature.</p>
+
+  <p><strong>Service:</strong> A stable virtual IP address and DNS name that routes traffic to a set of pods. Pods come and go — their IPs change. The Service IP is stable. Other services call <code>booking-service:3000</code>, and Kubernetes routes that request to one of the healthy booking pods via kube-proxy. Services are how microservices discover and call each other inside a cluster.</p>
+
+  <p><strong>ConfigMap and Secret:</strong> Configuration and sensitive data injected into pods as environment variables or mounted files. Secrets are base64-encoded (not encrypted at rest by default — use a secrets manager like Vault or AWS Secrets Manager for true encryption). Never hardcode configuration in container images.</p>
+
+  <p><strong>Namespace:</strong> A virtual cluster within the cluster. Provides isolation between environments (staging, production) or teams. Resource quotas are applied at the namespace level. Service DNS names are scoped to namespaces: <code>booking-service.production.svc.cluster.local</code>.</p>
+</div>
+
+<!-- VIZ 2: Object explorer -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Kubernetes objects — what each one manages</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showObj('pod')">Pod</button>
+      <button class="viz-btn" onclick="showObj('deployment')">Deployment</button>
+      <button class="viz-btn" onclick="showObj('service')">Service</button>
+      <button class="viz-btn" onclick="showObj('configmap')">ConfigMap / Secret</button>
+      <button class="viz-btn" onclick="showObj('statefulset')">StatefulSet</button>
+      <button class="viz-btn" onclick="showObj('job')">Job / CronJob</button>
+    </div>
+    <div id="obj-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S3: RESOURCES -->
+<div class="section" id="s-resources">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Why are resource requests and limits the most important thing you configure?</h2>
+
+  <p>Resource requests and limits are the single most impactful configuration in a Kubernetes workload. Get them wrong and you get OOMKills (container killed for exceeding memory limit), CPU throttling (container throttled to its CPU limit, causing latency spikes), or pending pods (scheduler cannot find a node with enough requested resources). Get them right and the scheduler places workloads efficiently and the cluster runs stably.</p>
+
+  <h3>Requests — what the scheduler uses</h3>
+  <p>The resource request is what the scheduler treats as reserved. A pod requesting 500m CPU and 256Mi memory will only be placed on a node that has at least that much unreserved capacity. Requests do not prevent a pod from using more — they are a scheduling guarantee, not a hard limit. If a node has 2000m CPU and three pods each request 500m, the scheduler will place all three (1500m total requested) even though actual usage may vary.</p>
+
+  <h3>Limits — what the runtime enforces</h3>
+  <p>The resource limit is what the container runtime enforces. A pod with a 512Mi memory limit that attempts to allocate 600Mi will be OOMKilled. A pod with a 1000m CPU limit that wants to use 2000m will be throttled — it will continue running but at reduced speed. Memory OOMKills are immediate and painful. CPU throttling is silent and causes latency spikes that are hard to diagnose without the right metrics.</p>
+
+  <h3>The right sizing approach</h3>
+  <p>Set requests based on typical (P50) usage. Set limits at 2-3x the typical usage to handle spikes without killing the pod for normal load variation. Monitor actual usage with <code>kubectl top pods</code> or Prometheus/Grafana for two weeks, then adjust. The Vertical Pod Autoscaler (VPA) can recommend and apply right-sizing automatically based on historical usage.</p>
+
+  <div class="callout danger">
+    <div class="callout-icon">&#128308;</div>
+    <div class="callout-inner">
+      <strong>No limits = noisy neighbour problem</strong>
+      <p>Pods without CPU limits can consume all available CPU on a node, starving other pods. This is especially dangerous in shared clusters where one team's runaway pod affects another team's production service. Always set resource limits. If you do not know the right value, set a generous limit and monitor actual usage — a pod using 10% of its limit tells you the limit is 10x too high. A pod hitting its limit regularly tells you it needs more.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">deployment.yaml — resource configuration</span><span class="code-block-lang">YAML</span></div>
+    <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      containers:
+      - name: booking-service
+        image: registry.example.com/booking-service:v2.4.1
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: <span class="str">"250m"</span>      <span class="cm"># 0.25 vCPU — scheduler guarantee</span>
+            memory: <span class="str">"256Mi"</span>  <span class="cm"># 256 MiB — scheduler guarantee</span>
+          limits:
+            cpu: <span class="str">"1000m"</span>     <span class="cm"># 1 vCPU — throttled above this</span>
+            memory: <span class="str">"512Mi"</span>  <span class="cm"># 512 MiB — OOMKilled above this</span>
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: booking-secrets
+              key: database-url
+        - name: NODE_ENV
+          value: production</pre>
+  </div>
+</div>
+
+<!-- VIZ 3: Resource calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Resource sizing — what happens at different configurations</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showResource('no_limits')">No limits set</button>
+      <button class="viz-btn" onclick="showResource('too_low')">Limits too low</button>
+      <button class="viz-btn" onclick="showResource('correct')">Correctly sized</button>
+      <button class="viz-btn" onclick="showResource('too_high')">Requests too high</button>
+      <button class="viz-btn" onclick="showResource('oomkill')">OOMKill scenario</button>
+    </div>
+    <div id="resource-output" class="mono-out" style="font-size:12px;min-height:180px"></div>
+  </div>
+</div>
+
+<!-- S4: PROBES -->
+<div class="section" id="s-probes">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Health probes — the three questions Kubernetes asks your pod</h2>
+
+  <p>Kubernetes asks three separate health questions. Each has a different consequence if the answer is "no." Getting the semantics right is one of the most practically important things you do when deploying a service.</p>
+
+  <h3>Liveness — is the container alive?</h3>
+  <p>If the liveness probe fails, Kubernetes kills and restarts the container. Use this for detecting deadlocks and zombie processes — situations where the application is running but not making progress and cannot recover itself. Do not put expensive logic in the liveness probe — if it times out, the pod is killed. A liveness probe should check that the process is responsive, not that all its dependencies are healthy.</p>
+
+  <h3>Readiness — is the container ready for traffic?</h3>
+  <p>If the readiness probe fails, the pod is removed from the Service's endpoint list — no new traffic is routed to it, but the pod is not killed. Use this for detecting that the application has not finished initialising, or is temporarily overloaded and needs to drain. A pod that is unready but live will recover and be re-added to traffic when the probe starts passing again.</p>
+
+  <h3>Startup — has the container finished starting?</h3>
+  <p>The startup probe protects slow-starting containers from being killed by the liveness probe before they have finished initialising. Until the startup probe passes, liveness and readiness probes are disabled. Essential for applications that take 30+ seconds to start (JVM warmup, loading large ML models, database migration on startup).</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">&#9888;&#65039;</div>
+    <div class="callout-inner">
+      <strong>The most common probe mistake: checking dependencies in liveness</strong>
+      <p>A liveness probe that checks the database connection will kill and restart the pod when the database is down. This restarts every pod simultaneously, causing a thundering herd that makes the database outage worse. Liveness should only check that the application process itself is alive. Dependency health belongs in readiness: a pod that cannot reach its database should stop receiving new requests (readiness fails), but should not be killed (liveness stays passing).</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Probe configuration — all three types</span><span class="code-block-lang">YAML</span></div>
+    <pre>        livenessProbe:
+          httpGet:
+            path: /health/live    <span class="cm"># returns 200 if process is alive</span>
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3     <span class="cm"># 3 failures = restart</span>
+          timeoutSeconds: 5
+
+        readinessProbe:
+          httpGet:
+            path: /health/ready   <span class="cm"># returns 200 if ready for traffic</span>
+            port: 3000            <span class="cm"># checks DB, cache, dependencies</span>
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 2     <span class="cm"># 2 failures = remove from Service</span>
+          timeoutSeconds: 3
+
+        startupProbe:
+          httpGet:
+            path: /health/live
+            port: 3000
+          failureThreshold: 30    <span class="cm"># 30 x 10s = 5 min to start</span>
+          periodSeconds: 10</pre>
+  </div>
+</div>
+
+<!-- VIZ 4: Probe scenarios -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Probe scenarios — what happens when each probe fails</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn" onclick="showProbe('liveness_fail')">Liveness fails</button>
+      <button class="viz-btn" onclick="showProbe('readiness_fail')">Readiness fails</button>
+      <button class="viz-btn" onclick="showProbe('startup_absent')">No startup probe</button>
+      <button class="viz-btn" onclick="showProbe('dep_in_liveness')">DB check in liveness</button>
+      <button class="viz-btn" onclick="showProbe('correct')">Correctly configured</button>
+    </div>
+    <div id="probe-output" class="mono-out" style="font-size:12px;min-height:200px"></div>
+  </div>
+</div>
+
+
+<!-- S5: HPA -->
+<div class="section" id="s-hpa">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>HPA — how Kubernetes decides to add or remove pods</h2>
+
+  <p>The Horizontal Pod Autoscaler watches a metric (CPU utilisation, memory, or a custom metric) and adjusts the replica count of a Deployment to keep the metric near a target. When average CPU across all pods exceeds 70%, the HPA adds pods. When it drops well below 70%, the HPA removes pods after a cooldown period.</p>
+
+  <h3>The control loop</h3>
+  <p>Every 15 seconds, the HPA fetches the current metric value, calculates the desired replica count as <code>ceil(currentReplicas * (currentValue / targetValue))</code>, and tells the Deployment to scale to that count. The ceiling function means it rounds up — it would rather have a slightly over-provisioned cluster than an under-provisioned one. Scale-up is immediate. Scale-down has a 5-minute cooldown to prevent thrashing.</p>
+
+  <h3>CPU-based HPA — the most common and most misunderstood</h3>
+  <p>CPU-based HPA scales on <em>utilisation relative to the request</em>, not absolute CPU. A pod requesting 250m CPU at 80% utilisation is using 200m. A pod requesting 1000m CPU at 80% is using 800m. The HPA sees the same 80% in both cases. This means: if resource requests are wrong, HPA scaling behaviour is wrong. Over-requested pods appear under-utilised (HPA scales down too aggressively). Under-requested pods appear over-utilised (HPA scales up too eagerly).</p>
+
+  <h3>Custom metrics HPA — scale on what actually matters</h3>
+  <p>For most backend services, CPU is not the right signal. Request latency, queue depth, or active connections are better proxies for "this service needs more capacity." Custom metrics HPA requires the Prometheus adapter or KEDA (Kubernetes Event-Driven Autoscaling). KEDA can scale on Kafka consumer lag, SQS queue depth, Redis list length, or any Prometheus metric — making it the right tool for event-driven workloads that need to scale based on backlog rather than CPU.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">hpa.yaml — CPU and custom metric autoscaling</span><span class="code-block-lang">YAML</span></div>
+    <pre><span class="cm"># CPU-based HPA</span>
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: booking-service-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: booking-service
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70   <span class="cm"># scale up when avg CPU > 70%</span>
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   <span class="cm"># 5 min cooldown before scale-down</span>
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 60   <span class="cm"># remove at most 2 pods per minute</span>
+    scaleUp:
+      stabilizationWindowSeconds: 0    <span class="cm"># scale up immediately</span>
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15   <span class="cm"># can double replicas every 15s</span>
+
+---
+<span class="cm"># KEDA ScaledObject — scale on Kafka consumer lag</span>
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: email-consumer-scaler
+spec:
+  scaleTargetRef:
+    name: email-consumer
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: kafka:9092
+      consumerGroup: email-service
+      topic: booking.confirmed
+      lagThreshold: <span class="str">"100"</span>   <span class="cm"># 1 pod per 100 events of lag</span></pre>
+  </div>
+</div>
+
+<!-- VIZ 5: HPA simulator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">HPA scale decision — how replica count is calculated</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Current replicas: <span id="hpa-reps" style="color:var(--accent)">3</span></label>
+        <input type="range" class="viz-slider" id="hpa-reps-slider" min="1" max="20" value="3" oninput="calcHPA()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Current CPU utilisation: <span id="hpa-cpu" style="color:var(--accent)">85%</span></label>
+        <input type="range" class="viz-slider" id="hpa-cpu-slider" min="1" max="200" value="85" oninput="calcHPA()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Target CPU: <span id="hpa-target" style="color:var(--accent)">70%</span></label>
+        <input type="range" class="viz-slider" id="hpa-target-slider" min="10" max="100" value="70" oninput="calcHPA()">
+      </div>
+      <div>
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Max replicas: <span id="hpa-max" style="color:var(--accent)">20</span></label>
+        <input type="range" class="viz-slider" id="hpa-max-slider" min="3" max="50" value="20" oninput="calcHPA()">
+      </div>
+    </div>
+    <div id="hpa-output" class="mono-out" style="font-size:12px"></div>
+  </div>
+</div>
+
+<!-- S6: SCHEDULING -->
+<div class="section" id="s-scheduling">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>How does the scheduler decide where to put your pod?</h2>
+
+  <p>The Kubernetes scheduler runs a two-phase process: filtering (which nodes can run this pod?) and scoring (among those nodes, which is best?). Understanding this makes the difference between a cluster that efficiently uses its nodes and one where pods are pending despite available capacity.</p>
+
+  <h3>Filtering — eliminating impossible nodes</h3>
+  <p>A node is eliminated if it does not have enough unreserved CPU and memory to satisfy the pod's requests, if the pod has node selectors or affinity rules that the node does not satisfy, if there are pod anti-affinity rules that conflict with existing pods on that node, or if the node has taints that the pod does not tolerate. Any pod that cannot be placed on any node after filtering enters Pending state.</p>
+
+  <h3>Node affinity — controlling where pods land</h3>
+  <p>Node affinity lets you express preferences and requirements for which nodes a pod should run on. Required affinity is like a filter — the pod will not be scheduled on a node that does not match. Preferred affinity is like a scoring boost — the scheduler prefers matching nodes but will use others if necessary. Common use cases: run GPU workloads only on GPU nodes, run production pods only on nodes in a specific availability zone, keep data processing pods close to storage.</p>
+
+  <h3>Pod anti-affinity — spreading for high availability</h3>
+  <p>Pod anti-affinity ensures replicas of the same service are spread across different nodes (or availability zones). Without anti-affinity, the scheduler might place all three replicas of your booking service on the same node — and a node failure takes down your entire service. With <code>topologySpreadConstraints</code>, Kubernetes ensures replicas are distributed evenly across failure domains.</p>
+</div>
+
+<!-- S7: NETWORKING -->
+<div class="section" id="s-networking">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>How do services find each other inside a cluster?</h2>
+
+  <p>Inside a Kubernetes cluster, every Service gets a DNS name: <code>service-name.namespace.svc.cluster.local</code>. Within the same namespace, you can use just <code>service-name</code>. The booking service calls the payment service at <code>payment-service:3000</code> — Kubernetes DNS resolves this to the Service's ClusterIP, and kube-proxy routes the request to one of the healthy payment pods.</p>
+
+  <h3>Service types — ClusterIP, NodePort, LoadBalancer</h3>
+  <p><strong>ClusterIP</strong> (default): only reachable from inside the cluster. Use for all internal services. <strong>NodePort</strong>: exposes the service on a port on every node's IP. Useful for debugging; not for production external traffic. <strong>LoadBalancer</strong>: provisions a cloud load balancer (AWS NLB, GCP Load Balancer) and routes external traffic to the service. Use for services that need to be reachable from outside the cluster.</p>
+
+  <h3>Ingress — HTTP routing into the cluster</h3>
+  <p>An Ingress is an HTTP(S) routing rule. It sits in front of multiple Services and routes requests based on host or path: <code>api.example.com/bookings</code> goes to the booking service, <code>api.example.com/payments</code> goes to the payment service. Ingress requires an Ingress Controller (nginx-ingress, Traefik, AWS ALB Ingress Controller) that watches Ingress resources and configures the underlying load balancer. TLS termination happens at the Ingress.</p>
+</div>
+
+<!-- S8: PROD -->
+<div class="section" id="s-prod">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>Production reality</h2>
+
+  <h3>Pod Disruption Budgets — protecting against accidental downtime</h3>
+  <p>During node maintenance, Kubernetes drains nodes by evicting pods. Without a Pod Disruption Budget (PDB), it might evict all three replicas of your service simultaneously, causing an outage. A PDB specifies the minimum number of pods that must remain available during voluntary disruptions. <code>minAvailable: 2</code> means at most one pod can be evicted at a time. Always set a PDB for any service with SLOs.</p>
+
+  <h3>Rolling updates and zero-downtime deploys</h3>
+  <p>A rolling update replaces old pods with new ones gradually: spawn a new pod, wait for its readiness probe to pass, then remove an old pod. The key configuration: <code>maxSurge</code> (how many extra pods can exist during the update — default: 25%) and <code>maxUnavailable</code> (how many pods can be unavailable during the update — set to 0 for zero-downtime). With <code>maxUnavailable: 0</code> and a readiness probe, old pods are never removed until new ones are confirmed ready.</p>
+
+  <h3>Resource quotas — preventing namespace sprawl</h3>
+  <p>A ResourceQuota applied to a namespace limits total CPU, memory, and object counts that namespace can consume. Without quotas, a team can request unlimited resources and starve other namespaces. Apply quotas per namespace, matched to the team's expected workload with headroom for HPA scale-up.</p>
+</div>
+
+<!-- S9: NOBODY TELLS YOU -->
+<div class="section" id="s-nobody">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>The things nobody tells you</h2>
+
+  <h3>CPU throttling is silent and extremely common</h3>
+  <p>A pod that is CPU-throttled continues to run and passes all health checks, but every operation takes longer. P99 latency spikes, SLOs are missed, and the only evidence is a metric called <code>container_cpu_cfs_throttled_seconds_total</code> that most teams never look at. Check this metric in your Grafana dashboard. If it is non-zero, your CPU limit is too low and your service is being throttled.</p>
+
+  <h3>The scheduler does not rebalance</h3>
+  <p>Once a pod is scheduled onto a node, Kubernetes does not move it unless the node fails or the pod is deleted. If a new, under-utilised node joins the cluster, existing pods do not migrate to it. The cluster only rebalances when pods are created or recreated. Descheduler is a separate tool that evicts pods from over-utilised nodes to trigger rebalancing — consider running it on a schedule in production clusters.</p>
+
+  <h3>Secrets are not secret without additional work</h3>
+  <p>Kubernetes Secrets are base64-encoded, not encrypted, by default. Anyone with read access to the namespace can decode them. Enable encryption at rest for Secrets in etcd, use sealed secrets (Bitnami Sealed Secrets), or use an external secrets operator that pulls from AWS Secrets Manager, HashiCorp Vault, or GCP Secret Manager. For production, treat a Kubernetes Secret as only as secure as the access controls on your cluster.</p>
+
+  <h3>OOMKill leaves no logs</h3>
+  <p>When a container is OOMKilled, the process is terminated immediately — no graceful shutdown, no log flush. The last few seconds of logs may be lost. The only evidence is <code>kubectl describe pod</code> showing <code>OOMKilled</code> in the Last State, and the <code>container_oom_events_total</code> metric. If you are missing logs on a service that crashes, check if it is being OOMKilled before suspecting a logging configuration problem.</p>
+</div>
+
+<!-- DECISION SEQUENCE -->
+<div class="section" id="s-sequence" style="margin-top:64px">
+  <div class="section-eyebrow">Decision sequence</div>
+  <h2>Deploying a service to Kubernetes</h2>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text3);margin-bottom:24px">Work through this before writing a single manifest.</p>
+  <div class="ds-steps">
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">1</div>
+      <div class="ds-body">
+        <div class="ds-title">Set resource requests from measured usage, not guesses</div>
+        <div class="ds-detail">Run the service under realistic load in staging. Measure P50 CPU and memory usage with <code>kubectl top pods</code>. Set requests at P50 usage. Set limits at 2-3x P50. Update after two weeks in production with real traffic data. Wrong requests cause cascading problems: pending pods, HPA misbehaviour, noisy neighbour issues.
+          <br><span class="ds-tag ds-tag-stop">guessed resource values cause 80% of K8s production incidents</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">2</div>
+      <div class="ds-body">
+        <div class="ds-title">Implement all three probe endpoints in your application</div>
+        <div class="ds-detail"><code>GET /health/live</code>: returns 200 if the process is alive. No dependency checks. <code>GET /health/ready</code>: returns 200 if the service can handle traffic — checks database connection, cache reachability. Returns 503 when not ready. <code>GET /health/startup</code>: same as live, used only during startup phase with generous timeout.
+          <br><span class="ds-tag ds-tag-stop">dependencies in liveness = cascading restart storms</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">3</div>
+      <div class="ds-body">
+        <div class="ds-title">Set maxUnavailable: 0 and configure readiness before HPA</div>
+        <div class="ds-detail">Rolling updates with <code>maxUnavailable: 0</code> ensure old pods are not removed until new ones pass readiness. This requires a correct readiness probe. Without it, Kubernetes removes old pods before the new ones are actually ready to serve traffic, causing brief outages during every deploy. Validate this in staging by deploying while load testing.
+          <br><span class="ds-tag ds-tag-ok">maxUnavailable:0 + readiness = zero-downtime deploys</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">4</div>
+      <div class="ds-body">
+        <div class="ds-title">Add a PDB before enabling HPA</div>
+        <div class="ds-detail">A PDB ensures that during node maintenance, at least N pods remain available. Without it, draining a node can take down all replicas simultaneously. Set <code>minAvailable: 2</code> for most services. The HPA needs to be aware of the PDB — it will not scale below <code>minReplicas</code>, and the PDB prevents eviction below <code>minAvailable</code>.
+          <br><span class="ds-tag ds-tag-warn">no PDB = node maintenance causes outages</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">5</div>
+      <div class="ds-body">
+        <div class="ds-title">Spread replicas across availability zones</div>
+        <div class="ds-detail">Use <code>topologySpreadConstraints</code> with <code>topologyKey: topology.kubernetes.io/zone</code> to ensure replicas are spread across AZs. Without this, the scheduler may place all replicas in one AZ — a zone failure takes your service down despite having 3 replicas. This is the most common HA configuration mistake in Kubernetes.
+          <br><span class="ds-tag ds-tag-stop">all replicas in one AZ = single AZ failure = full outage</span></div>
+      </div>
+    </div>
+
+    <div class="ds-step">
+      <div class="ds-line"></div><div class="ds-num">6</div>
+      <div class="ds-body">
+        <div class="ds-title">Monitor CPU throttling, OOMKills, and pending pods</div>
+        <div class="ds-detail">Three metrics that matter most: <code>container_cpu_cfs_throttled_seconds_total</code> (CPU throttling — silent latency killer), <code>container_oom_events_total</code> (OOMKills — silent crash), <code>kube_pod_status_phase{phase="Pending"}</code> (pending pods — scheduler cannot place them). Alert on all three. They indicate resource misconfiguration before it becomes a user-facing incident.
+          <br><span class="ds-tag ds-tag-ok">these three metrics tell you about problems before users do</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNERS -->
+<div style="margin-top:56px;background:var(--bg2);border:1px solid rgba(62,207,142,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Incident + Lab</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Pods are OOMKilled every 4 hours. HPA is not helping.</div>
+    <div style="font-size:13px;color:var(--text2)">Memory leak diagnosis · limit vs request misconfiguration · VPA recommendation</div>
+  </div>
+  <a href="/day27/lab" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Incident Lab</a>
+</div>
+<div style="margin-top:16px;background:var(--bg2);border:1px solid rgba(168,127,255,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Implementation Deep Dive</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Complete Deployment manifest, PDB, HPA, topology spread</div>
+    <div style="font-size:13px;color:var(--text2)">Full production manifest · NetworkPolicy · RBAC · resource quotas</div>
+  </div>
+  <a href="/day27/deep" style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(168,127,255,.1);color:var(--purple);border:1px solid rgba(168,127,255,.3);padding:10px 20px;border-radius:8px;text-decoration:none;white-space:nowrap">&#8594; Go deep</a>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="s-checklist">
+  <div class="section-eyebrow">Section 11</div>
+  <h2>Kubernetes production checklist</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:24px 0">
+    <div style="background:var(--bg2);border:1px solid rgba(91,143,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)">RES</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Resources set</div><p style="font-size:12.5px;color:var(--text3);margin:0">Requests from measured P50 usage. Limits at 2-3x. Both CPU and memory. No pods without limits.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">PRB</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Probes correct</div><p style="font-size:12.5px;color:var(--text3);margin:0">Live: process check only. Ready: dependency check. Startup: for slow starters. No DB check in liveness.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange)">PDB</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">PDB configured</div><p style="font-size:12.5px;color:var(--text3);margin:0">minAvailable set. Node drains cannot take all replicas simultaneously. Tested with kubectl drain.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(168,127,255,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)">AZ</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">AZ spread</div><p style="font-size:12.5px;color:var(--text3);margin:0">topologySpreadConstraints ensures replicas across zones. No single AZ holds all replicas.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(240,96,96,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--red)">HPA</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">HPA configured</div><p style="font-size:12.5px;color:var(--text3);margin:0">minReplicas &gt;= 2. maxReplicas set with budget. Scale-down cooldown 300s. Correct metric target.</p></div>
+    <div style="background:var(--bg2);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:16px"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)">OBS</div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;font-family:'JetBrains Mono',monospace">Observability</div><p style="font-size:12.5px;color:var(--text3);margin:0">CPU throttling, OOMKills, pending pods all alerting. kubectl top pods working. Dashboard visible.</p></div>
+  </div>
+</div>
+
+<!-- CLOSING HOOK -->
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    The port master does not ask what is in the container. It asks how much space it needs, whether it passed customs inspection, and how many ships to call in when the queue grows. Kubernetes asks exactly these three questions — about resources, health, and scale — and keeps asking them every 15 seconds for the lifetime of your cluster.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:20px;line-height:1.8;color:var(--text);font-style:italic;margin-top:24px;margin-bottom:56px">
+    The next time a Kubernetes incident wakes you up — ask: <em style="color:var(--accent)">is it a scheduling problem, a health probe problem, or a resource problem?</em> Those three categories cover 90% of what goes wrong.
+  </p>
+</div>
+<div style="height:40px"></div>
+</article>
+</div>
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){if(s.id&&s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Port mapping
+var PORT = {
+  container: "CARGO CONTAINER  ->  POD\n\nPort:\n  A sealed metal box with declared weight and cargo type.\n  The contents are the shipper's responsibility, not the port's.\n  Multiple items can be packed in one container (co-located cargo).\n  The container has a manifest: what is inside, how much it weighs.\n\nKubernetes:\n  A pod is one or more containers that share a network namespace.\n  The contents (application code) are the developer's responsibility.\n  Multiple containers in one pod share localhost and storage volumes.\n  The pod spec is the manifest: what runs, how much resource it needs.\n\nKey property:\n  A pod is mortal. When it dies, Kubernetes does not revive it.\n  A Deployment creates a new pod in its place.\n  Pod IPs change on each restart. Service IPs are stable.\n\nPod vs container:\n  A container is a process isolated by Linux namespaces and cgroups.\n  A pod is a Kubernetes wrapper around one or more containers.\n  You almost never create pods directly.\n  You create Deployments that create and manage pods.",
+
+  ship: "SHIP  ->  NODE\n\nPort:\n  Each ship has a maximum load capacity: 50,000 tonnes.\n  Multiple containers share the ship's deck.\n  A ship can carry containers from many different shippers.\n  If a ship sinks, all containers on it are lost.\n\nKubernetes:\n  Each node has a finite amount of CPU and memory.\n  Multiple pods share the node's resources.\n  A node can run pods from many different Deployments.\n  If a node fails, all pods on it are rescheduled elsewhere.\n\nNode types:\n  Worker nodes: run your application pods.\n  Control plane nodes: run kube-apiserver, etcd, scheduler, controller-manager.\n  Spot/preemptible nodes: cheaper, can be reclaimed with 2 min notice.\n    -> never run stateful workloads on spot nodes without care.\n    -> ideal for batch jobs and stateless web tiers.\n\nNode capacity vs allocatable:\n  A node with 4 vCPU and 16GB RAM has less than that available to pods.\n  Kubernetes system components (kubelet, kube-proxy) consume ~0.5 vCPU.\n  OS overhead takes additional memory.\n  Allocatable is what the scheduler sees.",
+
+  portmaster: "PORT MASTER  ->  SCHEDULER\n\nPort:\n  The port master receives a container and asks:\n  Which ships have enough remaining capacity?\n  Does this container require a refrigerated ship?\n  Should it be kept away from explosive cargo?\n  Among the eligible ships, which is the best choice?\n\nKubernetes scheduler:\n  The scheduler receives a pod and runs two phases:\n\n  Phase 1 - Filtering (eliminate impossible nodes):\n    Does this node have enough unreserved CPU and memory?\n    Does this node satisfy the pod's node selectors?\n    Does this node have taints the pod cannot tolerate?\n    Does this node violate pod anti-affinity rules?\n\n  Phase 2 - Scoring (rank eligible nodes):\n    Prefer nodes with more available resources (balanced spread).\n    Prefer nodes that already have the container image cached.\n    Prefer nodes in the same AZ as the requester (topology hints).\n\n  The highest-scoring node wins. Pod is bound to that node.\n  If no node passes filtering: pod enters Pending state.\n  Pending pods stay pending until a node becomes eligible\n  (new node joins, another pod is deleted, resources are freed).",
+
+  weight: "WEIGHT LIMIT  ->  RESOURCE REQUESTS AND LIMITS\n\nPort:\n  Declared weight = what the port reserves on the ship (request).\n  Physical weight limit = maximum the container can weigh (limit).\n  Exceeding the physical limit: cargo is rejected.\n  Declaring less than actual weight: ship may be overloaded silently.\n\nKubernetes:\n  Resource request = what the scheduler reserves on the node.\n  Resource limit = maximum the container can use at runtime.\n\n  Exceeding memory limit: OOMKill (container terminated immediately).\n  Exceeding CPU limit: throttled (slowed down, not killed).\n  Under-declaring requests: node appears to have free capacity\n    but pods compete for actual CPU/memory. Noisy neighbour.\n\nThe two are independent:\n  request: 250m CPU, 256Mi memory  <- scheduler uses this\n  limit:   1000m CPU, 512Mi memory <- runtime enforces this\n\n  A pod can use up to 1000m CPU even though the scheduler only\n  reserved 250m -- AS LONG AS that CPU is available on the node.\n  At contention, the pod is throttled to its limit.\n  If the node is idle, the pod can use more than its request\n  (burst capacity) up to its limit.",
+
+  customs: "CUSTOMS INSPECTION  ->  HEALTH PROBES\n\nPort:\n  On arrival, customs inspects each container:\n  Is it structurally intact? (liveness)\n  Is the manifest accurate? (readiness)\n  Fail the inspection: container is quarantined and not cleared.\n  Container remains at the port but does not enter circulation.\n\nKubernetes:\n  On startup and continuously, Kubernetes checks each pod:\n\n  Liveness probe (structural integrity):\n    Is the process alive and not deadlocked?\n    Fails -> container is killed and restarted.\n\n  Readiness probe (manifest accuracy - is it actually ready?):\n    Is the application ready to serve traffic?\n    Can it reach its dependencies?\n    Fails -> pod removed from Service endpoint list (no new traffic).\n    Does NOT kill the pod. It stays running, just receives no traffic.\n\n  Startup probe (clearance for a new ship):\n    Has the container finished its startup sequence?\n    Until this passes, liveness and readiness are not checked.\n    Prevents killing slow-starting containers before they are ready.\n\nKey distinction:\n  Fail liveness = kill and replace.\n  Fail readiness = isolate but keep running.\n  These are not the same thing. Configure them accordingly.",
+
+  reserve: "RESERVE FLEET  ->  HORIZONTAL POD AUTOSCALER\n\nPort:\n  When the port receives more containers than its current fleet\n  can handle, it requests additional ships from the reserve fleet.\n  When the queue clears, reserve ships are sent back to reduce costs.\n\nHPA:\n  When the metric (CPU, memory, custom) exceeds the target,\n  the HPA increases the Deployment replica count.\n  When the metric drops sufficiently, it decreases replicas\n  after a stabilisation window (default: 5 minutes for scale-down).\n\n  Formula: desiredReplicas = ceil(current * currentMetric / targetMetric)\n  currentReplicas=3, CPU=85%, target=70%:\n    desired = ceil(3 * 85 / 70) = ceil(3.64) = 4 pods\n\nCooldown prevents thrashing:\n  Scale-up: immediate (0 second stabilisation window).\n  Scale-down: 5 minutes. Avoids scaling down during a brief dip\n  only to scale back up 30 seconds later.\n\nWhat HPA does NOT do:\n  It does not scale nodes (that is Cluster Autoscaler).\n  It does not replace resource right-sizing.\n  If all nodes are full, HPA-created pods will be Pending.\n  HPA + Cluster Autoscaler work together: HPA requests more pods,\n  Cluster Autoscaler adds nodes to accommodate them.",
+};
+function showPort(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showPort'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('port-output').textContent=PORT[k];
+}
+showPort('container');
+
+// VIZ 2: Objects
+var OBJ = {
+  pod: "POD\n\nWhat it is: the smallest deployable unit in Kubernetes.\nContains: one or more containers that share network and storage.\nLifetime: mortal. When it dies, it stays dead (unless managed).\n\napiVersion: v1\nkind: Pod\nmetadata:\n  name: booking-service-abc123\nspec:\n  containers:\n  - name: booking-service\n    image: registry.example.com/booking-service:v2.4.1\n    ports:\n    - containerPort: 3000\n\nWhen to create pods directly: almost never.\nAlways prefer Deployment, StatefulSet, or Job.\nDirect pods are used for: debugging, one-off tasks, learning.\n\nPod phases:\n  Pending:   scheduled but not yet running (image pulling, resource wait)\n  Running:   at least one container is running\n  Succeeded: all containers exited 0 (for Jobs)\n  Failed:    all containers exited non-zero\n  Unknown:   node lost contact with control plane",
+
+  deployment: "DEPLOYMENT\n\nWhat it is: manages a set of identical, stateless pod replicas.\nHandles: rolling updates, rollbacks, replica count, pod template.\n\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: booking-service\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxSurge: 1         # can have 4 pods temporarily\n      maxUnavailable: 0   # never remove old pod before new is ready\n  selector:\n    matchLabels:\n      app: booking-service\n  template:              # pod template\n    metadata:\n      labels:\n        app: booking-service\n    spec:\n      containers:\n      - name: booking-service\n        image: registry.example.com/booking-service:v2.4.1\n\nRolling update:\n  kubectl set image deployment/booking-service \\\n    booking-service=registry.example.com/booking-service:v2.4.2\n\nRollback:\n  kubectl rollout undo deployment/booking-service",
+
+  service: "SERVICE\n\nWhat it is: stable virtual IP + DNS name routing to healthy pods.\nProblem it solves: pod IPs change. Service IPs do not.\n\napiVersion: v1\nkind: Service\nmetadata:\n  name: booking-service\nspec:\n  selector:\n    app: booking-service   # routes to pods with this label\n  ports:\n  - port: 3000\n    targetPort: 3000\n  type: ClusterIP           # only reachable inside cluster\n\nDNS within the cluster:\n  booking-service               # same namespace\n  booking-service.production    # cross-namespace\n  booking-service.production.svc.cluster.local  # full FQDN\n\nService types:\n  ClusterIP:    internal only. Default. Use for microservice communication.\n  NodePort:     exposes on every node IP:port. For debugging only.\n  LoadBalancer: provisions cloud load balancer. For external traffic.\n  ExternalName: DNS alias to an external service.\n\nkube-proxy on each node watches Service objects and configures\niptables rules to route traffic to the appropriate pods.",
+
+  configmap: "CONFIGMAP AND SECRET\n\nConfigMap: non-sensitive configuration as key-value pairs.\nSecret:    sensitive configuration (base64-encoded, not encrypted by default).\n\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: booking-config\ndata:\n  LOG_LEVEL: info\n  MAX_CONNECTIONS: '100'\n\napiVersion: v1\nkind: Secret\nmetadata:\n  name: booking-secrets\ntype: Opaque\ndata:\n  database-url: cG9zdGdyZXM6Ly8uLi4=   # base64 encoded\n\nUsage in pod spec:\n  env:\n  - name: LOG_LEVEL\n    valueFrom:\n      configMapKeyRef:\n        name: booking-config\n        key: LOG_LEVEL\n  - name: DATABASE_URL\n    valueFrom:\n      secretKeyRef:\n        name: booking-secrets\n        key: database-url\n\nSecurity warning:\n  Secrets are base64-encoded, not encrypted.\n  Use Sealed Secrets or External Secrets Operator for production.\n  Never commit Secret manifests to git.",
+
+  statefulset: "STATEFULSET\n\nWhat it is: manages stateful pods with stable identity and storage.\nUse for: databases, message queues, any pod that needs persistent state.\n\nKey differences from Deployment:\n  Pods have stable, predictable names: postgres-0, postgres-1, postgres-2\n  Each pod gets its own PersistentVolumeClaim (survives pod restart)\n  Pods are started and stopped in order (0, then 1, then 2)\n  Deleting a StatefulSet does NOT delete PersistentVolumes\n\napiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: postgres\nspec:\n  serviceName: postgres\n  replicas: 3\n  template:\n    spec:\n      containers:\n      - name: postgres\n        image: postgres:15\n        volumeMounts:\n        - name: data\n          mountPath: /var/lib/postgresql/data\n  volumeClaimTemplates:     # creates a PVC per pod\n  - metadata:\n      name: data\n    spec:\n      resources:\n        requests:\n          storage: 100Gi\n\nWarning: StatefulSets are significantly harder to operate than Deployments.\nFor most cases, use a managed database (RDS, CloudSQL) instead.",
+
+  job: "JOB AND CRONJOB\n\nJob: runs a pod to completion (exit 0). Retries on failure.\nCronJob: runs a Job on a schedule.\n\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: db-migration\nspec:\n  backoffLimit: 3         # retry up to 3 times\n  template:\n    spec:\n      restartPolicy: Never\n      containers:\n      - name: migrate\n        image: registry.example.com/booking-service:v2.4.1\n        command: ['node', 'scripts/migrate.js']\n\n---\napiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: send-reminder-emails\nspec:\n  schedule: '0 9 * * *'   # 9am daily\n  jobTemplate:\n    spec:\n      template:\n        spec:\n          restartPolicy: OnFailure\n          containers:\n          - name: reminders\n            image: registry.example.com/booking-service:v2.4.1\n            command: ['node', 'scripts/send-reminders.js']\n\nUse Jobs for: database migrations, data backfills, one-off scripts.\nUse CronJobs for: scheduled reports, cleanup tasks, periodic sync.",
+};
+function showObj(k){document.getElementById('obj-output').textContent=OBJ[k];}
+
+// VIZ 3: Resources
+var RESOURCE = {
+  no_limits: "NO LIMITS SET\n\nConfiguration:\n  resources:\n    requests:\n      cpu: 100m\n      memory: 128Mi\n    # no limits\n\nWhat happens:\n  The scheduler places the pod based on the request (100m, 128Mi).\n  The pod can use ALL available CPU and memory on the node.\n  On a lightly loaded node: fine, everything works.\n  On a busy node: the pod competes with others for CPU.\n  One badly behaved pod can consume all node CPU, starving others.\n\nActual incidents:\n  A memory leak in one pod consumes all node memory.\n  The OS starts OOMKilling other pods to free memory.\n  Services on the same node start failing.\n  Root cause: one pod without a memory limit.\n\nFix: always set limits. If you do not know the right value,\nset a high limit and monitor actual usage.",
+
+  too_low: "LIMITS TOO LOW\n\nConfiguration:\n  resources:\n    requests:\n      cpu: 100m\n      memory: 128Mi\n    limits:\n      cpu: 200m      # too low for traffic spikes\n      memory: 256Mi  # too low for connection pool\n\nWhat happens:\n  Under normal load: everything works.\n  Under traffic spike: CPU throttled to 200m.\n  Latency spikes from 50ms to 400ms.\n  No OOMKill (yet), no error. Just slow.\n\n  When memory limit is hit:\n  OOMKill at 256Mi. Pod restarts.\n  During restart: 0 capacity for ~10 seconds.\n  With 3 replicas, staggered restarts cause 33% capacity reduction.\n\nDiagnosis:\n  container_cpu_cfs_throttled_seconds_total > 0 (CPU throttling)\n  kubectl describe pod | grep OOMKilled (memory)\n\nFix: increase limits. Target 2-3x typical usage.",
+
+  correct: "CORRECTLY SIZED\n\nConfiguration (based on 2 weeks of production metrics):\n  resources:\n    requests:\n      cpu: 250m      # P50 usage: 220m. Request slightly above.\n      memory: 256Mi  # P50 usage: 230Mi. Request slightly above.\n    limits:\n      cpu: 1000m     # 4x request. Room for traffic spikes.\n      memory: 512Mi  # 2x request. Catches leaks before OOMKill.\n\nWhat this achieves:\n  Scheduler: places pod on nodes with 250m CPU and 256Mi available.\n  Under normal load: pod uses 220m CPU, 230Mi memory. Healthy.\n  Under 4x spike: pod uses up to 1000m CPU. Throttled at 1000m.\n    (Still fast - 4x normal load handled within limits)\n  Memory leak: pod will OOMKill at 512Mi, not consume all node memory.\n\nMonitor and adjust:\n  After 2 weeks: check P50, P95, P99 CPU and memory.\n  If P99 CPU > 800m: increase limit to 1500m.\n  If P99 memory > 400Mi: investigate leak or increase limit.\n  VPA can recommend right values automatically.",
+
+  too_high: "REQUESTS TOO HIGH\n\nConfiguration:\n  resources:\n    requests:\n      cpu: 2000m   # 2 vCPU requested. Actual usage: 200m.\n      memory: 2Gi  # 2GB requested. Actual usage: 300Mi.\n    limits:\n      cpu: 4000m\n      memory: 4Gi\n\nWhat happens:\n  Scheduler reserves 2000m CPU and 2Gi memory per pod.\n  With 4 pods: 8000m CPU and 8Gi reserved.\n  A 4-node cluster with 4 vCPU each = 16000m total.\n  After 4 pods: 8000m reserved, 8000m remaining for 4 more pods.\n  Actual usage: 800m CPU and 1.2Gi memory. Cluster is 80% idle.\n\nProblems:\n  Wasted money: paying for capacity that is never used.\n  Pending pods: HPA tries to add pods, scheduler cannot place them\n    because requests exceed available (reserved) capacity.\n  Under-utilised nodes: cluster autoscaler may not add nodes\n    because existing nodes appear to have capacity (they do not\n    -- it is reserved but unused).\n\nFix: measure actual usage. Set requests at P50 actual.",
+
+  oomkill: "OOMKILL SCENARIO\n\nSetup:\n  Memory limit: 512Mi\n  Initial usage: 280Mi (healthy)\n  Memory leak in request handler: +2MB per request\n  Traffic: 100 req/min\n\nTimeline:\n  T=0:    Pod starts. Memory: 280Mi.\n  T=30m:  Memory: 280 + (100*30*2) = 6,280 Mi -- wait, that is wrong.\n          Actually: 280 + (3000 * 0.002 GB) = 280 + 6000 = crash well before this.\n          More realistic: leak is 0.05MB per request.\n  T=1h:   Memory: 280 + (6000 * 0.05) = 280 + 300 = 580Mi -- over limit!\n  T=~55m: Memory reaches 512Mi limit.\n          Linux OOM killer terminates the process.\n          Kubernetes: LastState shows OOMKilled.\n          Pod restarts from 280Mi.\n  T=~1h55m: Cycle repeats.\n\nDiagnosis:\n  kubectl describe pod booking-service-xxx | grep -A5 'Last State'\n  # Shows: Reason: OOMKilled\n\n  kubectl top pods -n production  # shows current usage approaching limit\n\nFix options:\n  A. Fix the memory leak (correct fix)\n  B. Increase memory limit (buys time, not a fix)\n  C. Set memory limit high enough that leak takes days to hit\n     and deploy a restart schedule (hack, not recommended)",
+};
+function showResource(k){document.getElementById('resource-output').textContent=RESOURCE[k];}
+
+// VIZ 4: Probes
+var PROBE = {
+  liveness_fail: "LIVENESS PROBE FAILS\n\nScenario:\n  The booking service has a goroutine leak.\n  After 6 hours, the event loop is blocked processing a stuck job.\n  GET /health/live returns 503 (or times out).\n\nKubernetes behaviour:\n  Probe fails once:  warning, continue.\n  Probe fails twice: warning, continue.\n  Probe fails three times (failureThreshold: 3): ACTION.\n  Action: kill the container. Start a new one.\n  The new container starts fresh with an empty event loop.\n\nResult:\n  The service recovers automatically from the deadlock.\n  Downtime: ~10-30 seconds (time to start new container and pass startup probe).\n  Users see: brief 503s during restart.\n  On-call: sees a restart in the pod logs, investigates root cause.\n\nThis is correct behaviour:\n  The liveness probe is protecting the service from staying deadlocked.\n  The restart is the recovery mechanism.\n  Without the probe: stuck forever until someone manually restarts it.",
+
+  readiness_fail: "READINESS PROBE FAILS\n\nScenario:\n  The database runs a 30-second maintenance operation.\n  The booking service cannot connect to the database.\n  GET /health/ready returns 503.\n\nKubernetes behaviour:\n  Probe fails: pod removed from Service endpoint list.\n  NO traffic is routed to this pod.\n  The pod is NOT killed.\n  Other pods (with healthy DB connections) continue serving traffic.\n\n  When maintenance ends and DB connection restores:\n  GET /health/ready returns 200.\n  Pod is re-added to Service endpoint list.\n  Traffic resumes.\n\nResult:\n  During maintenance: traffic shifts to healthy pods automatically.\n  No manual intervention required.\n  No pod restarts.\n  Users: may see slightly higher latency (fewer pods serving traffic).\n  Users do NOT see errors (healthy pods absorb the load).\n\nThis is correct behaviour:\n  The readiness probe prevents sending traffic to a pod that cannot\n  fulfil requests, without unnecessarily killing the pod.",
+
+  startup_absent: "NO STARTUP PROBE — slow-starting service\n\nScenario:\n  A Node.js service connects to the database and runs 10 migrations\n  on startup. This takes 45 seconds.\n  No startup probe configured.\n\nKubernetes behaviour:\n  Container starts. liveness probe begins immediately.\n  At T=10s: first liveness check. Service is starting migrations.\n    GET /health/live -> 503 (not ready). FAILURE #1.\n  At T=20s: second check. Still migrating. FAILURE #2.\n  At T=30s: third check. Still migrating. FAILURE #3.\n  failureThreshold=3 reached: KILL AND RESTART.\n  Container restarts. Migrations run again. Same outcome.\n  Pod is stuck in CrashLoopBackOff.\n\nFix: add a startup probe with generous timeout:\n  startupProbe:\n    httpGet:\n      path: /health/live\n      port: 3000\n    failureThreshold: 30   # 30 x 10s = 5 minutes to start\n    periodSeconds: 10\n\n  While startup probe is running:\n    liveness and readiness probes are DISABLED.\n    Pod has 5 minutes to complete startup.\n    After startup probe passes: normal probing begins.",
+
+  dep_in_liveness: "DATABASE CHECK IN LIVENESS PROBE\n\nAnti-pattern:\n  GET /health/live:\n    checks: database connection, redis connection, downstream services\n    if any fail: returns 503\n\nScenario:\n  Database goes down at 14:00.\n\nKubernetes behaviour:\n  14:00: DB down. GET /health/live -> 503 on all pods.\n  14:00:30: liveness fails 3x on pod-1. KILL AND RESTART.\n  14:00:30: pod-1 restarts. DB still down. Immediately fails again.\n  14:00:35: pod-2 fails. KILL AND RESTART.\n  14:01:00: all 3 pods restarting simultaneously.\n  DB recovers at 14:01.\n  But all pods just restarted cold. Connection pools are empty.\n  Thundering herd: all pods simultaneously try to open 20 DB connections.\n  DB overwhelmed. Connections fail. Pods restart again.\n  It takes 5-10 minutes to stabilise after a 1-minute DB outage.\n\nCorrect approach:\n  /health/live:  ONLY checks process responsiveness. No DB check.\n  /health/ready: checks DB, cache, dependencies.\n  DB down -> readiness fails -> traffic routed away -> pods stay running\n  DB recovers -> readiness passes -> traffic restored\n  No restarts. No thundering herd. Recovery in seconds.",
+
+  correct: "CORRECTLY CONFIGURED PROBES\n\nEndpoint implementations:\n\n  GET /health/live:\n    // Only check process is alive and responsive\n    // Should respond in < 1ms\n    res.json({ status: 'alive', uptime: process.uptime() })\n\n  GET /health/ready:\n    // Check dependencies\n    const [db, redis] = await Promise.allSettled([\n      pool.query('SELECT 1'),\n      redisClient.ping()\n    ])\n    if (db.status === 'rejected' || redis.status === 'rejected') {\n      return res.status(503).json({\n        status: 'not_ready',\n        db: db.status,\n        redis: redis.status\n      })\n    }\n    res.json({ status: 'ready' })\n\nProbe config:\n  startupProbe:   failureThreshold 30 x 10s = 5min to start\n  livenessProbe:  period 10s, threshold 3 = 30s to detect deadlock\n  readinessProbe: period 5s, threshold 2 = 10s to detect dependency failure\n\nResult:\n  DB outage: readiness fails, traffic rerouted, pods stay up.\n  Deadlock: liveness fails, pod restarted, service recovers.\n  Slow start: startup probe allows 5 minutes before liveness kicks in.",
+};
+function showProbe(k){document.getElementById('probe-output').textContent=PROBE[k];}
+
+// VIZ 5: HPA calculator
+function calcHPA(){
+  var reps   = parseInt(document.getElementById('hpa-reps-slider').value);
+  var cpu    = parseInt(document.getElementById('hpa-cpu-slider').value);
+  var target = parseInt(document.getElementById('hpa-target-slider').value);
+  var maxR   = parseInt(document.getElementById('hpa-max-slider').value);
+
+  document.getElementById('hpa-reps').textContent   = reps;
+  document.getElementById('hpa-cpu').textContent    = cpu + '%';
+  document.getElementById('hpa-target').textContent = target + '%';
+  document.getElementById('hpa-max').textContent    = maxR;
+
+  var raw     = reps * (cpu / target);
+  var desired = Math.ceil(raw);
+  desired     = Math.min(desired, maxR);
+  desired     = Math.max(desired, 1);
+
+  var action = desired > reps ? 'SCALE UP' : desired < reps ? 'SCALE DOWN' : 'NO CHANGE';
+  var col = desired > reps ? 'var(--orange)' : desired < reps ? 'var(--green)' : 'var(--accent)';
+
+  document.getElementById('hpa-output').innerHTML = [
+    'HPA calculation:',
+    '  desired = ceil(currentReplicas * currentCPU / targetCPU)',
+    '  desired = ceil(' + reps + ' * ' + cpu + ' / ' + target + ')',
+    '  desired = ceil(' + raw.toFixed(2) + ')',
+    '  desired = ' + desired + ' (capped at max: ' + maxR + ')',
+    '',
+    '<span style="color:' + col + ';font-weight:700">Decision: ' + action + ' to ' + desired + ' replicas</span>',
+    '',
+    desired > reps
+      ? 'Scale-up: immediate (stabilizationWindowSeconds: 0)'
+      : desired < reps
+      ? 'Scale-down: waits 5 minutes (stabilizationWindowSeconds: 300)\nPrevents thrashing during brief metric dips'
+      : 'Current replica count is correct for this load.',
+    '',
+    'Note: HPA only controls replica count, not node count.',
+    'If desired=' + desired + ' pods cannot be scheduled (insufficient node capacity),',
+    'the Cluster Autoscaler adds nodes to accommodate them.',
+  ].join('\n');
+}
+calcHPA();
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 27 Lab: Pods OOMKilled Every 4 Hours</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.lab-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.page{max-width:820px;margin:0 auto;padding:64px 48px 120px;}
+.incident{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:48px;position:relative;overflow:hidden;}
+.incident::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--orange));}
+.incident-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:14px;}
+.incident h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.incident-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:24px;}
+p{color:var(--text2);margin-bottom:16px;font-size:15px;line-height:1.8;}p strong{color:var(--text);}
+h3{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;margin:16px 0;}
+.choice-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin:24px 0;}
+.choice-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;}
+.choice-q{font-size:15px;color:var(--text);font-weight:500;margin-bottom:16px;line-height:1.5;}
+.choice-btn{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:12px 16px;border-radius:6px;cursor:pointer;font-size:14px;transition:all .12s;margin-bottom:8px;line-height:1.5;}
+.choice-btn:hover{border-color:var(--accent);color:var(--text);}
+.choice-result{background:var(--bg3);border-radius:6px;padding:14px 16px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.7;display:none;}
+.learned{background:var(--bg2);border:1px solid rgba(91,143,255,.25);border-radius:12px;padding:28px 32px;margin-top:48px;}
+.learned-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.learned-item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;}
+.learned-check{color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.learned-text{color:var(--text2);line-height:1.6;}.learned-text strong{color:var(--text);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day27" class="back-link">&#8592; Day 27: Kubernetes Deep Dive</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">INCIDENT + LAB</span>
+  </div>
+  <span class="lab-badge">LAB</span>
+</div>
+<div class="page">
+
+<div class="incident">
+  <div class="incident-eyebrow">OOMKill Loop &nbsp;·&nbsp; booking-service &nbsp;·&nbsp; Every ~4 hours</div>
+  <h2>Pods are being OOMKilled every four hours. HPA keeps scaling up. It is not helping.</h2>
+  <div class="incident-meta">Production · booking-service · namespace: production · 3 replicas, scaling to 8</div>
+  <p>The on-call engineer gets paged at 02:00. The booking service is restarting repeatedly. Each pod runs for approximately 4 hours before being OOMKilled. The HPA has scaled from 3 to 8 replicas trying to absorb the load — but the pattern continues across all replicas. Error rate is elevated during each restart cycle.</p>
+  <p>The engineer checks the Grafana dashboard: memory usage is climbing linearly from ~280Mi at pod start to ~512Mi (the limit) over 4 hours, then the pod is killed. The pattern is identical across all 8 pods, offset by their start times.</p>
+</div>
+
+<h3>Step 1: Confirm the diagnosis</h3>
+<div class="mono-out">
+kubectl describe pod booking-service-7d8f9b-xkp2q -n production
+
+Name:         booking-service-7d8f9b-xkp2q
+Namespace:    production
+Node:         node-3/10.0.1.23
+Status:       Running
+Containers:
+  booking-service:
+    Limits:
+      cpu:     1000m
+      memory:  512Mi
+    Requests:
+      cpu:     250m
+      memory:  256Mi
+    Last State:  Terminated
+      Reason:    OOMKilled
+      Exit Code: 137
+      Started:   Sat, 17 Aug 2024 22:14:00 +0000
+      Finished:  Sun, 18 Aug 2024 02:14:33 +0000
+    Ready:          True
+    Restart Count:  3
+
+Events:
+  Type    Reason   Message
+  ----    ------   -------
+  Normal  Pulled   Container image already present
+  Normal  Created  Created container
+  Normal  Started  Started container
+</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Diagnosis</div>
+  <div class="choice-q">Memory climbs linearly from 280Mi to 512Mi over 4 hours, then OOMKill. HPA scaling to 8 pods does not help. What is this?</div>
+  <button class="choice-btn" onclick="showC('q1','a')">(A) The memory limit is too low. Increase it to 1Gi and the problem will go away.</button>
+  <button class="choice-btn" onclick="showC('q1','b')">(B) This is a memory leak. The linear growth pattern means memory is accumulating at a constant rate per request and never being released. HPA scaling adds more pods but each pod has the same leak — more pods means the same problem running in parallel.</button>
+  <button class="choice-btn" onclick="showC('q1','c')">(C) The node is out of memory. Move pods to larger nodes.</button>
+  <div class="choice-result" id="q1-result"></div>
+</div>
+
+<h3>Step 2: Find the leak</h3>
+<div class="mono-out">
+# Check memory usage over time (last 6 hours)
+kubectl top pods -n production --sort-by=memory
+
+NAME                            CPU(cores)   MEMORY(bytes)
+booking-service-7d8f9b-xkp2q   180m         498Mi   # started 4h ago, near limit
+booking-service-7d8f9b-abc123   165m         421Mi   # started 3.3h ago
+booking-service-7d8f9b-def456   190m         344Mi   # started 2.7h ago
+booking-service-7d8f9b-ghi789   172m         267Mi   # started 2h ago
+booking-service-7d8f9b-jkl012   168m         190Mi   # started 1.3h ago
+...
+
+# Memory growth rate: ~60Mi/hour regardless of request volume
+# CPU usage is stable: ~175m (within normal range)
+
+# Check what allocates memory — heap dump
+kubectl exec -n production booking-service-7d8f9b-xkp2q \
+  -- node --inspect=0.0.0.0:9229 &
+kubectl port-forward booking-service-7d8f9b-xkp2q 9229:9229
+
+# Connect Chrome DevTools -> Take heap snapshot
+# Finding: EventEmitter listeners growing unboundedly
+# Each request adds a listener. Listeners are never removed.
+# Pattern: new EventEmitter().on('data', handler) inside request handler
+#          without .removeListener() or .once()
+</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Immediate mitigation</div>
+  <div class="choice-q">It is 02:30. The fix (removing the listener leak) will take until tomorrow morning to test and deploy. What do you do right now to reduce the impact?</div>
+  <button class="choice-btn" onclick="showC('q2','a')">(A) Increase the memory limit to 2Gi so pods run for 16 hours instead of 4, reducing restart frequency.</button>
+  <button class="choice-btn" onclick="showC('q2','b')">(B) Add a scheduled restart: configure a CronJob that rolls the deployment every 3 hours, restarting pods before they hit the limit. Set memory limit to 768Mi (more headroom). This reduces OOMKill frequency to near-zero while the fix is developed.</button>
+  <button class="choice-btn" onclick="showC('q2','c')">(C) Scale down to 1 replica to reduce the number of restarting pods.</button>
+  <div class="choice-result" id="q2-result"></div>
+</div>
+
+<div class="choice-panel">
+  <div class="choice-label">Why HPA made it worse</div>
+  <div class="choice-q">Why did the HPA scaling from 3 to 8 replicas not help?</div>
+  <button class="choice-btn" onclick="showC('q3','a')">(A) HPA scales based on CPU, not memory. CPU is fine. HPA should have been configured to scale on memory instead.</button>
+  <button class="choice-btn" onclick="showC('q3','b')">(B) HPA scales horizontally — more pods handling the same total requests. A memory leak that accumulates per request will hit the same limit on every pod, just staggered in time. More pods means more OOMKills happening in rotation, not fewer.</button>
+  <button class="choice-btn" onclick="showC('q3','c')">(C) HPA was misconfigured. minReplicas should have been set higher.</button>
+  <div class="choice-result" id="q3-result"></div>
+</div>
+
+<div class="learned">
+  <div class="learned-title">What this incident teaches</div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>Linear memory growth is always a leak, never a limit problem.</strong> If memory grows at a constant rate independent of request volume, the limit is not the issue — code is accumulating objects without releasing them. Increasing the limit delays the OOMKill but does not prevent it. Find and fix the leak.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>HPA cannot fix a resource leak.</strong> HPA adds capacity for load. A leak is not a load problem. More pods handling the same requests means more pods each accumulating memory at the same rate. The root cause — the leak — must be fixed in the application.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>OOMKill has no log output.</strong> The pod is terminated immediately by the OS. The last few seconds of logs are typically lost. The only evidence is in <code>kubectl describe pod</code> under Last State: Reason: OOMKilled. If you are missing logs on a crashing service, check for OOMKills before debugging the application.</span></div>
+  <div class="learned-item"><span class="learned-check">&#9654;</span><span class="learned-text"><strong>EventEmitter listener leaks are one of the most common Node.js memory leaks.</strong> Always use <code>emitter.once()</code> instead of <code>emitter.on()</code> for one-time listeners, or explicitly call <code>emitter.removeListener()</code>. Node.js will emit a warning when a single emitter has more than 10 listeners — this is the built-in leak detector.</span></div>
+</div>
+
+</div>
+<script>
+var C = {
+  'q1-a': 'Partially correct as an immediate mitigation but wrong as a diagnosis. The memory climbs at ~60Mi/hour regardless of traffic volume. Healthy memory usage fluctuates with traffic and gets garbage collected. Linear growth that never decreases is the signature of a leak. Increasing the limit to 1Gi would make each pod run for ~12 hours instead of 4 before OOMKilling -- buying time, not fixing the problem.',
+  'q1-b': 'Correct. The diagnostic evidence:\n  - Memory grows linearly: ~60Mi/hour\n  - Growth rate is independent of request volume (same rate at 2am as 2pm)\n  - Pattern is identical across all pods\n  - HPA scaling adds more pods but does not reduce growth rate per pod\n\nThis is a textbook memory leak. Something in the request handler is allocating memory that is never garbage collected. The heap dump confirms it: EventEmitter listeners accumulating without being removed.\n\nHPA adds pods to handle more load. A leak is not a load problem.',
+  'q1-c': 'Incorrect. kubectl describe pod shows each pod has 512Mi limit and is being OOMKilled AT that limit. The node has nothing to do with this -- individual pods are hitting their own memory limits, not competing with each other for node memory.',
+
+  'q2-a': 'Valid as a stopgap but not optimal. Increasing to 2Gi means pods run for ~16 hours between OOMKills. That is better than 4 hours but still OOMKills. The leak is still there. In the morning, when traffic is high, 16 hours might not be enough headroom. You have bought time but not solved the problem.',
+  'q2-b': 'Best immediate mitigation. A scheduled rolling restart before the limit is hit prevents OOMKills entirely:\n\n  kubectl rollout restart deployment/booking-service -n production\n  # or as a CronJob:\n\n  apiVersion: batch/v1\n  kind: CronJob\n  metadata:\n    name: booking-service-restart\n  spec:\n    schedule: "0 */3 * * *"   # every 3 hours\n    jobTemplate:\n      spec:\n        template:\n          spec:\n            serviceAccountName: deployment-restarter\n            containers:\n            - name: kubectl\n              image: bitnami/kubectl:latest\n              command:\n              - kubectl\n              - rollout\n              - restart\n              - deployment/booking-service\n              - -n\n              - production\n\nWith rolling restarts every 3 hours and ~60Mi/hour growth:\n  Max memory at restart time: 280 + (3 * 60) = 460Mi -- well under 512Mi limit.\n  No OOMKills. Clean restarts. Service stable while fix is developed.',
+  'q2-c': 'Wrong. Scaling down to 1 replica reduces redundancy without fixing the leak. The one remaining pod will still OOMKill every 4 hours, but now the entire service goes down during each restart instead of just 1/8 of capacity.',
+
+  'q3-a': 'Partially correct -- the HPA was configured on CPU utilisation which is stable at ~175m (fine). Memory-based HPA would have noticed the problem. But even memory-based HPA would not fix it: HPA scales replicas. More replicas means more pods each leaking memory. The root cause is in the application.',
+  'q3-b': 'Correct. This is the key insight about horizontal vs vertical scaling for leaks.\n\n3 pods, each handling 100 req/min, each leaking 60Mi/hour:\n  Pod A: 280 + 60t Mi (OOMKilled at t=3.8h)\n  Pod B: 280 + 60t Mi (same)\n  Pod C: 280 + 60t Mi (same)\n\n8 pods, each handling 37.5 req/min (same total load), each leaking 60Mi/hour:\n  Pod A through H: 280 + 60t Mi (same leak rate per pod!)\n  The leak rate is per-request, but 8 pods * 37.5 req = 300 req/min total\n  = same as 3 pods * 100 req/min\n  Each pod still accumulates 60Mi/hour\n  Still OOMKilled every 4 hours, just 8 pods doing it in rotation\n\nHPA made the situation worse by adding more pods to manage and adding\nmore restart events per hour, increasing the error rate during restarts.',
+  'q3-c': 'Irrelevant to this scenario. minReplicas being set to 3 is fine. The issue is that HPA is the wrong tool for a memory leak problem.',
+};
+function showC(q,opt){
+  var el=document.getElementById(q+'-result');
+  el.textContent=C[q+'-'+opt]||'';
+  el.style.display='block';
+}
+</script>
+</body>
+</html>
