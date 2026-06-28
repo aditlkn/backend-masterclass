@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 31: System Design Synthesis — Backend Masterclass</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:240px;min-width:240px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:28px 0 40px;}
+.toc-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 20px 14px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.toc-day{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);padding:0 20px 4px;letter-spacing:1px;}
+.toc a{display:block;padding:6px 20px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(91,143,255,.06);}
+.content{flex:1;max-width:820px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:42px;font-weight:600;line-height:1.15;color:var(--text);margin-bottom:18px;}
+.hero h1 em{font-style:italic;color:var(--purple);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:600px;line-height:1.75;margin-bottom:28px;}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-meta-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.hero-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:16px;font-weight:600;color:var(--text);margin:32px 0 12px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.purple{background:rgba(168,127,255,.07);border:1px solid rgba(168,127,255,.2);}
+.callout.purple .callout-inner strong{color:var(--purple);}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:20px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(91,143,255,.15);border-color:var(--accent);color:var(--accent);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.table-wrap{overflow-x:auto;margin:24px 0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border2);text-align:left;background:var(--bg3);}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.6;}
+tbody tr:hover td{background:var(--bg2);}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.day-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:24px 0;}
+.day-chip{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;text-align:center;}
+.day-chip-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:4px;}
+.day-chip-topic{font-size:11px;color:var(--text2);line-height:1.3;}
+.day-chip-tag{display:block;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:4px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:28px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <div class="toc-label">Backend Masterclass</div>
+  <div class="toc-day">Day 31 / 31</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Architect</a>
+  <a href="#s-estimation">Back-of-Envelope</a>
+  <a href="#s-cap">CAP Theorem</a>
+  <a href="#s-canvas">Design Canvas</a>
+  <a href="#s-tradeoffs">Trade-off Vocabulary</a>
+  <a href="#s-worked">Worked Example</a>
+  <a href="#s-principal">Principal Thinking</a>
+  <a href="#s-30days">The 30 Days</a>
+  <a href="#s-closing">What Comes Next</a>
+</nav>
+<article class="content">
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Week 4 · Day 31 · System Design Synthesis</div>
+  <h1>Good engineers solve problems.<br>Principal engineers<br><em>frame them first.</em></h1>
+  <p class="hero-sub">System design is not about knowing the right answer. It is about knowing the right questions — what are the constraints, what are the trade-offs, and which trade-off is right for this problem? Today is not a new topic. It is a framework for applying every topic you have learned.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="hero-meta-dot"></div>~60 min read</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--accent)"></div>5 interactives</div>
+    <div class="hero-meta-item"><div class="hero-meta-dot" style="background:var(--green)"></div>CAP · Estimation · Trade-offs · Synthesis</div>
+  </div>
+</div>
+
+<!-- S1: ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The architect — constraints before materials</h2>
+
+  <p><strong>An architect does not start with materials.</strong> They start with constraints. How many people will use this building? What do they need to do in it? What is the budget and the site? What regulations apply? What is the expected lifespan? Only when the constraints are understood does the architect begin sketching the structure — and even then, the first sketches are not blueprints. They are explorations of the space of possible solutions, each making different trade-offs.</p>
+
+  <p>A hospital and a hotel might have the same number of rooms and similar infrastructure — plumbing, HVAC, electrical, lifts. But a hospital requires redundant power systems, specific ventilation for sterile environments, different egress requirements. An architect who treats them as the same problem because they look similar on the outside will produce a building that works for neither. The constraints drive everything.</p>
+
+  <p><strong>System design works identically.</strong> A ticketing system and a social media feed might both need to handle millions of users and store large amounts of data. But a ticketing system requires strong consistency (two people cannot buy the last seat), while a social media feed is fine with eventual consistency (seeing a post 500ms late matters less than serving it fast). An engineer who designs both systems the same way will produce one that is over-engineered and expensive, and one that causes lost revenue through double-bookings.</p>
+
+  <p><strong>The architect sketches before specifying.</strong> Back-of-envelope estimation is the architect's first sketch — a rough calculation to understand whether the proposed structure is even feasible. Can a single server handle this load? How much storage does this actually require? What does the network cost? These calculations take 10 minutes. They prevent spending 3 months building the wrong thing.</p>
+
+  <p><strong>Principal engineering is architectural judgment.</strong> Any engineer can learn to build a particular type of building correctly. A principal engineer knows which type of building the client actually needs, and can explain clearly why the alternative they proposed would have failed. That judgment — about constraints, trade-offs, and context — is what separates an engineer who knows many tools from one who knows when to use each one.</p>
+</div>
+
+<!-- S2: ESTIMATION -->
+<div class="section" id="s-estimation">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>Back-of-envelope estimation — the 10-minute sanity check</h2>
+
+  <p>Back-of-envelope estimation is not about precision. It is about order of magnitude. A calculation that is off by 3x is useful. A calculation that is off by 1,000x is a crisis. The goal is to know whether you need one server or one thousand, whether your storage fits in a database or requires a data warehouse, whether your read volume justifies a cache.</p>
+
+  <h3>The numbers you must memorise</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Quantity</th><th>Value</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Seconds / day</td><td>~86,400 ≈ 100K</td><td>Use 100K for easy math</td></tr>
+        <tr><td>Seconds / month</td><td>~2.5M ≈ 3M</td><td>30 days × 86,400</td></tr>
+        <tr><td>SSD random read</td><td>~100µs</td><td>0.1ms — 10,000x faster than HDD</td></tr>
+        <tr><td>Network round-trip (same DC)</td><td>~0.5ms</td><td>Within datacenter</td></tr>
+        <tr><td>Network round-trip (India→US)</td><td>~150-200ms</td><td>Speed of light limit</td></tr>
+        <tr><td>1 Gbps network</td><td>~125 MB/s</td><td>8 bits per byte</td></tr>
+        <tr><td>1KB row × 1M rows</td><td>~1GB</td><td>Useful for DB sizing</td></tr>
+        <tr><td>MySQL / PG writes/sec</td><td>~1,000-5,000</td><td>Single primary, optimised</td></tr>
+        <tr><td>Redis ops/sec</td><td>~100K-1M</td><td>In-memory, single-threaded</td></tr>
+        <tr><td>Kafka messages/sec</td><td>~100K-1M</td><td>Per broker, depending on size</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The estimation template</h3>
+  <p>Five questions, in order:</p>
+  <ol>
+    <li><strong>DAU / MAU:</strong> How many daily active users? Peak concurrent?</li>
+    <li><strong>Read/write ratio:</strong> Is this read-heavy (10:1 or 100:1) or write-heavy?</li>
+    <li><strong>Requests per second:</strong> Peak DAU × actions per day ÷ 86,400.</li>
+    <li><strong>Storage per year:</strong> Writes per second × bytes per write × seconds per year.</li>
+    <li><strong>Bandwidth:</strong> Requests per second × response size.</li>
+  </ol>
+
+  <div class="callout prod">
+    <div class="callout-icon">&#128203;</div>
+    <div class="callout-inner">
+      <strong>Worked estimation: a ticket booking system</strong>
+      <p>DAU: 1M. Peak: 10× average (concert on-sale). Read/write: 50:1 (browse events vs book). Reads: 1M × 20 page views ÷ 86,400 ≈ 230 reads/sec avg, 2,300/sec peak. Writes: 230 ÷ 50 = 4.6 writes/sec avg, 46/sec peak. Storage: 46 writes/sec × 1KB/write × 31M sec/year ≈ 1.4TB/year. Bandwidth: 2,300/sec × 50KB response = 115MB/s. Conclusion: reads are manageable on one PostgreSQL primary + read replicas. Writes are low enough for a single primary. Storage is 1.4TB/year — plan for 5TB in year one including overhead. Peak concert on-sale (10×) needs caching — 23,000 reads/sec would overwhelm a database.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 1: Estimation calculator -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Back-of-envelope calculator — system sizing</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showEstimate('tickets')">Ticket booking</button>
+      <button class="viz-btn" onclick="showEstimate('social')">Social feed</button>
+      <button class="viz-btn" onclick="showEstimate('analytics')">Analytics pipeline</button>
+      <button class="viz-btn" onclick="showEstimate('chat')">Real-time chat</button>
+    </div>
+    <div id="estimate-output" class="mono-out" style="font-size:12px;min-height:260px"></div>
+  </div>
+</div>
+
+<!-- S3: CAP -->
+<div class="section" id="s-cap">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>CAP theorem — the trade-off you are always making</h2>
+
+  <p>CAP theorem states that a distributed system can only guarantee two of three properties: Consistency (every read sees the most recent write), Availability (every request receives a response), and Partition tolerance (the system continues operating when network messages are lost). In practice, network partitions will happen — so the real choice is between consistency and availability when a partition occurs.</p>
+
+  <p>The choice is not abstract. It is concrete and consequential. A bank account balance must be consistent — you cannot read a stale balance before approving a transaction. A social media like count can be eventually consistent — seeing 9,842 likes instead of 9,843 for 500ms is acceptable. A ticketing system seat reservation must be consistent — two people cannot buy the same seat. A product review count can lag by seconds. The system designer chooses consistency or availability per operation, not per system.</p>
+
+  <h3>PACELC — the more useful model</h3>
+  <p>PACELC extends CAP: even when there is no Partition, distributed systems must choose between Latency and Consistency. Strong consistency requires waiting for all replicas to acknowledge a write before confirming it — which adds latency. Eventual consistency allows acknowledging the write at one node and propagating asynchronously — lower latency, but reads may see stale data. Most real systems choose: strong consistency for financial operations and inventory, eventual consistency for social counts, content feeds, and analytics.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Operation</th><th>Consistency model</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Seat reservation</td><td>Strong / linearisable</td><td>Double-booking = revenue loss, angry customers</td></tr>
+        <tr><td>Payment processing</td><td>Strong</td><td>Financial correctness is non-negotiable</td></tr>
+        <tr><td>User profile read</td><td>Eventual (read replica)</td><td>Seeing stale name for 100ms is acceptable</td></tr>
+        <tr><td>Event search results</td><td>Eventual</td><td>Missing a new event for 5 seconds is fine</td></tr>
+        <tr><td>Booking confirmation email</td><td>At-least-once delivery</td><td>Duplicate email is better than no email</td></tr>
+        <tr><td>Refund processing</td><td>Idempotent + strong</td><td>Must not double-refund</td></tr>
+        <tr><td>Event view count</td><td>Eventual / approximate</td><td>Exact count not required; Redis INCR is fine</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIZ 2: CAP scenarios -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">CAP trade-offs — which consistency model for which operation?</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showCAP('cp')">CP systems — consistency over availability</button>
+      <button class="viz-btn" onclick="showCAP('ap')">AP systems — availability over consistency</button>
+      <button class="viz-btn" onclick="showCAP('partition')">During a partition — what breaks?</button>
+      <button class="viz-btn" onclick="showCAP('real')">Real systems are both</button>
+    </div>
+    <div id="cap-output" class="mono-out" style="font-size:12px;min-height:200px"></div>
+  </div>
+</div>
+
+
+<!-- S4: DESIGN CANVAS -->
+<div class="section" id="s-canvas">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>The system design canvas — a framework for any problem</h2>
+
+  <p>The canonical system design interview format exists for a reason: it mirrors how experienced engineers actually approach new systems. The steps are not bureaucratic — each one makes the next one easier. You cannot choose a database until you know the query patterns. You cannot design the API until you know the data model. You cannot plan for scale until you have done the estimation.</p>
+
+  <h3>Step 1: Clarify requirements (5 minutes)</h3>
+  <p>Before drawing anything: what does this system actually need to do? What does it explicitly not need to do? What are the scale targets? What are the consistency requirements? What is the latency SLO? A system designed without these answers will be wrong in ways that cannot be fixed by adding components later. In an interview, ask the questions. In real work, write the requirements document before the architecture diagram.</p>
+
+  <h3>Step 2: Estimate scale (5 minutes)</h3>
+  <p>Run the five-question estimation. Write down the numbers. Now you know: does this need sharding? Does this need a CDN? Does this need a dedicated cache layer? Does the write volume exceed what a single PostgreSQL primary can handle? These numbers constrain the design. Without them, every choice is arbitrary.</p>
+
+  <h3>Step 3: Define the API (5 minutes)</h3>
+  <p>What does the client call? What does it return? The API is the contract between your system and everything that uses it. Define it before the internals. The API forces you to think about what the system produces, not how it produces it. Getting the API right is more important than getting the implementation right — the implementation can change, the API is a commitment.</p>
+
+  <h3>Step 4: Design the data model (10 minutes)</h3>
+  <p>What are the entities? What are the relationships? What are the access patterns? The data model drives every other decision. Choose the wrong data model and you will fight your database forever. Design for your query patterns, not for normalisation theory — a denormalised table that answers your queries in one scan is better than a normalised schema that requires three joins.</p>
+
+  <h3>Step 5: Design the high-level architecture (10 minutes)</h3>
+  <p>Now — and only now — draw the boxes. API gateway, services, databases, caches, message queues. Each box represents a constraint: a database is synchronous, a message queue is asynchronous, a cache is eventually consistent. The lines between boxes represent coupling — minimise it. Start with the simplest architecture that satisfies the requirements and estimation. Add complexity only when you can name the specific requirement it satisfies.</p>
+
+  <h3>Step 6: Deep-dive the hard parts (15 minutes)</h3>
+  <p>Every system has one or two genuinely hard problems. For a ticketing system it is seat reservation under concurrent load. For a social media feed it is fan-out at scale. For a URL shortener it is nothing — it is a simple system and should be designed simply. Identify the hard parts and solve them specifically. Do not design a sophisticated distributed system for a problem that does not need one.</p>
+</div>
+
+<!-- VIZ 3: Design canvas walkthrough -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">System design canvas — step by step</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showCanvas('requirements')">Step 1: Requirements</button>
+      <button class="viz-btn" onclick="showCanvas('estimation')">Step 2: Estimation</button>
+      <button class="viz-btn" onclick="showCanvas('api')">Step 3: API design</button>
+      <button class="viz-btn" onclick="showCanvas('data')">Step 4: Data model</button>
+      <button class="viz-btn" onclick="showCanvas('hla')">Step 5: High-level arch</button>
+      <button class="viz-btn" onclick="showCanvas('deepdive')">Step 6: Deep dives</button>
+    </div>
+    <div id="canvas-output" class="mono-out" style="font-size:12px;min-height:220px"></div>
+  </div>
+</div>
+
+<!-- S5: TRADE-OFF VOCABULARY -->
+<div class="section" id="s-tradeoffs">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>The trade-off vocabulary — how principal engineers talk about choices</h2>
+
+  <p>Every architectural decision is a trade-off. The mark of a principal engineer is not that they always make the right trade-off — it is that they can name the trade-off clearly and explain why this context favours this side of it. "I chose eventual consistency here because the write latency of strong consistency would violate the 50ms SLO, and the business impact of a user seeing stale event metadata for 500ms is negligible" is a principal-level answer. "I chose Redis because it's fast" is not.</p>
+
+  <h3>The trade-offs that appear in every system</h3>
+  <p><strong>Latency vs consistency:</strong> Strong consistency requires waiting for all nodes. Eventual consistency allows faster writes. Choose strong consistency when incorrect data causes business harm (inventory, payments). Choose eventual consistency when staleness is acceptable (social counts, search indexes).</p>
+  <p><strong>Throughput vs latency:</strong> Batching increases throughput by amortising fixed costs over more work. Batching increases latency for individual operations. Stream processing gives low latency, batch processing gives high throughput. Choose based on the SLO — is this operation latency-sensitive or throughput-sensitive?</p>
+  <p><strong>Storage cost vs query performance:</strong> Denormalised tables are faster to query but cost more storage and create update anomalies. Normalised tables are cheaper to store and update, but require joins. OLTP systems lean normalised. OLAP and read-heavy services lean denormalised (materialised views, CQRS projections).</p>
+  <p><strong>Operational complexity vs capability:</strong> A managed service (RDS, DynamoDB, ElastiCache) is operationally simpler but less configurable. Self-managed infrastructure is more configurable but more work to run. For most teams, managed services are correct for databases and infrastructure. For very specific performance requirements, self-managed may be justified.</p>
+  <p><strong>Coupling vs coordination:</strong> Synchronous calls between services are simple but create coupling — if the downstream is slow, the upstream is slow. Async messaging decouples services — the publisher does not wait for consumers — but adds complexity (ordering, idempotency, dead letters). Choose synchronous calls for operations that need a response. Choose async for operations that can be fire-and-forget or that need to fan out to multiple consumers.</p>
+</div>
+
+<!-- S6: WORKED EXAMPLE -->
+<div class="section" id="s-worked">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Worked example: design a seat reservation system</h2>
+
+  <p>This is the hard problem from the ticketing system estimation. Thousands of users simultaneously trying to book the last few seats for a popular concert. The naive implementation — check if seat is available, then book it — fails under concurrency. Between the check and the book, another user may have taken the seat.</p>
+
+  <h3>Why this is hard</h3>
+  <p>At peak, 10,000 concurrent users are trying to book 200 remaining seats. The correct answer must be: exactly one user gets each seat. No double-bookings. No seat lost (successfully booked by one system but not reflected). No phantom bookings (seat appears taken but no one bought it). Under concurrent load, this requires a concurrency control mechanism.</p>
+
+  <h3>Three approaches, three trade-offs</h3>
+  <p><strong>Optimistic locking:</strong> Read the seat with a version number. Update only if the version matches. If two users try simultaneously, one succeeds, one gets a conflict error and must retry. Low lock contention, good for moderate concurrency. At extreme concurrency (10,000 users, 200 seats), retry rates become very high — most requests fail and retry repeatedly.</p>
+  <p><strong>Database SELECT FOR UPDATE:</strong> Lock the row during the transaction. Only one transaction can hold the lock at a time. Simple, correct, but creates a bottleneck at the database row level. At high concurrency, queue depth grows and P99 latency climbs. Appropriate for moderate scale; may not handle extreme concert on-sale events.</p>
+  <p><strong>Redis atomic reservation:</strong> Use Redis SETNX (set if not exists) with a TTL — seat is atomically marked as held for 10 minutes, or the SETNX fails (seat is taken). Redis processes 100K ops/sec on a single thread — far higher throughput than PostgreSQL row locking. The hold is persisted to PostgreSQL asynchronously after payment. Risk: if the async write fails, the hold exists in Redis but not in PostgreSQL — requires reconciliation.</p>
+
+  <div class="callout insight">
+    <div class="callout-icon">&#127914;</div>
+    <div class="callout-inner">
+      <strong>The correct answer for most systems</strong>
+      <p>For a ticketing system at typical scale (thousands of concurrent users, not millions), SELECT FOR UPDATE on PostgreSQL with a short transaction timeout is correct, simple, and safe. Redis atomic reservation adds complexity and a reconciliation requirement. It is justified only when PostgreSQL cannot sustain the write throughput — which for most concerts it can. Design for your actual scale, not for the scale of Ticketmaster. The system that sells 10,000 tickets does not need the architecture of a system that sells 10 million.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VIZ 4: System design decisions -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">Architectural decisions — which tool for which problem</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showDecision('database')">Database choice</button>
+      <button class="viz-btn" onclick="showDecision('cache')">Caching strategy</button>
+      <button class="viz-btn" onclick="showDecision('queue')">Message queue</button>
+      <button class="viz-btn" onclick="showDecision('api')">API style</button>
+      <button class="viz-btn" onclick="showDecision('scale')">Scaling strategy</button>
+    </div>
+    <div id="decision-output" class="mono-out" style="font-size:12px;min-height:220px"></div>
+  </div>
+</div>
+
+<!-- S7: PRINCIPAL THINKING -->
+<div class="section" id="s-principal">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Principal thinking — the judgment layer</h2>
+
+  <p>Technical knowledge is necessary but not sufficient for principal-level engineering. What distinguishes a principal engineer from a senior engineer with the same technical knowledge is judgment — the ability to identify which trade-offs matter for this specific context, communicate them clearly, and make a defensible decision.</p>
+
+  <h3>The five questions a principal engineer asks first</h3>
+  <ol>
+    <li><strong>What is the actual business constraint?</strong> "We need low latency" is not a constraint. "We need P99 checkout completion under 2 seconds, as measured by the user's browser, or we lose 15% of revenue" is a constraint. The specificity changes the design.</li>
+    <li><strong>What failure mode is unacceptable?</strong> Losing a booking is worse than a user seeing an error. A double charge is worse than a failed charge. Identifying the worst acceptable failure mode drives consistency decisions — the system must prevent what is unacceptable, even at the cost of availability.</li>
+    <li><strong>What is the simplest thing that could possibly work?</strong> This is not a question about being lazy. It is a question about operational cost. Every piece of infrastructure you add must be operated, monitored, upgraded, and debugged. A system with one database and one service tier has one failure mode. A system with five services, two queues, three caches, and a CDC pipeline has dozens. Each component must earn its place.</li>
+    <li><strong>What will be hard to change later?</strong> Data models are hard to change once they have data in them. API contracts are hard to change once clients depend on them. Database choices are hard to change once there are terabytes of data. Everything else is relatively easy to change. Invest most of your design time on the things that are hard to change.</li>
+    <li><strong>What does this look like in two years?</strong> The system that is correct for today's scale is often wrong for 10× scale. Principal engineers design for the next 2-3× of growth without over-engineering for 100×. "We might need this someday" is not a justification for adding complexity now. "We will need this within 18 months based on current growth" is.</li>
+  </ol>
+
+  <div class="callout purple">
+    <div class="callout-icon">&#127775;</div>
+    <div class="callout-inner">
+      <strong>The most important skill is saying what you are not building</strong>
+      <p>A principal engineer who proposes a simple system with one database and explains precisely why the more sophisticated alternatives are not justified for this context is demonstrating better judgment than one who proposes a distributed system with event sourcing, CQRS, and a Kafka pipeline because they learned those patterns recently. The hardest thing in system design is not building the complex system. It is recognising when the simple system is correct — and defending that position when others suggest adding complexity.</p>
+    </div>
+  </div>
+</div>
+
+<!-- S8: THE 30 DAYS -->
+<div class="section" id="s-30days">
+  <div class="section-eyebrow">Section 08</div>
+  <h2>The 30 days — how the pieces connect</h2>
+
+  <p>Every topic in this course exists to answer one of four questions that arise when designing and operating a backend system. Not as isolated facts — as the vocabulary you need to have the conversation.</p>
+
+  <h3>How does data move? (Networking & APIs)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 1</div><div class="day-chip-topic">HTTP journey</div><span class="day-chip-tag">TCP · TLS · DNS</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 2</div><div class="day-chip-topic">REST & APIs</div><span class="day-chip-tag">Idempotency · Versioning</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 3</div><div class="day-chip-topic">WebSockets</div><span class="day-chip-tag">Real-time · Push</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 4</div><div class="day-chip-topic">gRPC</div><span class="day-chip-tag">Protobuf · Streaming</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 5</div><div class="day-chip-topic">API Gateway</div><span class="day-chip-tag">Auth · Rate limit</span></div>
+  </div>
+
+  <h3>Where does data live? (Storage & Databases)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 6</div><div class="day-chip-topic">PostgreSQL</div><span class="day-chip-tag">ACID · Indexes</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 7</div><div class="day-chip-topic">NoSQL</div><span class="day-chip-tag">Document · Wide-col</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 8</div><div class="day-chip-topic">Redis</div><span class="day-chip-tag">Cache · Pub/sub</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 9</div><div class="day-chip-topic">Search</div><span class="day-chip-tag">Elasticsearch · Full-text</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 10</div><div class="day-chip-topic">S3 & Object</div><span class="day-chip-tag">Blob · CDN</span></div>
+  </div>
+
+  <h3>How does data flow between services? (Async & Distributed)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 11</div><div class="day-chip-topic">Message queues</div><span class="day-chip-tag">SQS · RabbitMQ</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 12</div><div class="day-chip-topic">Kafka</div><span class="day-chip-tag">Streams · Offsets</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 13</div><div class="day-chip-topic">DB Transactions</div><span class="day-chip-tag">ACID · Isolation</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 14</div><div class="day-chip-topic">Distributed TX</div><span class="day-chip-tag">Saga · 2PC</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 15</div><div class="day-chip-topic">CDC</div><span class="day-chip-tag">Debezium · Outbox</span></div>
+  </div>
+
+  <h3>How does the system stay healthy? (Resilience & Scale)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 16</div><div class="day-chip-topic">Caching patterns</div><span class="day-chip-tag">Stampede · Aside</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 17</div><div class="day-chip-topic">Rate limiting</div><span class="day-chip-tag">Token bucket · Sliding</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 18</div><div class="day-chip-topic">Resilience</div><span class="day-chip-tag">Circuit breaker · Retry</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 19</div><div class="day-chip-topic">Observability</div><span class="day-chip-tag">Metrics · Traces</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 20</div><div class="day-chip-topic">Alerting</div><span class="day-chip-tag">SLOs · Paging</span></div>
+  </div>
+
+  <h3>How is the system structured and operated? (Architecture & Operations)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 21</div><div class="day-chip-topic">Microservices</div><span class="day-chip-tag">Boundaries · DDD</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 22</div><div class="day-chip-topic">Sharding</div><span class="day-chip-tag">Partitioning · Hotspot</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 23</div><div class="day-chip-topic">Kafka deep</div><span class="day-chip-tag">Consumer groups</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 24</div><div class="day-chip-topic">Microservices</div><span class="day-chip-tag">Sagas · Contracts</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 25</div><div class="day-chip-topic">Auth</div><span class="day-chip-tag">JWT · OAuth2 · RBAC</span></div>
+  </div>
+
+  <h3>How is the system built and secured? (Engineering & Security)</h3>
+  <div class="day-grid">
+    <div class="day-chip"><div class="day-chip-num">Day 26</div><div class="day-chip-topic">Event Sourcing</div><span class="day-chip-tag">CQRS · Projections</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 27</div><div class="day-chip-topic">Kubernetes</div><span class="day-chip-tag">Probes · HPA</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 28</div><div class="day-chip-topic">CI/CD</div><span class="day-chip-tag">Canary · GitOps</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 29</div><div class="day-chip-topic">Security</div><span class="day-chip-tag">SQLi · SSRF</span></div>
+    <div class="day-chip"><div class="day-chip-num">Day 30</div><div class="day-chip-topic">Profiling</div><span class="day-chip-tag">N+1 · GC · Flame</span></div>
+  </div>
+
+  <p style="margin-top:28px">These are not isolated facts to memorise. They are the vocabulary of backend engineering — the shared language that lets engineers say "we need a saga here because this crosses two service boundaries and we cannot use 2PC" and have that sentence mean something precise to everyone in the room.</p>
+</div>
+
+<!-- S9: CLOSING -->
+<div class="section" id="s-closing">
+  <div class="section-eyebrow">Section 09</div>
+  <h2>What comes next</h2>
+
+  <p>Thirty-one days of concepts is not mastery. Mastery comes from the third time you debug a production incident involving exactly the pattern you read about here — and you know immediately what it is, where to look, and what fix will hold. The course gives you the vocabulary. Production gives you the intuition.</p>
+
+  <h3>The three practices that build judgment</h3>
+  <p><strong>Read postmortems.</strong> Every major outage that has been written up publicly is a compressed lesson in what actually fails in production — not what textbooks predict will fail. AWS, Google, Stripe, Cloudflare, and GitHub all publish incident reports. Read them. Notice which concepts from this course appear. Notice which failure modes were foreseeable and which were not.</p>
+  <p><strong>Design systems before you build them.</strong> Before your next feature, write a one-page design document: requirements, data model, API shape, consistency trade-offs, how you will know it is working. Even if nobody reads it, the act of writing forces the questions you would otherwise skip. The systems that cause the most production pain are the ones that were never designed — they were just coded.</p>
+  <p><strong>Explain what you build.</strong> Teaching requires understanding at a level that using does not. When you implement something — a caching layer, a message queue, a new database — explain it to someone else in terms they can understand without the code. If you cannot explain why the queue is there, you do not yet understand why the queue is there. The explanation will surface the gaps.</p>
+</div>
+
+<!-- VIZ 5: The 31-day knowledge map -->
+<div class="viz-box">
+  <div class="viz-header"><span class="viz-title">System design scenarios — apply everything you know</span><span class="viz-badge">INTERACTIVE</span></div>
+  <div class="viz-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="viz-btn active" onclick="showScenario('ticketing')">Design: ticket booking</button>
+      <button class="viz-btn" onclick="showScenario('feed')">Design: social feed</button>
+      <button class="viz-btn" onclick="showScenario('urlshort')">Design: URL shortener</button>
+      <button class="viz-btn" onclick="showScenario('payments')">Design: payment system</button>
+    </div>
+    <div id="scenario-output" class="mono-out" style="font-size:12px;min-height:280px"></div>
+  </div>
+</div>
+
+<!-- CLOSING HOOK -->
+<div style="margin-top:64px;padding-top:56px;border-top:1px solid var(--border)">
+  <p style="font-family:'Lora',serif;font-size:22px;line-height:1.8;color:var(--text);font-style:italic;margin-bottom:0">
+    The architect does not start with materials. They start with constraints — and every good system design begins the same way. What must this system guarantee? What is acceptable to sacrifice? What failure is unacceptable? Answer those questions first. The tools follow from the answers.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:22px;line-height:1.8;color:var(--text);font-style:italic;margin-top:28px;margin-bottom:0">
+    Thirty-one days. One question at a time. Now you have the vocabulary.
+  </p>
+  <p style="font-family:'Lora',serif;font-size:22px;line-height:1.8;color:var(--text);font-style:italic;margin-top:28px;margin-bottom:72px">
+    <em style="color:var(--purple)">The rest is production.</em>
+  </p>
+</div>
+<div style="height:40px"></div>
+</article>
+</div>
+<script>
+var tocLinks=document.querySelectorAll('.toc a');
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,active=null;
+  document.querySelectorAll('.section,.hero').forEach(function(s){if(s.id&&s.offsetTop<=pos)active=s.id;});
+  tocLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+active);});
+},{passive:true});
+
+// VIZ 1: Estimation
+var EST = {
+  tickets: "TICKET BOOKING SYSTEM — back-of-envelope\n\nAssumptions:\n  DAU: 1,000,000 (1M daily active users)\n  Peak multiplier: 10x for popular concert on-sale\n  Read/write ratio: 50:1 (most users browse, few book)\n  Average session: 20 page views\n\nRequests per second:\n  Avg reads:    1M users × 20 views ÷ 86,400s    =  231 reads/sec\n  Peak reads:   231 × 10                          = 2,310 reads/sec\n  Avg writes:   231 ÷ 50                          =    5 writes/sec\n  Peak writes:  5 × 10                            =   50 writes/sec\n\nStorage per year:\n  Avg writes: 5/sec × 1KB/write × 31.5M sec/year = 157 GB/year\n  With indexes and overhead (3×):                = 470 GB/year\n  With media (event images, ~100KB each):        = +500 GB/year\n  Total year 1:                                  ≈ 1 TB\n\nBandwidth:\n  Peak reads: 2,310/sec × 50KB avg response      = 115 MB/s\n  Peak CDN bandwidth (images): 500/sec × 100KB   =  50 MB/s\n\nConclusions:\n  Writes (50/sec): Single PostgreSQL primary easily handles this.\n  Avg reads (231/sec): PostgreSQL read replicas sufficient.\n  Peak reads (2,310/sec): Need Redis cache for event data.\n    Without cache, 2,310 DB reads/sec at peak is borderline.\n    With cache (80% hit rate): 462 DB reads/sec -- fine.\n  Storage: 1TB/year -- standard PostgreSQL, no sharding needed.\n  Bandwidth: 115 MB/s -- CDN covers media, API responses manageable.",
+
+  social: "SOCIAL MEDIA FEED — back-of-envelope\n\nAssumptions:\n  DAU: 50,000,000 (50M daily active users)\n  Average 3 posts/day, 20 feed views/day per user\n  Average 500 followers per user (fan-out problem)\n  Post size: 500 bytes text + optional media\n\nRequests per second:\n  Feed reads:   50M × 20 views ÷ 86,400           = 11,574 reads/sec\n  Post writes:  50M × 3 posts ÷ 86,400            =  1,736 writes/sec\n  Peak (3× avg):                                  = 34,722 reads/sec\n\nFan-out writes (push model):\n  Each post fans out to 500 followers:\n  1,736 posts/sec × 500 followers                 = 868,000 writes/sec\n  This is the hard problem: fan-out at scale\n\nStorage per year:\n  1,736 posts/sec × 500 bytes × 31.5M sec/year   = 27 TB/year (text)\n  Media: 30% of posts × 500KB average            = + 800 TB/year\n  Total: ~830 TB/year -- need S3 for media, not a database\n\nConclusions:\n  Fan-out write volume (868K/sec) CANNOT go to a SQL database.\n  Use Kafka to fan-out asynchronously to follower feeds.\n  Pre-compute feed in Redis (push model) OR compute on read (pull model).\n  Push for active users (<100K followers), pull for celebrities (>100K).\n  Media: S3 + CDN. Database stores only metadata and S3 URLs.\n  Feed reads: Redis timeline per user, evict after 30 days of inactivity.",
+
+  analytics: "ANALYTICS PIPELINE — back-of-envelope\n\nAssumptions:\n  Events tracked: every page view, click, API call\n  10 services × 100 req/sec each = 1,000 events/sec baseline\n  Peak: 5,000 events/sec\n  Event size: 200 bytes average\n  Retention: 2 years hot, 5 years cold\n\nIngestion:\n  Peak: 5,000 events/sec = 1 MB/sec\n  Daily volume: 5,000 × 86,400 × 200 bytes = 86 GB/day\n  Monthly: 86 GB × 30 = 2.6 TB/month\n\nStorage per year:\n  Hot (2 years): 2.6 TB × 24 months = 62 TB\n  Cold (5 years): 2.6 TB × 60 months = 156 TB (compressed: ~50 TB)\n\nQuery patterns:\n  Ad-hoc analysis: daily active users last 7 days, funnel conversion\n  Pre-aggregated: dashboards showing hourly/daily rollups\n  Raw event query: rare, only for debugging\n\nConclusions:\n  Ingestion (5K/sec): Kafka easily handles this per broker.\n  Storage: S3 / GCS as the primary store (Parquet format, compressed).\n  Hot queries: ClickHouse or BigQuery for analytical queries.\n  NOT PostgreSQL: column-oriented storage is 10-100× faster for aggregations.\n  Pre-aggregated metrics: write rollups to PostgreSQL for dashboards.\n  Architecture: event → Kafka → Flink/Spark → S3 (Parquet) + ClickHouse.",
+
+  chat: "REAL-TIME CHAT — back-of-envelope\n\nAssumptions:\n  DAU: 5,000,000\n  Average 20 messages/day per user\n  Average group size: 10 members\n  Message size: 1KB average\n  Online concurrency: 10% of DAU = 500,000 concurrent connections\n\nMessage throughput:\n  Sends:   5M × 20 ÷ 86,400                      = 1,157 messages/sec\n  Peak:    1,157 × 5                              = 5,785 messages/sec\n  Deliveries per message (group of 10):           × 10\n  Peak delivery writes:                           = 57,850 writes/sec\n\nConnections:\n  500,000 concurrent WebSocket connections\n  Each connection uses ~4KB memory on the server\n  500K × 4KB = 2 GB RAM for connections alone\n  Need ~5 WebSocket servers (400MB RAM budget each: 100K connections each)\n\nStorage:\n  5,785 messages/sec × 1KB × 31.5M sec/year      = 182 TB/year\n  Only keep last 30 days hot:                     = 14.9 TB hot storage\n  Archive to S3 beyond 30 days\n\nConclusions:\n  WebSocket servers: 5 stateful servers, clients reconnect if server fails.\n  Message fan-out: Kafka or Redis Pub/Sub (per-channel topics).\n  Storage: Cassandra or ScyllaDB -- write-optimised, scales horizontally.\n  Why not PostgreSQL: 57,850 writes/sec at 1KB each = 57 MB/sec.\n    PostgreSQL primary can sustain ~10-20 MB/sec of writes.\n  Message ordering: per-conversation, not global.\n  Delivery receipts: store in Redis with 24-hour TTL.",
+};
+function showEstimate(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showEstimate'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('estimate-output').textContent=EST[k];
+}
+showEstimate('tickets');
+
+// VIZ 2: CAP
+var CAP = {
+  cp: "CP SYSTEMS — consistency over availability\n\nDuring a network partition: the system refuses requests rather than\nrisk returning stale or inconsistent data.\n\nExamples:\n  PostgreSQL with synchronous replication:\n    Write fails if standby cannot acknowledge.\n    Better to return an error than to accept a write the standby might miss.\n\n  ZooKeeper / etcd:\n    Distributed coordination requires consensus.\n    A minority partition returns errors -- does not serve stale reads.\n\n  Traditional banking ledger:\n    Account balance must be exact.\n    During an outage, transactions queue rather than risk incorrect balances.\n\nWhen to choose CP:\n  Financial transactions (debits, credits, transfers)\n  Inventory reservation (seat booking, stock allocation)\n  Configuration management (what version is deployed?)\n  Leader election (who is the primary?)\n\nCost of CP:\n  Availability suffers during partitions.\n  Higher latency (must wait for quorum acknowledgment).\n  Harder to scale writes (all nodes must agree).",
+
+  ap: "AP SYSTEMS — availability over consistency\n\nDuring a network partition: the system continues serving requests\nfrom whatever data is available, accepting potential staleness.\n\nExamples:\n  DynamoDB (with eventual consistency reads):\n    Always available. Reads may return stale data for up to ~1 second.\n    Eventual consistency is acceptable for most read patterns.\n\n  Cassandra (eventual consistency):\n    Writes succeed as soon as one node acknowledges.\n    Reads may miss recent writes until replication catches up.\n\n  DNS:\n    DNS records propagate eventually (TTL-based).\n    Cached responses may be stale for minutes or hours.\n    Availability is more important than instant propagation.\n\nWhen to choose AP:\n  Social media feeds (seeing a post 500ms late is fine)\n  Product catalog (item description stale for 1s is acceptable)\n  User profile reads (seeing old name for 1s is acceptable)\n  Analytics and reporting (approximate counts are fine)\n  CDN content (cached for minutes or hours)\n\nCost of AP:\n  Consistency sacrificed during partitions.\n  Must handle conflict resolution (last-write-wins, CRDTs).\n  Application must tolerate stale reads.",
+
+  partition: "DURING A NETWORK PARTITION\n\nScenario:\n  Your database has a primary in AZ-1 and a replica in AZ-2.\n  A network partition occurs: the two AZs cannot communicate.\n\nCP choice (synchronous replication, stop writes if can't replicate):\n  Primary: refuses writes (cannot guarantee replica will receive them)\n  Replica: serves reads from its last-known state\n  Result: writes unavailable until partition heals\n  Recovery: partition heals, replica catches up, writes resume\n  Impact: some users cannot complete transactions during outage\n\nAP choice (async replication, accept writes to primary anyway):\n  Primary: accepts writes, queues them for later replication\n  Replica: serves reads from its (increasingly stale) state\n  Result: primary and replica diverge during partition\n  Recovery: partition heals, conflict resolution runs\n    Last-write-wins: some writes on replica discarded\n    Merge: application logic decides how to reconcile\n  Impact: some users see stale data; rare cases may lose writes\n\nFor most backend services:\n  Financial operations: CP -- refuse the write, avoid inconsistency\n  Read-heavy services: AP -- serve from replica, accept staleness\n  Write to primary only: most writes are CP by topology anyway\n    (replica is read-only; primary accepts writes and replicates async)",
+
+  real: "REAL SYSTEMS ARE BOTH — per operation, not per system\n\nA well-designed system is not 'CP' or 'AP' globally.\nIt chooses consistency per operation based on business requirements.\n\nPostgreSQL example:\n  Seat reservation:         SELECT FOR UPDATE (strong consistency)\n  User profile read:        Read replica (eventual consistency, OK)\n  Payment debit:            Synchronous, with idempotency key (strong)\n  Event search results:     Elasticsearch (eventual, 1-2s lag OK)\n  Booking count dashboard:  Redis INCR (approximate, eventual)\n\nThis is the correct approach:\n  Identify which operations require strong consistency.\n    The failure mode is unacceptable (lost money, double-booking)\n  Identify which operations accept eventual consistency.\n    The failure mode is tolerable (stale count, slightly old metadata)\n  Route each operation to the appropriate data store / consistency level.\n\nCommon mistake:\n  Applying strong consistency everywhere 'to be safe'.\n  Result: unnecessary latency, reduced availability, harder to scale.\n\nCommon mistake:\n  Applying eventual consistency everywhere 'for performance'.\n  Result: financial inconsistencies, inventory errors, angry customers.\n\nThe skill: identifying which category each operation belongs to,\nand justifying that classification with specific business impact.",
+};
+function showCAP(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showCAP'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('cap-output').textContent=CAP[k];
+}
+showCAP('cp');
+
+// VIZ 3: Design canvas
+var CANVAS = {
+  requirements: "STEP 1: REQUIREMENTS\nTime: 5 minutes. Do not skip this.\n\nFunctional requirements (what it does):\n  What are the core user actions? (book seat, cancel booking, view events)\n  What does the system produce? (booking confirmation, availability status)\n  What does it explicitly NOT need to do? (no recommendation engine, no reviews)\n\nNon-functional requirements (how well it does it):\n  Scale: 1M DAU, 10M MAU, 50 peak concurrent events per month\n  Latency: P99 seat reservation under 500ms\n  Availability: 99.9% (8.7 hours downtime/year acceptable)\n  Consistency: no double-bookings (strong), event metadata eventual OK\n  Durability: no booking data loss\n\nQuestions to ask in an interview:\n  'How many users are we targeting?'\n  'Is this read-heavy or write-heavy?'\n  'What is the expected event size?' (10 events/day vs 10,000?)\n  'Does the system need to handle high-concurrency on-sale events?'\n  'Are there geographic distribution requirements?'\n\nWhy this matters:\n  A system for 10,000 users needs a different architecture than\n  one for 100,000,000. The requirements determine the constraints.\n  Without them, every subsequent decision is arbitrary.",
+
+  estimation: "STEP 2: ESTIMATION\nTime: 5 minutes.\n\nTicket booking system estimates:\n  DAU: 1M. Peak: 10x (concert on-sale day)\n  Read/write: 50:1 (browse events vs book)\n\n  Peak reads/sec:  1M × 20 views ÷ 86,400 × 10 peak   = 2,315/sec\n  Peak writes/sec: 2,315 ÷ 50                          =    46/sec\n  Storage/year:    46 writes × 1KB × 31.5M sec          = 1.4 TB\n  Bandwidth:       2,315/sec × 50KB avg                 = 116 MB/s\n\nWhat this tells you:\n  46 writes/sec -> single PostgreSQL primary (handles 1,000+)\n  2,315 reads/sec peak -> need Redis cache (DB handles ~500/sec comfortably)\n  1.4 TB/year -> standard DB, no sharding needed for 3-5 years\n  116 MB/s bandwidth -> need CDN for static assets\n\nScale trigger points:\n  > 5,000 writes/sec -> consider sharding or partitioning\n  > 100,000 reads/sec -> multiple cache layers, read replicas\n  > 10 TB storage -> partitioning strategy needed\n  > 10M concurrent users -> geographic distribution\n\nOur system is nowhere near these limits.\nDesign accordingly: simple first, scale when the numbers demand it.",
+
+  api: "STEP 3: API DESIGN\nTime: 5 minutes.\n\nCore endpoints:\n  GET  /events?city=bangalore&date=2024-08    List events\n  GET  /events/:id                            Event details + seat map\n  POST /bookings                              Create booking (reserve seat)\n  GET  /bookings/:id                          Booking status\n  POST /bookings/:id/confirm                  Confirm after payment\n  POST /bookings/:id/cancel                   Cancel booking\n\nKey decisions:\n  Idempotency on booking creation:\n    POST /bookings { eventId, seatId, idempotencyKey }\n    Same idempotencyKey = return existing booking, not create new one\n    Prevents double-bookings from retried requests\n\n  Seat reservation vs booking separation:\n    POST /bookings creates a HOLD (10-minute TTL)\n    POST /bookings/:id/confirm converts hold to confirmed booking\n    Allows time for payment without permanently reserving\n\n  Consistency signal in response:\n    POST /bookings returns { bookingId, status: 'held', expiresAt }\n    Clients poll /bookings/:id to confirm status change\n    Avoids eventual consistency confusion at the command endpoint\n\n  Version from day 1:\n    /v1/bookings -- allows breaking changes without breaking clients",
+
+  data: "STEP 4: DATA MODEL\nTime: 10 minutes.\n\nCore entities:\n  events (id, name, venue_id, organiser_id, starts_at, total_seats)\n  seats (id, event_id, row, number, category, price_cents, status)\n  bookings (id, user_id, seat_id, status, idempotency_key, expires_at, confirmed_at)\n  payments (id, booking_id, amount_cents, provider_ref, status)\n\nKey data model decisions:\n\n  Seat status as an enum: 'available', 'held', 'confirmed'\n    Avoids the need for a separate holds table.\n    SELECT FOR UPDATE on the seat row for reservation.\n    Expired holds reset to 'available' via a background job.\n\n  Idempotency key on bookings:\n    UNIQUE constraint on (user_id, idempotency_key).\n    Prevents duplicate bookings from retried requests.\n\n  Price stored on booking, not derived from seat:\n    Price may change after booking; historical price must be preserved.\n    Denormalise price_cents onto the booking at creation time.\n\nAccess patterns:\n  List available seats: SELECT * FROM seats WHERE event_id=$1 AND status='available'\n    Index: (event_id, status)\n  Reserve a seat: SELECT ... FOR UPDATE WHERE id=$1 AND status='available'\n    Index: (id) -- already primary key\n  User's booking list: SELECT * FROM bookings WHERE user_id=$1 ORDER BY created_at DESC\n    Index: (user_id, created_at DESC)",
+
+  hla: "STEP 5: HIGH-LEVEL ARCHITECTURE\nTime: 10 minutes.\n\nComponents:\n\n  [Client]\n    |\n    v\n  [CDN] -- static assets (event images, JS/CSS)\n    |\n    v\n  [API Gateway] -- auth, rate limiting, routing\n    |          |\n    v          v\n  [Booking   [Event\n   Service]   Service]\n    |              |\n    v              v\n  [PostgreSQL  [PostgreSQL\n   Primary]     + Redis\n   (bookings)   (event cache)]\n    |\n    v\n  [Message Queue] -- SQS/Kafka\n    |            |\n    v            v\n  [Email       [Analytics\n   Service]     Consumer]\n\nKey decisions:\n  Separate booking DB from event DB:\n    Write isolation. Booking writes don't contend with event reads.\n    Event data is read-heavy -> cache aggressively.\n    Booking data is write-critical -> no eventual consistency.\n\n  Message queue for post-booking actions:\n    Email, analytics, inventory updates are async.\n    Booking confirmation is synchronous; downstream effects are not.\n\n  Redis for event cache:\n    Event listings change infrequently. 5-minute TTL is fine.\n    Absorbs peak read load during on-sale events.",
+
+  deepdive: "STEP 6: DEEP DIVES\nTime: 15 minutes. Focus on the hard parts.\n\nHard problem 1: Concurrent seat reservation\n  The core correctness requirement.\n  See: Worked Example (Section 06) for full analysis.\n  Solution: SELECT FOR UPDATE with short transaction timeout.\n  Not needed: Redis atomic reservation (PostgreSQL handles 46 writes/sec easily).\n\nHard problem 2: On-sale traffic spike (10x)\n  2,315 reads/sec for event data during peak.\n  Solution: Redis cache with short TTL (1-5 minutes).\n  Cache-aside pattern: miss -> DB -> populate cache.\n  Cache stampede protection: mutex on cache miss (Day 16).\n  Queue management: rate limit to 500 reservations/sec, queue the rest.\n\nHard problem 3: Payment and booking atomicity\n  Payment fails after seat is held: release the hold.\n  Payment succeeds but booking confirmation fails: idempotent retry.\n  Solution: outbox pattern (Day 15) or Saga (Day 14).\n  Payment as a separate service called synchronously, with timeout.\n  If timeout: assume failure, release hold, user retries.\n  Idempotency key prevents double-charge on retry.\n\nNot a hard problem: event listing, search, user profiles.\n  Standard CRUD. Cache reads. No special handling needed.",
+};
+function showCanvas(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showCanvas'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('canvas-output').textContent=CANVAS[k];
+}
+showCanvas('requirements');
+
+// VIZ 4: Architectural decisions
+var DECISION = {
+  database: "DATABASE CHOICE — which storage for which problem\n\nPostgreSQL (relational, ACID):\n  Use when: structured data with relationships, complex queries,\n  transactions, strong consistency required.\n  Examples: bookings, payments, user accounts, inventory.\n  Avoid when: write throughput > 10K/sec, schema-less data, time-series.\n\nMongoDB / DocumentDB (document):\n  Use when: flexible schema (product catalogs with varying attributes),\n  hierarchical data, rapidly evolving data model.\n  Examples: product catalog, CMS content, user preferences.\n  Avoid when: you need ACID transactions across documents, complex joins.\n\nCassandra / DynamoDB (wide-column):\n  Use when: high write throughput (100K+/sec), time-series, global scale,\n  data with a clear partition key, no complex queries.\n  Examples: IoT sensor data, activity feeds, message history.\n  Avoid when: you need complex queries, joins, or strong consistency.\n\nRedis (in-memory key-value):\n  Use when: caching, sessions, rate limiting counters, real-time leaderboards,\n  pub/sub, atomic operations.\n  Avoid when: data size exceeds available RAM, durability is critical.\n\nElasticsearch (search):\n  Use when: full-text search, faceted filtering, log aggregation.\n  Avoid when: you need ACID, it is your primary data store.\n  Always use as a secondary store populated from a primary database.\n\nClickHouse / BigQuery (columnar, OLAP):\n  Use when: analytical queries over large datasets (billions of rows),\n  aggregations, time-series analysis.\n  Avoid when: frequent updates, transactional workloads.",
+
+  cache: "CACHING STRATEGY — what to cache and how\n\nCache-aside (lazy loading):\n  App checks cache. Miss -> load from DB -> populate cache.\n  Simple. Cache only holds what is actually requested.\n  Risk: thundering herd on cold start or after TTL expiry.\n  Fix: mutex on cache miss (one request populates, others wait).\n  Use for: event listings, user profiles, product catalog.\n\nWrite-through:\n  App writes to cache AND database synchronously.\n  Cache always has latest data. No read misses.\n  Risk: extra write latency (wait for both to succeed).\n  Use for: data where you always want cache fresh after writes.\n\nWrite-behind (async):\n  App writes to cache. Background job flushes to database.\n  Lowest write latency. Risk: data loss if cache fails before flush.\n  Use for: counters (view counts, like counts) where small data loss OK.\n\nTTL strategy:\n  Event data: 5-minute TTL (changes infrequently)\n  User session: 24-hour TTL (activity-based extension)\n  Rate limit counters: 1-60 second window\n  Seat availability: DO NOT cache (must be real-time)\n\nCDN vs application cache:\n  CDN: static assets (images, JS, CSS), public API responses\n  Application cache (Redis): user-specific data, computed results\n  CDN cannot be invalidated instantly -- use fingerprinted URLs for assets.",
+
+  queue: "MESSAGE QUEUE — when and which\n\nWhen to use a queue (vs synchronous call):\n  Fire-and-forget: caller does not need the result right now\n  Fan-out: one event, multiple consumers (email + analytics + inventory)\n  Rate limiting: consumer can process at its own pace\n  Decoupling: producer does not care if consumer is slow or down\n  Retry: queue retries automatically on consumer failure\n\nWhen NOT to use a queue:\n  You need the result synchronously (API response depends on outcome)\n  Ordering is strictly required across producers (hard to guarantee)\n  You are adding queue 'just in case' without a specific requirement\n\nSQS / RabbitMQ vs Kafka:\n  SQS/RabbitMQ: at-least-once delivery, auto-delete after consumption\n    Use for: task queues, job processing, simple fan-out\n    Message stored until consumed, then gone\n\n  Kafka: durable log, consumers read at their own offset, replay available\n    Use for: event streaming, audit log, CDC, multiple independent consumers\n    Message retained for days/weeks regardless of consumption\n\nFor a ticketing system:\n  Booking confirmed -> SQS -> email service (fire-and-forget, at-least-once)\n  Booking confirmed -> Kafka -> analytics, fraud detection, revenue service\n  Kafka because: multiple independent consumers, need replay for analytics\n  SQS for email: simpler, auto-delete after send, no replay needed",
+
+  api: "API STYLE — REST vs GraphQL vs gRPC\n\nREST:\n  Use when: public API, simple CRUD, client variety (web, mobile, third-party)\n  Strengths: widely understood, cacheable, HTTP semantics\n  Weaknesses: over/under-fetching, multiple round-trips for complex data\n  Ticketing: yes, for all user-facing endpoints\n\nGraphQL:\n  Use when: client needs flexible queries, multiple client types with\n  different data needs, complex nested data\n  Strengths: clients request exactly what they need, single endpoint\n  Weaknesses: complex server implementation, caching harder, N+1 risk\n  Ticketing: maybe for the event discovery / search API, not for bookings\n\ngRPC:\n  Use when: internal service-to-service communication, performance critical,\n  strongly typed contracts needed, streaming\n  Strengths: efficient binary protocol, streaming, code generation\n  Weaknesses: not human-readable, harder to debug, limited browser support\n  Ticketing: yes, for internal service communication (booking -> payment)\n\nWebSockets:\n  Use when: real-time updates required (seat availability changes,\n  countdown timer, live updates during on-sale)\n  Strengths: low latency bidirectional communication\n  Weaknesses: stateful, harder to load balance, no HTTP caching\n  Ticketing: seat availability updates during high-demand on-sale events",
+
+  scale: "SCALING STRATEGY — when to add what\n\nVertical scaling (bigger machine) first:\n  Simplest. No code changes. No operational complexity.\n  Modern servers: 192 vCPU, 12TB RAM.\n  Do not distribute prematurely.\n  Limits: single point of failure, hardware ceiling, cost ceiling.\n\nRead replicas:\n  Add when: read load exceeds primary capacity.\n  Database handles reads from replicas, writes to primary.\n  Consistent reads: always read from primary.\n  Eventual reads: route to replica (50-100ms lag acceptable).\n  Operational cost: minimal. Use this before sharding.\n\nCaching layer (Redis):\n  Add when: read patterns are repetitive and data changes slowly.\n  10-100x read amplification on database for cacheable data.\n  Add before read replicas for read-heavy workloads.\n\nHorizontal sharding:\n  Add when: write throughput exceeds single primary, or dataset too\n  large for one machine.\n  Complex: routing logic, cross-shard queries, rebalancing.\n  Most systems never need this. PostgreSQL handles 10TB+ on one machine.\n\nMicroservices:\n  Add when: team size makes a monolith unworkable, or specific services\n  need independent scaling.\n  NOT because microservices are 'modern'.\n  Cost: distributed systems complexity (Day 14, 15, 21).\n  Benefit: independent deployment, independent scaling, team autonomy.",
+};
+function showDecision(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showDecision'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('decision-output').textContent=DECISION[k];
+}
+showDecision('database');
+
+// VIZ 5: Scenario
+var SCENARIO = {
+  ticketing: "DESIGN: TICKET BOOKING SYSTEM\nApplying 31 days of concepts\n\nDAY 1-5 (Networking): REST API over HTTPS. TLS 1.3 for all traffic.\n  WebSockets for seat-map updates during high-demand on-sales.\n  API Gateway for auth (JWT - Day 25) and rate limiting (Day 17).\n\nDAY 6-10 (Storage): PostgreSQL primary for bookings and payments.\n  Read replicas for event listings. Redis for seat availability cache\n  (NOT for reservation -- must be strongly consistent, Day 13).\n  S3 + CDN for event images and static assets.\n\nDAY 11-15 (Async): SQS for post-booking actions (email, PDF).\n  Kafka for fan-out to analytics, fraud detection.\n  Outbox pattern (Day 15) for reliable event publication.\n  Saga pattern (Day 14) for booking + payment coordination.\n\nDAY 16-20 (Resilience): Cache-aside for event listings (Day 16).\n  Rate limit: 500 reservations/sec at API gateway (Day 17).\n  Circuit breaker (Day 18) around payment provider calls.\n  Metrics: seat reservation P99, payment success rate (Day 19).\n  SLO: 99.9% booking success rate, P99 < 500ms (Day 20).\n\nDAY 21-25 (Architecture): Booking and Event as separate services (Day 21).\n  Shard by event_id when single DB cannot handle peak (Day 22).\n  JWT authentication, RBAC for admin endpoints (Day 25).\n\nDAY 26-31 (Engineering): Event sourcing for booking lifecycle (Day 26).\n  Kubernetes with HPA for booking service autoscaling (Day 27).\n  Canary deployment for new checkout flow (Day 28).\n  SSRF protection on webhook endpoints (Day 29).\n  Monitor N+1 queries during new feature rollout (Day 30).",
+
+  feed: "DESIGN: SOCIAL MEDIA FEED\nThe fan-out problem at scale\n\nCore challenge: each post must appear in the feeds of all followers.\nNaive approach: when user requests feed, query all people they follow.\nProblem: 1,000 follows × 100 posts each = 100,000 DB reads per feed load.\n\nPush model (pre-compute feed):\n  When user posts: write to each follower's feed timeline in Redis.\n  Feed load: single Redis key lookup. O(1) regardless of following count.\n  Cost: 1 post → 500 fan-out writes (per average follow count).\n  Problem: celebrities with 10M followers → 10M writes per post.\n\nPull model (compute on read):\n  When user loads feed: query all follows, merge their recent posts.\n  Cost: 1 feed load → N queries (N = following count).\n  Acceptable for users with <100 follows. Unacceptable at 1,000+.\n\nHybrid (correct solution for scale):\n  Regular users (<100K followers): PUSH fan-out to Redis timelines.\n  Celebrities (>100K followers): PULL on feed load, merge with push.\n  Feed generation: merge pre-computed timeline + celebrity posts.\n  This is how Twitter/X and Instagram actually work.\n\nDAY CONNECTIONS:\n  Fan-out: Kafka consumer per user (Day 12, 23)\n  Redis sorted sets for timelines (Day 8)\n  Rate limiting: 100 posts/hour per user (Day 17)\n  Cache-aside for post content (Day 16)\n  Eventual consistency: feed lag of 100-500ms acceptable (Day 31 CAP)",
+
+  urlshort: "DESIGN: URL SHORTENER\nThe simplest correct system\n\nRequirements:\n  Shorten a URL to a short code (POST /shorten)\n  Redirect short code to original URL (GET /:code)\n  100M URLs stored, 10B redirects/day\n\nEstimation:\n  Writes: 100M URLs / 365 days / 86,400 sec = 3 writes/sec\n  Reads:  10B / 365 / 86,400                = 317 reads/sec peak ~3K/sec\n  Storage: 100M × 100 bytes (URL + metadata) = 10 GB\n\nConclusion from estimation:\n  3 writes/sec -> PostgreSQL single primary, trivially easy\n  10 GB -> fits on one server with room to spare\n  3,000 reads/sec -> Redis cache for hot URLs\n\nData model:\n  urls (id, short_code, original_url, created_at, user_id)\n  Index: (short_code) for O(1) lookup\n\nShort code generation:\n  Base62 encode a counter (a-zA-Z0-9)\n  Or: MD5 hash of URL, take first 7 chars\n  Or: random 7 chars with uniqueness check\n\nThis is the lesson:\n  URL shortener is NOT a hard system design problem.\n  One PostgreSQL database, one Redis cache, one API service.\n  Anyone who proposes consistent hashing, Zookeeper, or Cassandra\n  for this problem is designing for 1,000x the actual scale.\n  The skill is recognising that and proposing the simpler system.",
+
+  payments: "DESIGN: PAYMENT PROCESSING SYSTEM\nWhere correctness is non-negotiable\n\nCAP choice: always CP. Consistency over availability.\n  A double charge is a regulatory violation and a customer trust crisis.\n  A failed payment (during partition) is recoverable. A duplicate charge is not.\n\nIdempotency everywhere:\n  Every payment request has an idempotency key.\n  Same key = same result, no matter how many times submitted.\n  Prevents double-charges from retries, network errors, client bugs.\n\nSaga pattern for multi-step payments (Day 14):\n  Step 1: reserve funds (hold)\n  Step 2: execute charge\n  Step 3: confirm booking\n  Compensating transactions if any step fails:\n    Step 2 fails: release hold\n    Step 3 fails: refund charge, release hold\n\nAudit log is mandatory:\n  Every state transition stored as an immutable event (Day 26).\n  EventSourcing for the payment aggregate.\n  'What happened to this payment?' must be answerable for any payment ever.\n\nPCI compliance implications:\n  Card data: NEVER stored directly. Pass to Stripe/Razorpay, store token.\n  Secrets: payment provider keys in AWS Secrets Manager (Day 29).\n  Encryption in transit: TLS 1.2+ required for all payment traffic.\n  Rate limiting: strict limits on payment attempts per user per hour (Day 17).\n\nDAY CONNECTIONS:\n  Idempotency: Day 2 (API design), Day 14 (distributed transactions)\n  Audit trail: Day 26 (event sourcing)\n  Security: Day 25 (auth), Day 29 (secrets management)\n  Observability: Day 19 (metrics), Day 20 (SLO: 0 double-charges)",
+};
+function showScenario(k){
+  document.querySelectorAll('.viz-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('showScenario'))
+      b.classList.toggle('active',b.getAttribute('onclick').includes("'"+k+"'"));
+  });
+  document.getElementById('scenario-output').textContent=SCENARIO[k];
+}
+showScenario('ticketing');
+</script>
+</body>
+</html>

@@ -381,6 +381,10 @@
     {
       "source": "/day30/deep",
       "destination": "/day30/deep.html"
+    },
+    {
+      "source": "/day31",
+      "destination": "/day31/index.html"
     }
   ]
 }
