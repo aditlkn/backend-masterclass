@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 30 Deep Dive: DataLoader Pattern, EXPLAIN ANALYZE, Pyroscope</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.back-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.back-link:hover{color:var(--text);}
+.deep-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;background:rgba(168,127,255,.12);color:var(--purple);border:1px solid rgba(168,127,255,.25);}
+.page{max-width:780px;margin:0 auto;padding:64px 48px 120px;}
+.deep-hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:64px;}
+.deep-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:14px;}
+.deep-hero h1{font-family:'Lora',serif;font-size:34px;font-weight:600;line-height:1.2;color:var(--text);margin-bottom:16px;}
+.deep-hero h1 em{font-style:italic;color:var(--purple);}
+.deep-hero p{font-size:15px;color:var(--text2);max-width:620px;line-height:1.8;}
+.deep-section{margin-top:72px;padding-top:72px;border-top:1px solid var(--border);}
+.deep-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.deep-section h2{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.25;}
+.deep-section h2 em{font-style:italic;color:var(--purple);}
+.lead{font-size:15px;color:var(--text2);line-height:1.8;margin-bottom:28px;}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:22px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:700px){.topbar{padding:0 20px}.page{padding:40px 20px 80px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:20px">
+    <a href="/day30" class="back-link">&#8592; Day 30: Performance Profiling</a>
+    <span style="color:var(--border2)">|</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">IMPLEMENTATION DEEP DIVE</span>
+  </div>
+  <span class="deep-badge">DEEP DIVE</span>
+</div>
+<div class="page">
+<div class="deep-hero">
+  <div class="deep-eyebrow">Day 30 · Performance Profiling · Deep Dive</div>
+  <h1>DataLoader pattern,<br>reading EXPLAIN ANALYZE,<br><em>&amp; continuous profiling</em></h1>
+  <p>Three practical implementations: a generic DataLoader for N+1 elimination, a guide to reading PostgreSQL query plans, and Pyroscope setup for continuous production profiling.</p>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 01</div>
+  <h2>DataLoader: <em>batch and cache per-request</em></h2>
+  <p class="lead">DataLoader batches all individual lookups within a single event loop tick into one database query, then distributes results back to each caller. The same pattern used by GraphQL's official DataLoader, usable in any context.</p>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">dataloader.ts — generic batching loader</span><span class="code-block-lang">TYPESCRIPT</span></div>
+    <pre><span class="kw">export class</span> DataLoader&lt;K, V&gt; {
+  <span class="kw">private</span> queue: { key: K; resolve: (v: V) => <span class="kw">void</span>; reject: (e: Error) => <span class="kw">void</span> }[] = [];
+  <span class="kw">private</span> cache = <span class="kw">new</span> Map&lt;K, V&gt;();
+  <span class="kw">private</span> scheduled = <span class="kw">false</span>;
+
+  <span class="fn">constructor</span>(
+    <span class="kw">private</span> batchFn: (keys: K[]) => Promise&lt;Map&lt;K, V&gt;&gt;
+  ) {}
+
+  <span class="kw">async</span> <span class="fn">load</span>(key: K): Promise&lt;V&gt; {
+    <span class="kw">if</span> (<span class="kw">this</span>.cache.<span class="fn">has</span>(key)) <span class="kw">return this</span>.cache.<span class="fn">get</span>(key)!;
+
+    <span class="kw">return new</span> Promise((resolve, reject) => {
+      <span class="kw">this</span>.queue.<span class="fn">push</span>({ key, resolve, reject });
+      <span class="kw">if</span> (!<span class="kw">this</span>.scheduled) {
+        <span class="kw">this</span>.scheduled = <span class="kw">true</span>;
+        <span class="cm">// Defer execution to next tick — collects all load() calls</span>
+        process.<span class="fn">nextTick</span>(() => <span class="kw">this</span>.<span class="fn">dispatch</span>());
+      }
+    });
+  }
+
+  <span class="kw">private async</span> <span class="fn">dispatch</span>() {
+    <span class="kw">const</span> batch = <span class="kw">this</span>.queue.<span class="fn">splice</span>(<span class="num">0</span>);
+    <span class="kw">this</span>.scheduled = <span class="kw">false</span>;
+    <span class="kw">const</span> keys = [...<span class="kw">new</span> Set(batch.<span class="fn">map</span>(b => b.key))];
+
+    <span class="kw">try</span> {
+      <span class="kw">const</span> results = <span class="kw">await this</span>.batchFn(keys);
+      results.<span class="fn">forEach</span>((v, k) => <span class="kw">this</span>.cache.<span class="fn">set</span>(k, v));
+      batch.<span class="fn">forEach</span>(({ key, resolve, reject }) => {
+        <span class="kw">const</span> v = results.<span class="fn">get</span>(key);
+        v !== <span class="kw">undefined</span> ? <span class="fn">resolve</span>(v) : <span class="fn">reject</span>(<span class="kw">new</span> Error(<span class="str">`Key not found: ${key}`</span>));
+      });
+    } <span class="kw">catch</span> (err) {
+      batch.<span class="fn">forEach</span>(({ reject }) => <span class="fn">reject</span>(err <span class="kw">as</span> Error));
+    }
+  }
+}
+
+<span class="cm">// Create per-request (fresh cache per request)</span>
+<span class="kw">function</span> <span class="fn">createLoaders</span>() {
+  <span class="kw">return</span> {
+    venue: <span class="kw">new</span> DataLoader&lt;<span class="kw">string</span>, Venue&gt;(<span class="kw">async</span> (ids) => {
+      <span class="kw">const</span> rows = <span class="kw">await</span> db.<span class="fn">query</span>(
+        <span class="str">'SELECT * FROM venues WHERE id = ANY($1)'</span>, [ids]
+      );
+      <span class="kw">return new</span> Map(rows.rows.<span class="fn">map</span>(v => [v.id, v]));
+    }),
+    organiser: <span class="kw">new</span> DataLoader&lt;<span class="kw">string</span>, Organiser&gt;(<span class="kw">async</span> (ids) => {
+      <span class="kw">const</span> rows = <span class="kw">await</span> db.<span class="fn">query</span>(
+        <span class="str">'SELECT * FROM organisers WHERE id = ANY($1)'</span>, [ids]
+      );
+      <span class="kw">return new</span> Map(rows.rows.<span class="fn">map</span>(o => [o.id, o]));
+    }),
+  };
+}
+
+<span class="cm">// Usage — even with per-event loads, only 2 queries total</span>
+app.<span class="fn">get</span>(<span class="str">'/events'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> loaders = <span class="fn">createLoaders</span>();                    <span class="cm">// fresh per request</span>
+  <span class="kw">const</span> events = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM events LIMIT 50'</span>);
+  <span class="kw">const</span> enriched = <span class="kw">await</span> Promise.<span class="fn">all</span>(
+    events.rows.<span class="fn">map</span>(<span class="kw">async</span> e => ({
+      ...e,
+      venue:     <span class="kw">await</span> loaders.venue.<span class="fn">load</span>(e.venueId),      <span class="cm">// batched</span>
+      organiser: <span class="kw">await</span> loaders.organiser.<span class="fn">load</span>(e.organiserId), <span class="cm">// batched</span>
+    }))
+  );
+  res.<span class="fn">json</span>(enriched);
+  <span class="cm">// Total queries: 1 (events) + 1 (all venues) + 1 (all organisers) = 3</span>
+});</pre>
+  </div>
+</div>
+
+<div class="deep-section">
+  <div class="section-num">Deep Dive 02</div>
+  <h2>Reading EXPLAIN ANALYZE:<br><em>find the seq scan</em></h2>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">EXPLAIN ANALYZE — what each line means</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Run on a replica, not primary. Always add LIMIT.</span>
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT e.*, o.name, v.name
+FROM events e
+JOIN organisers o ON o.id = e.organiser_id
+JOIN venues    v ON v.id  = e.venue_id
+WHERE e.starts_at > NOW()
+ORDER BY e.starts_at
+LIMIT 50;
+
+<span class="cm">-- Sample output (annotated):</span>
+Limit  (cost=0..45 rows=50) (actual time=0.8..12.3 rows=50)
+  ->  Sort  (cost=0..8920 rows=12000) (actual time=0.8..12.1 rows=50)
+        Sort Key: e.starts_at
+        Sort Method: top-N heapsort  Memory: 32kB
+        ->  Hash Join  (cost=0..7200 rows=12000) (actual time=0.4..8.2 rows=12000)
+              Hash Cond: (e.organiser_id = o.id)
+              ->  Hash Join  (cost=0..5100 rows=12000) (actual time=0.3..6.1 rows=12000)
+                    Hash Cond: (e.venue_id = v.id)
+                    ->  Seq Scan on events e  (cost=0..3200 rows=12000)
+                                              (actual time=0.1..2.4 rows=12000)
+                          Filter: (starts_at > now())
+                          Rows Removed by Filter: 45000
+                    ->  Hash  (cost=120..120 rows=800)
+                          ->  Seq Scan on venues v  (cost=0..120 rows=800)
+              ->  Hash  (cost=90..90 rows=500)
+                    ->  Seq Scan on organisers o  (cost=0..90 rows=500)
+Planning Time: 0.8ms
+Execution Time: 12.3ms
+
+<span class="cm">-- What to look for:</span>
+<span class="cm">-- "Seq Scan on events" with Filter removing 45,000 rows -> needs index on starts_at</span>
+<span class="cm">-- "Seq Scan on venues" with 800 rows -> small table, seq scan is fine</span>
+<span class="cm">-- "actual time=12.3ms" total -> acceptable for this query</span>
+
+<span class="cm">-- Add the missing index:</span>
+CREATE INDEX CONCURRENTLY idx_events_starts_at ON events (starts_at);
+
+<span class="cm">-- CONCURRENTLY: builds the index without locking the table (takes longer but safe in prod)</span>
+<span class="cm">-- After index: Seq Scan becomes Index Scan, execution drops to ~1ms</span></pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
