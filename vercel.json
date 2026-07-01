@@ -27,6 +27,10 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
       "source": "/day01",
       "destination": "/day01/index.html"
     },
@@ -388,39 +392,39 @@
     },
     {
       "source": "/topics/http-request-journey",
-      "destination": "/day1/index.html"
+      "destination": "/day01/index.html"
     },
     {
       "source": "/topics/rest-api-design",
-      "destination": "/day2/index.html"
+      "destination": "/day02/index.html"
     },
     {
       "source": "/topics/websockets",
-      "destination": "/day3/index.html"
+      "destination": "/day03/index.html"
     },
     {
       "source": "/topics/grpc",
-      "destination": "/day4/index.html"
+      "destination": "/day04/index.html"
     },
     {
       "source": "/topics/api-gateway",
-      "destination": "/day5/index.html"
+      "destination": "/day05/index.html"
     },
     {
       "source": "/topics/postgresql",
-      "destination": "/day6/index.html"
+      "destination": "/day06/index.html"
     },
     {
       "source": "/topics/nosql",
-      "destination": "/day7/index.html"
+      "destination": "/day07/index.html"
     },
     {
       "source": "/topics/redis",
-      "destination": "/day8/index.html"
+      "destination": "/day08/index.html"
     },
     {
       "source": "/topics/search-elasticsearch",
-      "destination": "/day9/index.html"
+      "destination": "/day09/index.html"
     },
     {
       "source": "/topics/object-storage",
@@ -512,7 +516,7 @@
     },
     {
       "source": "/topics/http-request-journey/lab",
-      "destination": "/day1/lab.html"
+      "destination": "/day01/lab.html"
     },
     {
       "source": "/topics/kafka/lab",
