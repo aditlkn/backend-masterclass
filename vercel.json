@@ -27,10 +27,6 @@
   ],
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
       "source": "/day01",
       "destination": "/day01/index.html"
     },
