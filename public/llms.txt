@@ -1,0 +1,86 @@
+# Backend Engineering Reference
+
+A free, complete reference for backend engineering concepts.
+Organised by domain and complexity level.
+Each topic: analogy, explanation, production code, incident lab, deep dive.
+
+## How to use this reference
+
+- Topic index: GET /
+- Individual topic: GET /topics/{slug}
+- Incident lab: GET /topics/{slug}/lab
+- Deep dive: GET /topics/{slug}/deep
+
+## All topics by domain
+
+### Networking & APIs
+GET /topics/http-request-journey       # beginner — DNS, TCP, TLS, HTTP
+GET /topics/rest-api-design            # beginner — idempotency, versioning, errors
+GET /topics/idempotency                # beginner — duplicate request handling
+GET /topics/websockets                 # intermediate — persistent connections, scaling
+GET /topics/grpc                       # intermediate — protobuf, streaming, contracts
+GET /topics/api-gateway                # intermediate — auth, rate limiting, routing
+
+### Storage & Databases
+GET /topics/postgresql                 # beginner — ACID, indexes, connection pooling
+GET /topics/nosql                      # beginner — document, wide-column, key-value
+GET /topics/redis                      # beginner — data structures, pub/sub, use cases
+GET /topics/object-storage             # beginner — S3, presigned URLs, CDN
+GET /topics/n-plus-one                 # beginner — batch queries, DataLoader pattern
+GET /topics/stale-cache-raws           # beginner — read-after-write inconsistency
+GET /topics/hot-partition              # beginner — hotspot detection and relief
+GET /topics/database-transactions      # intermediate — isolation levels, locking
+GET /topics/search-elasticsearch       # intermediate — inverted index, relevance
+GET /topics/quorum                     # intermediate — W+R>N, consistency tradeoffs
+GET /topics/sharding                   # advanced — consistent hashing, cross-shard
+GET /topics/shard-rebalancing          # advanced — live rebalancing under skew
+GET /topics/search-freshness           # advanced — freshness vs ranking quality
+
+### Async & Messaging
+GET /topics/message-queues             # beginner — SQS, delivery guarantees
+GET /topics/backpressure               # beginner — consumer lag, flow control
+GET /topics/kafka                      # intermediate — partitions, offsets, retention
+GET /topics/change-data-capture        # intermediate — Debezium, outbox pattern
+GET /topics/fan-out                    # intermediate — push vs pull, hybrid feeds
+GET /topics/out-of-order-events        # intermediate — buffering, ordering keys
+GET /topics/dead-letter-queue          # intermediate — poison messages, DLQ strategy
+GET /topics/kafka-deep-dive            # advanced — ISR, leader election, consumer lag
+GET /topics/distributed-transactions   # advanced — 2PC, saga, compensating transactions
+GET /topics/cdc-vs-dual-writes         # advanced — why dual writes are dangerous
+GET /topics/watermarks-streaming       # advanced — event time vs processing time
+GET /topics/exactly-once-processing    # advanced — deduplication, idempotent consumers
+
+### Resilience & Scale
+GET /topics/thundering-herd            # beginner — simultaneous request storms
+GET /topics/cache-stampede             # beginner — mutex, probabilistic early expiry
+GET /topics/single-point-of-failure    # beginner — redundancy, failover patterns
+GET /topics/retry-storm                # beginner — exponential backoff, jitter
+GET /topics/caching-patterns           # intermediate — cache-aside, write-through, TTL
+GET /topics/rate-limiting              # intermediate — token bucket, sliding window
+GET /topics/distributed-rate-limiting  # intermediate — Redis INCR, sliding window
+GET /topics/resilience-patterns        # intermediate — circuit breaker, bulkhead
+GET /topics/circuit-breaker-cascading  # intermediate — cascading failure control
+
+### Architecture
+GET /topics/microservices              # intermediate — service boundaries, DDD
+GET /topics/leader-election            # intermediate — Raft, etcd, fencing
+GET /topics/distributed-locking        # intermediate — Redlock, lease expiry
+GET /topics/microservices-patterns     # advanced — sagas, service mesh, contracts
+GET /topics/event-sourcing-cqrs        # advanced — append-only log, projections
+GET /topics/strangler-fig              # advanced — incremental monolith extraction
+GET /topics/multi-region-failover      # advanced — active-passive, DNS failover
+GET /topics/active-active              # advanced — CRDTs, LWW, conflict resolution
+GET /topics/noisy-neighbor             # advanced — tenant isolation, quotas
+GET /topics/system-design              # advanced — CAP, estimation, design canvas
+
+### Security
+GET /topics/auth-jwt-oauth             # intermediate — JWT, OAuth2, PKCE, RBAC
+GET /topics/security-owasp             # intermediate — SQLi, SSRF, XSS, secrets
+
+### Operations & Delivery
+GET /topics/observability              # intermediate — metrics, traces, logs
+GET /topics/alerting-slos              # intermediate — error budgets, burn rate
+GET /topics/kubernetes                 # intermediate — pods, HPA, probes
+GET /topics/cicd                       # intermediate — canary, blue-green, GitOps
+GET /topics/zero-downtime-migration    # intermediate — expand-contract, backfill
+GET /topics/performance-profiling      # intermediate — flame graphs, N+1, GC

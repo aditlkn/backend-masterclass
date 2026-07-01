@@ -385,6 +385,182 @@
     {
       "source": "/day31",
       "destination": "/day31/index.html"
+    },
+    {
+      "source": "/topics/http-request-journey",
+      "destination": "/day1/index.html"
+    },
+    {
+      "source": "/topics/rest-api-design",
+      "destination": "/day2/index.html"
+    },
+    {
+      "source": "/topics/websockets",
+      "destination": "/day3/index.html"
+    },
+    {
+      "source": "/topics/grpc",
+      "destination": "/day4/index.html"
+    },
+    {
+      "source": "/topics/api-gateway",
+      "destination": "/day5/index.html"
+    },
+    {
+      "source": "/topics/postgresql",
+      "destination": "/day6/index.html"
+    },
+    {
+      "source": "/topics/nosql",
+      "destination": "/day7/index.html"
+    },
+    {
+      "source": "/topics/redis",
+      "destination": "/day8/index.html"
+    },
+    {
+      "source": "/topics/search-elasticsearch",
+      "destination": "/day9/index.html"
+    },
+    {
+      "source": "/topics/object-storage",
+      "destination": "/day10/index.html"
+    },
+    {
+      "source": "/topics/message-queues",
+      "destination": "/day11/index.html"
+    },
+    {
+      "source": "/topics/kafka",
+      "destination": "/day12/index.html"
+    },
+    {
+      "source": "/topics/database-transactions",
+      "destination": "/day13/index.html"
+    },
+    {
+      "source": "/topics/distributed-transactions",
+      "destination": "/day14/index.html"
+    },
+    {
+      "source": "/topics/change-data-capture",
+      "destination": "/day15/index.html"
+    },
+    {
+      "source": "/topics/caching-patterns",
+      "destination": "/day16/index.html"
+    },
+    {
+      "source": "/topics/rate-limiting",
+      "destination": "/day17/index.html"
+    },
+    {
+      "source": "/topics/resilience-patterns",
+      "destination": "/day18/index.html"
+    },
+    {
+      "source": "/topics/observability",
+      "destination": "/day19/index.html"
+    },
+    {
+      "source": "/topics/alerting-slos",
+      "destination": "/day20/index.html"
+    },
+    {
+      "source": "/topics/microservices",
+      "destination": "/day21/index.html"
+    },
+    {
+      "source": "/topics/sharding",
+      "destination": "/day22/index.html"
+    },
+    {
+      "source": "/topics/kafka-deep-dive",
+      "destination": "/day23/index.html"
+    },
+    {
+      "source": "/topics/microservices-patterns",
+      "destination": "/day24/index.html"
+    },
+    {
+      "source": "/topics/auth-jwt-oauth",
+      "destination": "/day25/index.html"
+    },
+    {
+      "source": "/topics/event-sourcing-cqrs",
+      "destination": "/day26/index.html"
+    },
+    {
+      "source": "/topics/kubernetes",
+      "destination": "/day27/index.html"
+    },
+    {
+      "source": "/topics/cicd",
+      "destination": "/day28/index.html"
+    },
+    {
+      "source": "/topics/security-owasp",
+      "destination": "/day29/index.html"
+    },
+    {
+      "source": "/topics/performance-profiling",
+      "destination": "/day30/index.html"
+    },
+    {
+      "source": "/topics/system-design",
+      "destination": "/day31/index.html"
+    },
+    {
+      "source": "/topics/http-request-journey/lab",
+      "destination": "/day1/lab.html"
+    },
+    {
+      "source": "/topics/kafka/lab",
+      "destination": "/day12/lab.html"
+    },
+    {
+      "source": "/topics/auth-jwt-oauth/lab",
+      "destination": "/day25/lab.html"
+    },
+    {
+      "source": "/topics/event-sourcing-cqrs/lab",
+      "destination": "/day26/lab.html"
+    },
+    {
+      "source": "/topics/kubernetes/lab",
+      "destination": "/day27/lab.html"
+    },
+    {
+      "source": "/topics/security-owasp/lab",
+      "destination": "/day29/lab.html"
+    },
+    {
+      "source": "/topics/performance-profiling/lab",
+      "destination": "/day30/lab.html"
+    },
+    {
+      "source": "/topics/event-sourcing-cqrs/deep",
+      "destination": "/day26/deep.html"
+    },
+    {
+      "source": "/topics/kubernetes/deep",
+      "destination": "/day27/deep.html"
+    },
+    {
+      "source": "/topics/security-owasp/deep",
+      "destination": "/day29/deep.html"
+    },
+    {
+      "source": "/topics/performance-profiling/deep",
+      "destination": "/day30/deep.html"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/public/robots.txt"
+    },
+    {
+      "source": "/llms.txt",
+      "destination": "/public/llms.txt"
     }
   ]
 }
