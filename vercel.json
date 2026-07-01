@@ -553,14 +553,6 @@
     {
       "source": "/topics/performance-profiling/deep",
       "destination": "/day30/deep.html"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/public/robots.txt"
-    },
-    {
-      "source": "/llms.txt",
-      "destination": "/public/llms.txt"
     }
   ]
 }
