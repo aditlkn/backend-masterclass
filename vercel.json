@@ -555,6 +555,14 @@
     {
       "source": "/topics/n-plus-one",
       "destination": "/topics/n-plus-one/index.html"
+    },
+    {
+      "source": "/topics/thundering-herd",
+      "destination": "/topics/thundering-herd/index.html"
+    },
+    {
+      "source": "/topics/cache-stampede",
+      "destination": "/topics/cache-stampede/index.html"
     }
   ]
 }

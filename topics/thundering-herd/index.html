@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thundering Herd Problem — Backend Engineering Reference</title>
+<meta name="description" content="The thundering herd problem explained. What causes it, why it makes outages worse, and every fix: exponential backoff, jitter, queue limiting, and connection pooling.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:220px;min-width:220px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:24px 0 40px;}
+.toc-brand{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);padding:0 18px 16px;border-bottom:1px solid var(--border);margin-bottom:12px;text-decoration:none;display:block;}
+.toc-brand span{color:var(--accent);}
+.toc-meta{padding:0 18px 12px;display:flex;gap:6px;flex-wrap:wrap;}
+.toc-tag{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);color:var(--text3);}
+.toc-tag.beginner{color:var(--green);border-color:rgba(62,207,142,.3);}
+.toc-tag.resilience{color:var(--red);border-color:rgba(240,96,96,.3);}
+.toc a{display:block;padding:6px 18px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--red);border-left-color:var(--red);background:rgba(240,96,96,.05);}
+.toc-section{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:14px 18px 4px;}
+.content{flex:1;max-width:800px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.topbar{display:flex;align-items:center;gap:12px;padding:20px 0 0;margin-bottom:48px;}
+.topbar-back{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;}
+.topbar-back:hover{color:var(--text);}
+.topbar-sep{color:var(--border2);}
+.topbar-domain{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);}
+.hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--red);margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:44px;font-weight:600;line-height:1.1;color:var(--text);margin-bottom:20px;}
+.hero h1 em{font-style:italic;color:var(--red);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:580px;line-height:1.8;margin-bottom:32px;}
+.hero-facts{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.hero-fact{flex:1;padding:16px 20px;border-right:1px solid var(--border);}
+.hero-fact:last-child{border-right:none;}
+.hero-fact-n{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--text);display:block;}
+.hero-fact-l{font-size:11px;color:var(--text3);margin-top:2px;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:15px;font-weight:600;color:var(--text);margin:32px 0 10px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.cbh{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.cbt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.cbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.bad{color:var(--red);}.good{color:var(--green);}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.danger{background:rgba(240,96,96,.07);border:1px solid rgba(240,96,96,.2);}
+.callout.danger .callout-inner strong{color:var(--red);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:24px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(240,96,96,.1);border-color:var(--red);color:var(--red);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.related{display:flex;gap:10px;flex-wrap:wrap;margin-top:56px;padding-top:40px;border-top:1px solid var(--border);}
+.related-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;width:100%;margin-bottom:4px;}
+.related-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);text-decoration:none;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 14px;transition:all .12s;}
+.related-link:hover{border-color:var(--border2);color:var(--text);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:30px;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <a href="/" class="toc-brand">backend<span>.guide</span></a>
+  <div class="toc-meta">
+    <span class="toc-tag beginner">Beginner</span>
+    <span class="toc-tag resilience">Resilience</span>
+  </div>
+  <div class="toc-section">On this page</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Stadium Turnstile</a>
+  <a href="#s-what">What it is</a>
+  <a href="#s-triggers">What triggers it</a>
+  <a href="#s-why-bad">Why it makes things worse</a>
+  <a href="#s-jitter">Fix: Jitter</a>
+  <a href="#s-backoff">Fix: Exponential backoff</a>
+  <a href="#s-queue">Fix: Queue limiting</a>
+  <a href="#s-pool">Fix: Connection pooling</a>
+  <a href="#s-vs-stampede">vs Cache stampede</a>
+  <a href="#s-scenarios">Scenarios</a>
+</nav>
+<div class="content">
+<div class="topbar">
+  <a href="/" class="topbar-back">← backend.guide</a>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-domain">Resilience & Scale</span>
+</div>
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Resilience & Scale · Beginner</div>
+  <h1>The Thundering<br><em>Herd Problem</em></h1>
+  <p class="hero-sub">A resource goes down, then comes back up. Every client that was waiting simultaneously tries to reconnect. The sudden burst overwhelms the recovering system and takes it down again — worse than the original failure.</p>
+  <div class="hero-facts">
+    <div class="hero-fact"><span class="hero-fact-n">Recovery</span><span class="hero-fact-l">causes the second crash</span></div>
+    <div class="hero-fact"><span class="hero-fact-n">Jitter</span><span class="hero-fact-l">breaks the synchronisation</span></div>
+    <div class="hero-fact"><span class="hero-fact-n">Backoff</span><span class="hero-fact-l">reduces total retry volume</span></div>
+  </div>
+</div>
+
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The stadium turnstile that jams</h2>
+  <p>50,000 fans arrive at a stadium. The turnstiles jam. Everyone stops. Then the jam clears. All 50,000 people push forward simultaneously — crushing whoever is at the front, overwhelming the turnstiles, and causing them to jam again immediately.</p>
+  <p>If instead, the operator announced "fans with tickets ending in 1–3, please approach now" — then 2–4 — then 5–7 — the flow would be orderly, the turnstiles would never be overwhelmed, and everyone would get through faster than in the stampede.</p>
+  <p><strong>The database, the cache, the API — each one is a turnstile.</strong> When it recovers from an outage and 10,000 queued requests arrive in the same millisecond, it falls over again. Not because it is weak. Because the load was perfectly synchronised.</p>
+</div>
+
+<div class="section" id="s-what">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>What it is</h2>
+  <p>A thundering herd occurs when a large number of processes or threads, all waiting for the same event, are woken up simultaneously — and all try to acquire the same resource at once. Only one (or a few) can succeed. The rest fail, retry, or overwhelm the system.</p>
+  <p>The name comes from operating systems: in early Unix, when a process was waiting for a network connection, the kernel would wake <em>all</em> waiting processes when the connection became available. All of them would race to accept the connection. Only one could win. The rest wasted CPU cycles and had to sleep again. At scale, this wasted effort became a measurable performance problem.</p>
+  <p>In backend systems the pattern is the same: many clients waiting on the same unavailable thing, all activated at once when it becomes available.</p>
+</div>
+
+<div class="section" id="s-triggers">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>What triggers it</h2>
+  <ul>
+    <li><strong>Service restart:</strong> A service restarts after a crash or deploy. All clients that backed off retrying simultaneously hit their retry interval and reconnect at once.</li>
+    <li><strong>Database failover:</strong> The primary goes down, promotion of the replica takes 30 seconds. All 500 application server connections try to reconnect the moment the new primary is ready.</li>
+    <li><strong>Rate limit reset:</strong> A third-party API rate limits you at minute boundary. You and every other client reset and fire requests simultaneously at :00 of the next minute.</li>
+    <li><strong>Scheduled jobs:</strong> 1,000 cron jobs all configured to run at 00:00. They all hit the database simultaneously.</li>
+    <li><strong>Fixed retry interval:</strong> Every client is configured to retry after exactly 5 seconds. After a 5-second outage, every client retries at exactly the same moment.</li>
+    <li><strong>Cold start:</strong> Auto-scaling spins up 50 new instances simultaneously. They all try to warm their caches and connect to the database at once.</li>
+  </ul>
+</div>
+
+<div class="section" id="s-why-bad">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>Why it makes outages worse</h2>
+  <p>The dangerous property of a thundering herd is that it turns a recoverable outage into a repeated one. The sequence:</p>
+  <ol>
+    <li>Database slows under heavy load.</li>
+    <li>Clients start timing out. They back off and retry after 5 seconds.</li>
+    <li>Database recovers — load drops, performance returns.</li>
+    <li>All clients hit their 5-second retry simultaneously. 10,000 requests arrive in the same second.</li>
+    <li>Database falls over again under the burst. Goes back to step 1.</li>
+  </ol>
+  <p>The system oscillates. It never fully recovers because every recovery attempt is met with the full queued load all at once. Without jitter, this loop can continue indefinitely — the system appears to recover briefly every few seconds, then immediately falls over again.</p>
+
+  <div class="callout danger">
+    <div class="callout-icon">🔴</div>
+    <div class="callout-inner">
+      <strong>Fixed retry intervals are the root cause</strong>
+      <p>If every client uses the same fixed retry delay — whether that's 1 second, 5 seconds, or 30 seconds — they will always retry in sync. A 5-second outage synchronises all clients to the same retry moment. The fix is not a longer interval. A 30-second fixed interval just creates a bigger burst every 30 seconds. The fix is randomisation.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="s-jitter">
+  <div class="section-eyebrow">Fix 01</div>
+  <h2>Fix: Jitter — break the synchronisation</h2>
+  <p>Jitter adds randomness to retry delays. Instead of all clients retrying at exactly T+5s, they retry at T+4.1s, T+5.7s, T+3.8s, T+6.2s. The burst is spread across a window. No single moment gets the full load.</p>
+
+  <div class="code-block">
+    <div class="cbh"><span class="cbt">Jitter implementations</span><span class="cbl">TypeScript</span></div>
+    <pre><span class="cm">// ❌ Fixed interval — all clients retry at the same moment</span>
+<span class="bad">const RETRY_DELAY = 5000;
+await sleep(RETRY_DELAY);</span>
+
+<span class="cm">// ✅ Full jitter — random delay within the window</span>
+<span class="good">function jitter(baseMs: number): number {
+  return Math.random() * baseMs;   // 0ms to baseMs
+}
+await sleep(jitter(5000));   // anywhere from 0s to 5s</span>
+
+<span class="cm">// ✅ Equal jitter — half base, half random (avoids very short retries)</span>
+<span class="good">function equalJitter(baseMs: number): number {
+  const half = baseMs / 2;
+  return half + Math.random() * half;  // baseMs/2 to baseMs
+}
+await sleep(equalJitter(5000));   // 2.5s to 5s</span>
+
+<span class="cm">// ✅ Decorrelated jitter — AWS recommended, avoids correlation between retries</span>
+<span class="good">function decorrelatedJitter(prev: number, base: number, cap: number): number {
+  return Math.min(cap, Math.random() * (prev * 3 - base) + base);
+}
+let delay = base;
+for (let attempt = 0; attempt &lt; maxRetries; attempt++) {
+  await sleep(delay);
+  delay = decorrelatedJitter(delay, base, cap);
+}</span></pre>
+  </div>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>AWS recommends "full jitter" for most cases</strong>
+      <p>AWS published an analysis of jitter strategies in 2015 ("Exponential Backoff and Jitter"). Their conclusion: full jitter (completely random delay within the window) minimises total client wait time across a fleet. Equal jitter is a reasonable compromise when you need a minimum wait. Decorrelated jitter is best when clients are running many concurrent retries. For most retry logic in backend services, full jitter with exponential backoff is the correct default.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="s-backoff">
+  <div class="section-eyebrow">Fix 02</div>
+  <h2>Fix: Exponential backoff — reduce total retry volume</h2>
+  <p>Jitter spreads the load across time. Exponential backoff reduces the total volume of retries. Each retry attempt waits longer than the last — the delay doubles (or grows by some multiplier) on each failure. A system under load gets progressively less traffic from retrying clients, giving it time to recover.</p>
+
+  <div class="code-block">
+    <div class="cbh"><span class="cbt">Exponential backoff with jitter — production pattern</span><span class="cbl">TypeScript</span></div>
+    <pre><span class="kw">interface</span> RetryOptions {
+  maxAttempts: <span class="kw">number</span>;
+  baseDelayMs: <span class="kw">number</span>;
+  maxDelayMs:  <span class="kw">number</span>;
+  shouldRetry?: (err: Error) => <span class="kw">boolean</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">withRetry</span>&lt;T&gt;(
+  fn: () => Promise&lt;T&gt;,
+  opts: RetryOptions
+): Promise&lt;T&gt; {
+  <span class="kw">let</span> lastError: Error;
+
+  <span class="kw">for</span> (<span class="kw">let</span> attempt = <span class="num">0</span>; attempt &lt; opts.maxAttempts; attempt++) {
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fn</span>();
+    } <span class="kw">catch</span> (err) {
+      lastError = err <span class="kw">as</span> Error;
+
+      <span class="cm">// Don't retry non-transient errors</span>
+      <span class="kw">if</span> (opts.shouldRetry && !opts.<span class="fn">shouldRetry</span>(lastError)) {
+        <span class="kw">throw</span> lastError;
+      }
+
+      <span class="kw">if</span> (attempt === opts.maxAttempts - <span class="num">1</span>) <span class="kw">break</span>;
+
+      <span class="cm">// Exponential backoff with full jitter</span>
+      <span class="kw">const</span> exponential = opts.baseDelayMs * Math.<span class="fn">pow</span>(<span class="num">2</span>, attempt);
+      <span class="kw">const</span> capped = Math.<span class="fn">min</span>(exponential, opts.maxDelayMs);
+      <span class="kw">const</span> delay  = Math.<span class="fn">random</span>() * capped;   <span class="cm">// full jitter</span>
+
+      <span class="kw">await</span> <span class="fn">sleep</span>(delay);
+    }
+  }
+
+  <span class="kw">throw</span> lastError!;
+}
+
+<span class="cm">// Usage</span>
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">withRetry</span>(
+  () => db.<span class="fn">query</span>(<span class="str">'SELECT ...'</span>),
+  {
+    maxAttempts: <span class="num">5</span>,
+    baseDelayMs: <span class="num">100</span>,    <span class="cm">// 100ms base</span>
+    maxDelayMs:  <span class="num">30_000</span>, <span class="cm">// cap at 30s</span>
+    shouldRetry: (err) => err.code === <span class="str">'ECONNRESET'</span> || err.code === <span class="str">'ETIMEDOUT'</span>,
+  }
+);
+<span class="cm">// Delays (approx): 50ms, 200ms, 800ms, 3200ms, give up</span>
+<span class="cm">// Each attempt randomly between 0 and the exponential cap</span></pre>
+  </div>
+</div>
+
+<div class="section" id="s-queue">
+  <div class="section-eyebrow">Fix 03</div>
+  <h2>Fix: Queue limiting — cap concurrent reconnections</h2>
+  <p>Even with jitter, if 10,000 clients all recover within a 5-second window, that is still 2,000 requests per second — potentially more than the recovering system can handle. Queue limiting caps the number of requests that can be in-flight simultaneously.</p>
+
+  <div class="code-block">
+    <div class="cbh"><span class="cbt">Concurrency limiter — cap simultaneous requests</span><span class="cbl">TypeScript</span></div>
+    <pre><span class="kw">class</span> ConcurrencyLimiter {
+  <span class="kw">private</span> running = <span class="num">0</span>;
+  <span class="kw">private</span> queue: (() => <span class="kw">void</span>)[] = [];
+
+  <span class="fn">constructor</span>(<span class="kw">private readonly</span> limit: <span class="kw">number</span>) {}
+
+  <span class="kw">async</span> <span class="fn">run</span>&lt;T&gt;(fn: () => Promise&lt;T&gt;): Promise&lt;T&gt; {
+    <span class="kw">if</span> (<span class="kw">this</span>.running >= <span class="kw">this</span>.limit) {
+      <span class="cm">// Wait until a slot opens</span>
+      <span class="kw">await new</span> Promise&lt;<span class="kw">void</span>&gt;(resolve => <span class="kw">this</span>.queue.<span class="fn">push</span>(resolve));
+    }
+    <span class="kw">this</span>.running++;
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fn</span>();
+    } <span class="kw">finally</span> {
+      <span class="kw">this</span>.running--;
+      <span class="kw">this</span>.queue.<span class="fn">shift</span>()?.();   <span class="cm">// release next waiter</span>
+    }
+  }
+}
+
+<span class="cm">// Cap reconnection attempts to 20 concurrent</span>
+<span class="kw">const</span> limiter = <span class="kw">new</span> <span class="fn">ConcurrencyLimiter</span>(<span class="num">20</span>);
+
+<span class="cm">// All 10,000 clients call this — only 20 run at a time</span>
+<span class="kw">await</span> limiter.<span class="fn">run</span>(() => db.<span class="fn">connect</span>());
+
+<span class="cm">// In practice: p-limit (npm) does this with a simpler API</span>
+<span class="cm">// import pLimit from 'p-limit';</span>
+<span class="cm">// const limit = pLimit(20);</span>
+<span class="cm">// await Promise.all(tasks.map(t => limit(() => t())));</span></pre>
+  </div>
+</div>
+
+<div class="section" id="s-pool">
+  <div class="section-eyebrow">Fix 04</div>
+  <h2>Fix: Connection pooling — absorb the burst</h2>
+  <p>A connection pool holds a fixed number of open connections. New requests wait in the pool's queue rather than each opening their own connection. When a database restarts, only the pool reconnects — not every application thread simultaneously.</p>
+  <p>With a pool of 20 connections and 10,000 concurrent requests: 20 connections go to the database, 9,980 wait in the pool queue. The database sees a steady stream of 20 connections, not 10,000. The pool absorbs the thundering herd.</p>
+  <p>This is why connection poolers like PgBouncer are standard infrastructure — they sit between the application and the database and enforce a connection ceiling regardless of application load.</p>
+</div>
+
+<div class="section" id="s-vs-stampede">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>Thundering herd vs cache stampede</h2>
+  <div class="viz-box">
+    <div class="viz-header"><span class="viz-title">How they differ</span><span class="viz-badge">Interactive</span></div>
+    <div class="viz-body">
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <button class="viz-btn active" onclick="showDiff('herd')">Thundering herd</button>
+        <button class="viz-btn" onclick="showDiff('stampede')">Cache stampede</button>
+        <button class="viz-btn" onclick="showDiff('both')">Side by side</button>
+      </div>
+      <div id="diff-out" class="mono-out" style="min-height:200px;font-size:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="s-scenarios">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Real scenarios and fixes</h2>
+  <div class="viz-box">
+    <div class="viz-header"><span class="viz-title">Scenario walkthrough</span><span class="viz-badge">Interactive</span></div>
+    <div class="viz-body">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="viz-btn active" onclick="showScenario('restart')">Service restart</button>
+        <button class="viz-btn" onclick="showScenario('failover')">DB failover</button>
+        <button class="viz-btn" onclick="showScenario('cron')">Cron jobs</button>
+        <button class="viz-btn" onclick="showScenario('ratelimit')">Rate limit reset</button>
+      </div>
+      <div id="scenario-out" class="mono-out" style="min-height:220px;font-size:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border);">
+  <p style="font-family:'Lora',serif;font-size:19px;line-height:1.8;color:var(--text);font-style:italic;">
+    The turnstile clears. Everyone rushes at once. It jams again. The problem was never the turnstile — it was that 50,000 people moved in perfect synchrony. Add randomness. Break the synchronisation. The herd scatters, and the system recovers.
+  </p>
+</div>
+
+<div class="related">
+  <span class="related-label">Related topics</span>
+  <a href="/topics/cache-stampede" class="related-link">Cache Stampede →</a>
+  <a href="/topics/retry-storm" class="related-link">Retry Storm →</a>
+  <a href="/topics/resilience-patterns" class="related-link">Resilience Patterns →</a>
+  <a href="/topics/rate-limiting" class="related-link">Rate Limiting →</a>
+</div>
+
+</div></div>
+<script>
+var tocLinks = document.querySelectorAll('.toc a[href^="#"]');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 140, active = null;
+  document.querySelectorAll('[id]').forEach(function(el) { if (el.offsetTop <= pos) active = el.id; });
+  tocLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+}, {passive:true});
+
+var DIFF = {
+  herd:
+    'THUNDERING HERD\n\n' +
+    'Trigger:  A resource (service, database, cache) becomes unavailable,\n' +
+    '          then recovers. All waiting clients reconnect simultaneously.\n\n' +
+    'Who acts: All clients that were waiting or retrying.\n\n' +
+    'The harm: The recovering system is overwhelmed by simultaneous\n' +
+    '          connection attempts. It falls over again.\n\n' +
+    'Root cause: Synchronised retry intervals. Fixed backoff means\n' +
+    '            all clients hit the same retry moment.\n\n' +
+    'Fix: Jitter (randomise retry delays)\n' +
+    '     Exponential backoff (reduce retry volume over time)\n' +
+    '     Connection pooling (cap simultaneous connections)\n' +
+    '     Queue limiting (cap concurrent requests)',
+
+  stampede:
+    'CACHE STAMPEDE\n\n' +
+    'Trigger:  A popular cache key expires (TTL reached). All requests\n' +
+    '          that need that key simultaneously miss and hit the database.\n\n' +
+    'Who acts: All requests that arrive during the recomputation window.\n\n' +
+    'The harm: Many requests perform the same expensive computation\n' +
+    '          or database query simultaneously. Redundant work.\n' +
+    '          Database gets N queries for a result that needs 1 computation.\n\n' +
+    'Root cause: A single shared cache key with a fixed TTL.\n' +
+    '            High-traffic keys expire under concurrent load.\n\n' +
+    'Fix: Mutex (only one request recomputes; others wait)\n' +
+    '     Probabilistic early expiry (recompute before expiry)\n' +
+    '     Background refresh (never let the key actually expire)\n' +
+    '     Stale-while-revalidate (serve stale; refresh async)',
+
+  both:
+    'COMPARISON\n\n' +
+    '                    Thundering Herd      Cache Stampede\n' +
+    '─────────────────────────────────────────────────────────\n' +
+    'What fails          A service/DB         A cache key\n' +
+    'What clients do     Reconnect            Recompute\n' +
+    'Synchronised by     Retry intervals      TTL expiry\n' +
+    'Redundant work      Connections          DB queries\n' +
+    'Primary fix         Jitter + backoff     Mutex / bg refresh\n' +
+    'Prevents            Second crash         Stampede on DB\n' +
+    '─────────────────────────────────────────────────────────\n\n' +
+    'They can co-occur:\n' +
+    '  1. Cache goes down (thundering herd on cache reconnect)\n' +
+    '  2. Cache comes back cold (stampede on popular keys)\n' +
+    '  3. Database gets hit by both simultaneously\n\n' +
+    'Fix both to prevent the compounding failure.',
+};
+
+function showDiff(k) {
+  document.querySelectorAll('.viz-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('onclick') === "showDiff('" + k + "')");
+  });
+  document.getElementById('diff-out').textContent = DIFF[k];
+}
+showDiff('herd');
+
+var SCENARIOS = {
+  restart:
+    'SCENARIO: Service restart after crash\n\n' +
+    'Setup:\n' +
+    '  500 client connections to your API service.\n' +
+    '  Service crashes and restarts in 8 seconds.\n' +
+    '  All clients are configured to retry every 5 seconds.\n\n' +
+    'Without jitter:\n' +
+    '  T+0s:  Service crashes. 500 clients disconnect.\n' +
+    '  T+5s:  All 500 clients retry simultaneously.\n' +
+    '         Service is still down. All 500 fail.\n' +
+    '  T+8s:  Service recovers.\n' +
+    '  T+10s: All 500 clients retry simultaneously (T+5s interval).\n' +
+    '         500 connections arrive in <100ms.\n' +
+    '         Service falls over under the burst.\n\n' +
+    'With full jitter (0–5s random delay):\n' +
+    '  T+8s:  Service recovers.\n' +
+    '  T+8–13s: 500 clients reconnect spread over 5 seconds.\n' +
+    '           ~100 connections per second — manageable.\n' +
+    '           Service handles the load and stays up.\n\n' +
+    'Fix: Add jitter to all retry logic. Use exponential backoff\n' +
+    'so clients that fail multiple times back off further.',
+
+  failover:
+    'SCENARIO: Database primary failover\n\n' +
+    'Setup:\n' +
+    '  Primary PostgreSQL instance fails.\n' +
+    '  Replica promotion takes 25 seconds.\n' +
+    '  300 application server connections all drop simultaneously.\n\n' +
+    'Without connection pooling:\n' +
+    '  T+0s:   Primary fails. 300 connections drop.\n' +
+    '  T+25s:  New primary is ready.\n' +
+    '  T+25s:  All 300 app servers reconnect simultaneously.\n' +
+    '          New primary receives 300 connection requests at once.\n' +
+    '          PostgreSQL default max_connections: 100.\n' +
+    '          200 connections are rejected. App servers error.\n\n' +
+    'With PgBouncer (connection pooler):\n' +
+    '  PgBouncer maintains a pool of 20 connections to PostgreSQL.\n' +
+    '  App servers connect to PgBouncer, not directly to PostgreSQL.\n' +
+    '  T+25s:  PgBouncer reconnects with 20 connections.\n' +
+    '          App server requests queue in PgBouncer.\n' +
+    '          PostgreSQL sees 20 connections, not 300.\n' +
+    '          Recovery is clean.\n\n' +
+    'Fix: PgBouncer or RDS Proxy between app and database.\n' +
+    'Cap pool size at 80% of max_connections.',
+
+  cron:
+    'SCENARIO: Cron jobs at midnight\n\n' +
+    'Setup:\n' +
+    '  1,000 cron jobs all scheduled for 00:00:00.\n' +
+    '  Each job does a database write.\n' +
+    '  Database handles ~200 writes/second comfortably.\n\n' +
+    'Without jitter:\n' +
+    '  00:00:00: 1,000 jobs fire simultaneously.\n' +
+    '            1,000 write queries arrive in <1 second.\n' +
+    '            Database queues fill. Latency spikes.\n' +
+    '            Other queries (user requests) time out.\n' +
+    '            On-call gets paged at midnight.\n\n' +
+    'With scheduled jitter:\n' +
+    '  Instead of all at 00:00:00, spread over 5 minutes:\n' +
+    '  job.schedule = "0 " + Math.floor(Math.random() * 5) + " 0 * * *"\n' +
+    '  // Runs sometime between 00:00 and 00:05\n\n' +
+    '  Or at runtime: add random delay before executing:\n' +
+    '  await sleep(Math.random() * 300_000); // 0–5 min jitter\n' +
+    '  await doJob();\n\n' +
+    '  Result: ~3–4 jobs per second instead of 1,000 at once.',
+
+  ratelimit:
+    'SCENARIO: Third-party API rate limit reset\n\n' +
+    'Setup:\n' +
+    '  Your service calls a third-party API: 1,000 requests/minute.\n' +
+    '  You hit the limit at T+45s into the minute.\n' +
+    '  All requests queue until the next minute boundary.\n\n' +
+    'Without jitter:\n' +
+    '  T+60s: Rate limit resets. 800 queued requests fire at once.\n' +
+    '         Third-party API receives 800 requests in <1 second.\n' +
+    '         You get immediately rate limited again.\n' +
+    '         If their limit is per-second: you are banned briefly.\n\n' +
+    'With token bucket + jitter:\n' +
+    '  Implement your own rate limiter client-side:\n' +
+    '  - Track tokens consumed this minute\n' +
+    '  - When rate limited, schedule retries spread across\n' +
+    '    the remaining time until reset:\n' +
+    '    delay = (msUntilReset / queueLength) + jitter(500)\n' +
+    '  - Each queued request fires at a different moment\n' +
+    '  - Rate limit reset sees a trickle, not a burst\n\n' +
+    'Fix: Client-side rate limiting + jittered retry scheduling.\n' +
+    'Honour Retry-After headers when provided.',
+};
+
+function showScenario(k) {
+  document.querySelectorAll('.viz-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('onclick') === "showScenario('" + k + "')");
+  });
+  document.getElementById('scenario-out').textContent = SCENARIOS[k];
+}
+showScenario('restart');
+</script>
+</body>
+</html>
