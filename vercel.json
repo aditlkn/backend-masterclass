@@ -551,6 +551,10 @@
     {
       "source": "/topics/performance-profiling/deep",
       "destination": "/day30/deep.html"
+    },
+    {
+      "source": "/topics/n-plus-one",
+      "destination": "/topics/n-plus-one/index.html"
     }
   ]
 }

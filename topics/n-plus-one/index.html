@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N+1 Query Problem — Backend Engineering Reference</title>
+<meta name="description" content="The N+1 query problem explained in depth. What it is, why it happens, how to detect it, and every fix: JOINs, DataLoader, batch queries, eager loading.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Lora:ital,wght@0,600;1,400&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#232840;--border2:#2e3550;--text:#e0e6f5;--text2:#8a94b0;--text3:#505a78;--accent:#5b8fff;--green:#3ecf8e;--orange:#f5a623;--red:#f06060;--purple:#a87fff;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+.page{display:flex;min-height:100vh;}
+.toc{width:220px;min-width:220px;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:24px 0 40px;}
+.toc-brand{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);padding:0 18px 16px;border-bottom:1px solid var(--border);margin-bottom:12px;text-decoration:none;display:block;}
+.toc-brand span{color:var(--accent);}
+.toc-meta{padding:0 18px 12px;display:flex;gap:6px;flex-wrap:wrap;}
+.toc-tag{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);color:var(--text3);}
+.toc-tag.beginner{color:var(--green);border-color:rgba(62,207,142,.3);}
+.toc-tag.storage{color:var(--accent);border-color:rgba(91,143,255,.3);}
+.toc a{display:block;padding:6px 18px;font-size:12.5px;color:var(--text3);text-decoration:none;transition:color .12s,background .12s;border-left:2px solid transparent;line-height:1.4;}
+.toc a:hover{color:var(--text);background:var(--bg3);}
+.toc a.active{color:var(--green);border-left-color:var(--green);background:rgba(62,207,142,.05);}
+.toc-section{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:14px 18px 4px;margin-top:4px;}
+.content{flex:1;max-width:800px;padding:0 56px 120px;margin:0 auto;min-width:0;}
+.topbar{display:flex;align-items:center;gap:12px;padding:20px 0 0;margin-bottom:48px;}
+.topbar-back{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-decoration:none;display:flex;align-items:center;gap:6px;}
+.topbar-back:hover{color:var(--text);}
+.topbar-sep{color:var(--border2);}
+.topbar-domain{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);}
+.hero{padding-bottom:48px;border-bottom:1px solid var(--border);margin-bottom:56px;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
+.hero h1{font-family:'Lora',serif;font-size:44px;font-weight:600;line-height:1.1;color:var(--text);margin-bottom:20px;}
+.hero h1 em{font-style:italic;color:var(--green);}
+.hero-sub{font-size:16px;color:var(--text2);max-width:580px;line-height:1.8;margin-bottom:32px;}
+.hero-facts{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.hero-fact{flex:1;padding:16px 20px;border-right:1px solid var(--border);}
+.hero-fact:last-child{border-right:none;}
+.hero-fact-n{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--text);display:block;}
+.hero-fact-l{font-size:11px;color:var(--text3);margin-top:2px;}
+.section{margin-top:64px;}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.section h2{font-family:'Lora',serif;font-size:26px;font-weight:600;color:var(--text);margin-bottom:20px;line-height:1.3;}
+.section h3{font-size:15px;font-weight:600;color:var(--text);margin:32px 0 10px;letter-spacing:.2px;}
+p{color:var(--text2);margin-bottom:18px;font-size:15px;line-height:1.8;}
+p strong{color:var(--text);}
+p code,li code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--bg3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--purple);}
+ul,ol{color:var(--text2);padding-left:22px;margin-bottom:20px;}
+li{margin-bottom:8px;font-size:15px;line-height:1.75;}
+li strong{color:var(--text);}
+.code-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:24px 0;overflow:hidden;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.code-block-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);}
+.code-block-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(91,143,255,.1);padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;}
+.code-block pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:#abb2bf;margin:0;white-space:pre;}
+.kw{color:#c678dd;}.fn{color:#61afef;}.str{color:#98c379;}.cm{color:#5c6370;font-style:italic;}.num{color:#d19a66;}.bad{color:var(--red);}.good{color:var(--green);}
+.callout{border-radius:8px;padding:18px 20px;margin:28px 0;display:flex;gap:14px;}
+.callout-icon{font-size:18px;flex-shrink:0;line-height:1.6;}
+.callout-inner{flex:1;}
+.callout-inner strong{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.callout-inner p{margin:0;font-size:14px;color:var(--text2);line-height:1.7;}
+.callout.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);}
+.callout.warn .callout-inner strong{color:var(--orange);}
+.callout.insight{background:rgba(91,143,255,.07);border:1px solid rgba(91,143,255,.2);}
+.callout.insight .callout-inner strong{color:var(--accent);}
+.callout.prod{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2);}
+.callout.prod .callout-inner strong{color:var(--green);}
+.viz-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:32px 0;overflow:hidden;}
+.viz-header{padding:10px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.viz-title{font-size:11px;color:var(--text3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace;}
+.viz-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(91,143,255,.12);color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.viz-body{padding:24px;}
+.viz-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;transition:all .12s;margin:0 4px 4px 0;}
+.viz-btn:hover,.viz-btn.active{background:rgba(62,207,142,.1);border-color:var(--green);color:var(--green);}
+.viz-slider{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;margin:8px 0;}
+.viz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--green);cursor:pointer;border:2px solid var(--bg);}
+.mono-out{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;line-height:1.9;color:var(--text2);font-family:'JetBrains Mono',monospace;white-space:pre-wrap;}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0;}
+.compare-block{border-radius:8px;overflow:hidden;}
+.compare-header{padding:8px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;}
+.compare-header.bad{background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.2);border-bottom:none;}
+.compare-header.good{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.2);border-bottom:none;}
+.compare-body{background:var(--bg2);padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--text2);}
+.compare-body.bad{border:1px solid rgba(240,96,96,.2);}
+.compare-body.good{border:1px solid rgba(62,207,142,.2);}
+.related{display:flex;gap:10px;flex-wrap:wrap;margin-top:56px;padding-top:40px;border-top:1px solid var(--border);}
+.related-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;width:100%;margin-bottom:4px;}
+.related-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);text-decoration:none;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 14px;transition:all .12s;}
+.related-link:hover{border-color:var(--border2);color:var(--text);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:900px){.toc{display:none;}.content{padding:0 20px 80px;}.hero h1{font-size:30px;}.compare{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="toc">
+  <a href="/" class="toc-brand">backend<span>.guide</span></a>
+  <div class="toc-meta">
+    <span class="toc-tag beginner">Beginner</span>
+    <span class="toc-tag storage">Storage</span>
+  </div>
+  <div class="toc-section">On this page</div>
+  <a href="#hero">Overview</a>
+  <a href="#s-analogy">The Waiter Analogy</a>
+  <a href="#s-what">What it is</a>
+  <a href="#s-why">Why it happens</a>
+  <a href="#s-cost">The real cost</a>
+  <a href="#s-detect">How to detect it</a>
+  <a href="#s-fix-join">Fix: JOIN</a>
+  <a href="#s-fix-batch">Fix: Batch query</a>
+  <a href="#s-fix-dataloader">Fix: DataLoader</a>
+  <a href="#s-fix-orm">Fix: ORM eager load</a>
+  <a href="#s-which">Which fix when</a>
+  <a href="#s-prevent">Prevention</a>
+</nav>
+<div class="content">
+<div class="topbar">
+  <a href="/" class="topbar-back">← backend.guide</a>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-domain">Storage & Databases</span>
+</div>
+
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Storage & Databases · Beginner</div>
+  <h1>The N+1<br><em>Query Problem</em></h1>
+  <p class="hero-sub">You fetch a list of N items, then make N more queries to fetch related data for each one. One query becomes N+1. At small scale it's invisible. At production scale it's the most common cause of database-induced slowdowns.</p>
+  <div class="hero-facts">
+    <div class="hero-fact"><span class="hero-fact-n">101</span><span class="hero-fact-l">queries for 100 items</span></div>
+    <div class="hero-fact"><span class="hero-fact-n">1,001</span><span class="hero-fact-l">queries for 1,000 items</span></div>
+    <div class="hero-fact"><span class="hero-fact-n">1</span><span class="hero-fact-l">query with a JOIN</span></div>
+  </div>
+</div>
+
+<!-- ANALOGY -->
+<div class="section" id="s-analogy">
+  <div class="section-eyebrow">Section 01</div>
+  <h2>The waiter who makes one trip per person</h2>
+  <p>A table of 10 people all order dessert at the same time. The waiter walks to the first person, takes their order, walks to the kitchen, delivers it to the chef, walks back. Then walks to the second person. Takes their order. Walks to the kitchen. Delivers it. Walks back. Repeat ten times.</p>
+  <p>The kitchen is fast. The chef can prepare all ten desserts in the time it takes to prepare one. The problem is not the kitchen — it is the <strong>10 separate trips</strong> when one trip with all 10 orders would have done the same job in a fraction of the time.</p>
+  <p>The database is the kitchen. The queries are the trips. Each individual query might take 2ms. A hundred of them take 200ms — not because the database is slow, but because you made a hundred round-trips when one would have sufficed.</p>
+  <p>The fix is not a faster kitchen. It is not a faster waiter. It is <strong>one trip with all the orders</strong>.</p>
+</div>
+
+<!-- WHAT IT IS -->
+<div class="section" id="s-what">
+  <div class="section-eyebrow">Section 02</div>
+  <h2>What it is, precisely</h2>
+  <p>The N+1 problem occurs in two steps:</p>
+  <ol>
+    <li>You execute <strong>1 query</strong> to fetch a list of N parent records (events, users, orders, posts).</li>
+    <li>For each of the N records, you execute <strong>1 more query</strong> to fetch related data (the venue for each event, the author for each post, the items for each order).</li>
+  </ol>
+  <p>Total queries: <strong>1 + N</strong>. Hence "N+1." For a list of 100 events with their venues, that is 101 queries. For 1,000 it is 1,001.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">The classic N+1 — what it looks like in code</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// 1 query: fetch 100 events</span>
+<span class="bad">const events = await db.query('SELECT * FROM events LIMIT 100');
+
+for (const event of events.rows) {
+  <span class="cm">// N queries: one per event — this runs 100 times</span>
+  const venue = await db.query(
+    'SELECT * FROM venues WHERE id = $1',
+    [event.venue_id]
+  );
+  event.venue = venue.rows[0];
+}
+<span class="cm">// Total: 101 queries for 100 events</span></span></pre>
+  </div>
+
+  <p>The loop is the tell. Any <code>await db.query()</code> inside a <code>for</code> loop over database records is almost certainly an N+1.</p>
+</div>
+
+<!-- WHY IT HAPPENS -->
+<div class="section" id="s-why">
+  <div class="section-eyebrow">Section 03</div>
+  <h2>Why it keeps happening</h2>
+  <p><strong>It is invisible in development.</strong> You seed your dev database with 5 events. Five venue queries feel fine — 10ms total. The same code in production with 500 events makes 500 venue queries. At 2ms each that is 1,000ms — a full second just for venue lookups, before the rest of the request does anything.</p>
+  <p><strong>ORMs make it easy to write accidentally.</strong> The most seductive N+1 is the one that looks like a clean object access:</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">ORM lazy loading — the hidden N+1</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// Prisma, TypeORM, Sequelize — lazy associations look clean</span>
+<span class="bad">const events = await prisma.event.findMany({ take: 100 });
+
+for (const event of events) {
+  <span class="cm">// This triggers a SELECT on the venues table for EVERY event</span>
+  <span class="cm">// It looks like a property access. It is a database query.</span>
+  console.log(event.venue.name);  // N hidden queries
+}</span>
+
+<span class="cm">// The ORM hides the query behind a property — easy to miss in review</span></pre>
+  </div>
+
+  <p><strong>It compounds across layers.</strong> A GraphQL resolver that fetches a list of posts, and each post's resolver fetches the author, and each author resolver fetches their profile — that is N+1 nested inside N+1. A list of 50 posts with authors and profiles becomes 1 + 50 + 50 = 101 queries minimum.</p>
+
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-inner">
+      <strong>GraphQL is especially prone to N+1</strong>
+      <p>Each GraphQL field resolver runs independently. Without a DataLoader or query batching layer, a list query that resolves nested relationships will generate an N+1 for each relationship level. This is why DataLoader was invented — Facebook built it specifically to solve this problem in their GraphQL server.</p>
+    </div>
+  </div>
+</div>
+
+<!-- REAL COST -->
+<div class="section" id="s-cost">
+  <div class="section-eyebrow">Section 04</div>
+  <h2>The real cost — it scales with your data</h2>
+
+  <div class="viz-box">
+    <div class="viz-header"><span class="viz-title">N+1 cost calculator</span><span class="viz-badge">Interactive</span></div>
+    <div class="viz-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+        <div>
+          <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">List size (N): <span id="lbl-n" style="color:var(--green)">100</span></label>
+          <input type="range" class="viz-slider" id="sl-n" min="10" max="5000" step="10" value="100" oninput="calcCost()">
+        </div>
+        <div>
+          <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Per-query latency: <span id="lbl-lat" style="color:var(--green)">2ms</span></label>
+          <input type="range" class="viz-slider" id="sl-lat" min="1" max="20" value="2" oninput="calcCost()">
+        </div>
+      </div>
+      <div id="cost-out" class="mono-out" style="min-height:160px;font-size:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETECT -->
+<div class="section" id="s-detect">
+  <div class="section-eyebrow">Section 05</div>
+  <h2>How to detect it</h2>
+
+  <h3>pg_stat_statements — the production fingerprint</h3>
+  <p>In PostgreSQL, <code>pg_stat_statements</code> tracks every query that runs. An N+1 has an unmistakable signature: a parameterised query with a <code>calls</code> count far higher than the number of requests.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Detecting N+1 in PostgreSQL</span><span class="code-block-lang">SQL</span></div>
+    <pre><span class="cm">-- Run during a load test or normal traffic window</span>
+SELECT
+  LEFT(query, 80)            AS query_preview,
+  calls,
+  ROUND(mean_exec_time::numeric, 2) AS mean_ms,
+  ROUND(total_exec_time::numeric)   AS total_ms
+FROM pg_stat_statements
+ORDER BY calls DESC
+LIMIT 20;
+
+<span class="cm">-- N+1 signature:</span>
+<span class="cm">-- query_preview                              calls    mean_ms</span>
+<span class="cm">-- SELECT * FROM venues WHERE id = $1         48,000   2</span>
+<span class="cm">-- SELECT * FROM events ORDER BY... LIMIT 50  960      12</span>
+<span class="cm">--</span>
+<span class="cm">-- 48,000 venue queries for 960 list requests = 50 per request</span>
+<span class="cm">-- If your page size is 50 events: that IS the N+1</span></pre>
+  </div>
+
+  <h3>Log query counts per request</h3>
+  <p>In development, log how many queries each request makes. More than 10 for a simple list endpoint is a red flag.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Query count middleware — catch N+1 in dev</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// Middleware: count queries per request</span>
+app.use((req, res, next) => {
+  req.queryCount = 0;
+  const originalQuery = db.query.bind(db);
+  db.query = (...args) => {
+    req.queryCount++;
+    <span class="kw">return</span> originalQuery(...args);
+  };
+  res.on('finish', () => {
+    <span class="kw">if</span> (req.queryCount > 10) {
+      console.warn(
+        <span class="str">`[N+1 ALERT] ${req.method} ${req.path} made ${req.queryCount} queries`</span>
+      );
+    }
+  });
+  next();
+});
+
+<span class="cm">// Output:</span>
+<span class="cm">// [N+1 ALERT] GET /events made 101 queries</span></pre>
+  </div>
+
+  <h3>ORM query logging</h3>
+  <p>Prisma: set <code>log: ['query']</code> in the client constructor. TypeORM: set <code>logging: true</code>. Sequelize: set <code>logging: console.log</code>. Scroll through the output for a single request — repeated identical queries with different IDs are N+1.</p>
+</div>
+
+<!-- FIX: JOIN -->
+<div class="section" id="s-fix-join">
+  <div class="section-eyebrow">Fix 01</div>
+  <h2>Fix: JOIN — one query, all the data</h2>
+  <p>The most direct fix. Instead of fetching events then fetching venues separately, fetch both together in a single query. The database does the join internally — one round-trip, all the data.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">JOIN — eliminates the N+1 entirely</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// Before: 1 + N queries</span>
+<span class="bad">const events = await db.query('SELECT * FROM events LIMIT 100');
+for (const event of events.rows) {
+  const venue = await db.query('SELECT * FROM venues WHERE id = $1', [event.venue_id]);
+  event.venue = venue.rows[0];
+}</span>
+
+<span class="cm">// After: 1 query</span>
+<span class="good">const result = await db.query(`
+  SELECT
+    e.id,
+    e.name,
+    e.starts_at,
+    e.description,
+    v.id          AS venue_id,
+    v.name        AS venue_name,
+    v.city        AS venue_city,
+    v.capacity    AS venue_capacity
+  FROM events e
+  JOIN venues v ON v.id = e.venue_id
+  ORDER BY e.starts_at
+  LIMIT 100
+`);
+
+const events = result.rows.map(row => ({
+  id:          row.id,
+  name:        row.name,
+  startsAt:    row.starts_at,
+  description: row.description,
+  venue: {
+    id:       row.venue_id,
+    name:     row.venue_name,
+    city:     row.venue_city,
+    capacity: row.venue_capacity,
+  },
+}));</span>
+
+<span class="cm">// Total: 1 query regardless of how many events</span></pre>
+  </div>
+
+  <p><strong>When to use it:</strong> When you always need the related data alongside the parent. When the join does not fan out (one event has one venue — not one event has many bookings, which would multiply rows).</p>
+  <p><strong>Watch out for:</strong> Joining a one-to-many relationship without aggregation multiplies rows. An event with 50 bookings joined to the events table returns 50 rows per event. Use a subquery or aggregate instead.</p>
+</div>
+
+<!-- FIX: BATCH -->
+<div class="section" id="s-fix-batch">
+  <div class="section-eyebrow">Fix 02</div>
+  <h2>Fix: Batch query — collect IDs, fetch once</h2>
+  <p>When a JOIN is not practical (different services, different databases, or you need more control), collect all the IDs from the first query, then fetch all related records in one query using <code>WHERE id = ANY($1)</code>.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Batch query — 2 queries instead of N+1</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// Step 1: fetch the list</span>
+<span class="good">const events = await db.query('SELECT * FROM events LIMIT 100');
+
+<span class="cm">// Step 2: collect all venue IDs (deduplicated)</span>
+const venueIds = [...new Set(events.rows.map(e => e.venue_id))];
+
+<span class="cm">// Step 3: ONE query to fetch all needed venues</span>
+const venues = await db.query(
+  'SELECT * FROM venues WHERE id = ANY($1)',
+  [venueIds]
+);
+
+<span class="cm">// Step 4: build a lookup map</span>
+const venueMap = new Map(venues.rows.map(v => [v.id, v]));
+
+<span class="cm">// Step 5: attach — no more queries</span>
+const result = events.rows.map(event => ({
+  ...event,
+  venue: venueMap.get(event.venue_id),
+}));</span>
+
+<span class="cm">// Total: 2 queries regardless of N</span>
+<span class="cm">// Works across different services, different databases</span>
+<span class="cm">// Works when you can't control the SQL (third-party ORM, microservice)</span></pre>
+  </div>
+</div>
+
+<!-- FIX: DATALOADER -->
+<div class="section" id="s-fix-dataloader">
+  <div class="section-eyebrow">Fix 03</div>
+  <h2>Fix: DataLoader — automatic batching per request</h2>
+  <p>DataLoader collects all individual <code>.load(id)</code> calls that happen within a single event loop tick, batches them into one database query, then distributes results back to each caller. This is the standard fix for GraphQL — it makes individual field resolvers safe even in a list context.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">DataLoader pattern — batch automatically</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="kw">import</span> DataLoader <span class="kw">from</span> <span class="str">'dataloader'</span>;
+
+<span class="cm">// Create per-request (fresh cache each request)</span>
+<span class="kw">function</span> <span class="fn">createLoaders</span>() {
+  <span class="kw">return</span> {
+    venue: <span class="kw">new</span> DataLoader<span class="kw">&lt;</span><span class="kw">string</span>, Venue<span class="kw">&gt;</span>(
+      <span class="kw">async</span> (ids: <span class="kw">readonly string</span>[]) => {
+        <span class="cm">// Called ONCE with all IDs collected this tick</span>
+        <span class="kw">const</span> rows = <span class="kw">await</span> db.<span class="fn">query</span>(
+          <span class="str">'SELECT * FROM venues WHERE id = ANY($1)'</span>,
+          [[...ids]]
+        );
+        <span class="kw">const</span> map = <span class="kw">new</span> Map(rows.rows.<span class="fn">map</span>(v => [v.id, v]));
+        <span class="cm">// Must return results in same order as input ids</span>
+        <span class="kw">return</span> ids.<span class="fn">map</span>(id => map.<span class="fn">get</span>(id) ?? <span class="kw">null</span>);
+      }
+    ),
+  };
+}
+
+<span class="cm">// In a GraphQL resolver or route handler:</span>
+app.<span class="fn">get</span>(<span class="str">'/events'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> loaders = <span class="fn">createLoaders</span>();          <span class="cm">// fresh per request</span>
+  <span class="kw">const</span> events = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM events LIMIT 100'</span>);
+
+  <span class="cm">// Each .load() call looks individual but they're batched automatically</span>
+  <span class="kw">const</span> withVenues = <span class="kw">await</span> Promise.<span class="fn">all</span>(
+    events.rows.<span class="fn">map</span>(<span class="kw">async</span> event => ({
+      ...event,
+      venue: <span class="kw">await</span> loaders.venue.<span class="fn">load</span>(event.venue_id),
+    }))
+  );
+
+  res.<span class="fn">json</span>(withVenues);
+});
+<span class="cm">// Result: 2 queries — 1 for events, 1 batched venue query</span>
+<span class="cm">// Even if 100 resolvers each call loaders.venue.load() independently</span></pre>
+  </div>
+
+  <div class="callout prod">
+    <div class="callout-icon">✅</div>
+    <div class="callout-inner">
+      <strong>DataLoader is the correct fix for GraphQL</strong>
+      <p>In a REST API, you control the query structure and can use a JOIN or batch query directly. In GraphQL, each field resolver is independent — you can't easily restructure them. DataLoader solves this by transparently batching all <code>.load()</code> calls that happen in the same tick, regardless of where in the resolver tree they originate. Create one DataLoader per entity type per request.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FIX: ORM EAGER LOADING -->
+<div class="section" id="s-fix-orm">
+  <div class="section-eyebrow">Fix 04</div>
+  <h2>Fix: ORM eager loading — tell the ORM what you need</h2>
+  <p>Every major ORM has a way to declare upfront which relationships to include. This generates a JOIN or a batched query rather than lazy-loading each one.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Eager loading in Prisma, TypeORM, and Sequelize</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="cm">// ── PRISMA ──────────────────────────────────────────────────────</span>
+<span class="cm">// Bad: lazy load triggers N queries</span>
+<span class="bad">const events = await prisma.event.findMany({ take: 100 });
+for (const e of events) { console.log(e.venue.name); } // N queries</span>
+
+<span class="cm">// Good: include declares the relationship upfront</span>
+<span class="good">const events = await prisma.event.findMany({
+  take: 100,
+  include: { venue: true },           // 1 extra query, batched
+  // or: select specific fields
+  include: {
+    venue: { select: { name: true, city: true } }
+  },
+});</span>
+
+<span class="cm">// ── TYPEORM ─────────────────────────────────────────────────────</span>
+<span class="bad">const events = await eventRepo.find();         // lazy — N+1</span>
+<span class="good">const events = await eventRepo.find({
+  relations: { venue: true },                  // eager — JOIN
+});</span>
+
+<span class="cm">// or with QueryBuilder for more control:</span>
+<span class="good">const events = await eventRepo
+  .createQueryBuilder('event')
+  .leftJoinAndSelect('event.venue', 'venue')   // explicit JOIN
+  .take(100)
+  .getMany();</span>
+
+<span class="cm">// ── SEQUELIZE ───────────────────────────────────────────────────</span>
+<span class="bad">const events = await Event.findAll({ limit: 100 }); // lazy</span>
+<span class="good">const events = await Event.findAll({
+  include: [{ model: Venue }],                 // eager
+  limit: 100,
+});</span></pre>
+  </div>
+</div>
+
+<!-- WHICH FIX WHEN -->
+<div class="section" id="s-which">
+  <div class="section-eyebrow">Section 06</div>
+  <h2>Which fix for which situation</h2>
+
+  <div class="viz-box">
+    <div class="viz-header"><span class="viz-title">Choosing the right fix</span><span class="viz-badge">Interactive</span></div>
+    <div class="viz-body">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="viz-btn active" onclick="showFix('join')">Same DB, simple join</button>
+        <button class="viz-btn" onclick="showFix('batch')">Cross-service / no SQL control</button>
+        <button class="viz-btn" onclick="showFix('dataloader')">GraphQL resolvers</button>
+        <button class="viz-btn" onclick="showFix('orm')">Using an ORM</button>
+        <button class="viz-btn" onclick="showFix('onetomany')">One-to-many relationship</button>
+      </div>
+      <div id="fix-out" class="mono-out" style="min-height:180px;font-size:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PREVENTION -->
+<div class="section" id="s-prevent">
+  <div class="section-eyebrow">Section 07</div>
+  <h2>Prevention — stop N+1 before it reaches production</h2>
+
+  <h3>The rule of thumb</h3>
+  <p>Any <code>await</code> inside a loop over database records is a red flag. Stop and ask: can this be done as a single query outside the loop? The answer is almost always yes.</p>
+
+  <div class="compare">
+    <div class="compare-block">
+      <div class="compare-header bad">❌ Await inside loop</div>
+      <div class="compare-body bad">for (const item of items) {
+  // Runs N times
+  const rel = await db.find(
+    item.relId
+  );
+}</div>
+    </div>
+    <div class="compare-block">
+      <div class="compare-header good">✅ Batch outside loop</div>
+      <div class="compare-body good">const ids = items.map(
+  i => i.relId
+);
+const rels = await db.findMany(ids);
+// One query, then map</div>
+    </div>
+  </div>
+
+  <h3>Enable query logging in development</h3>
+  <p>Always run with query logging on in development. Every query should be visible. A healthy list endpoint makes 1–3 queries. More than 10 is always worth investigating. The cost of reviewing logs in dev is far less than debugging a production slowdown.</p>
+
+  <h3>Add a query count assertion in tests</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-block-title">Test that enforces query count</span><span class="code-block-lang">TypeScript</span></div>
+    <pre><span class="kw">import</span> { assertQueryCount } <span class="kw">from</span> <span class="str">'./test-helpers'</span>;
+
+test(<span class="str">'GET /events uses at most 3 queries'</span>, <span class="kw">async</span> () => {
+  <span class="kw">await</span> <span class="fn">assertQueryCount</span>(
+    () => request(app).<span class="fn">get</span>(<span class="str">'/events?limit=50'</span>),
+    { max: 3 }
+  );
+  <span class="cm">// This test fails if someone introduces an N+1 later</span>
+  <span class="cm">// Catches regressions before they reach production</span>
+});</pre>
+  </div>
+
+  <h3>pg_stat_statements in staging</h3>
+  <p>Run your full test suite against a staging database with <code>pg_stat_statements</code> enabled. After the run, query for any statement with <code>calls</code> suspiciously higher than your request count. This catches N+1 patterns that unit tests miss because the loop only ran once in the test but runs 100 times under real load.</p>
+</div>
+
+<!-- CLOSING -->
+<div style="margin-top:56px;padding-top:48px;border-top:1px solid var(--border);">
+  <p style="font-family:'Lora',serif;font-size:19px;line-height:1.8;color:var(--text);font-style:italic;">
+    The database is not slow. The queries are fast. It is the hundred separate trips to the kitchen when one trip would have done. The fix is always the same: collect what you need, fetch it together, map it back. One trip.
+  </p>
+</div>
+
+<!-- RELATED -->
+<div class="related">
+  <span class="related-label">Related topics</span>
+  <a href="/topics/performance-profiling" class="related-link">Performance Profiling →</a>
+  <a href="/topics/postgresql" class="related-link">PostgreSQL Deep Dive →</a>
+  <a href="/topics/caching-patterns" class="related-link">Caching Patterns →</a>
+  <a href="/topics/database-transactions" class="related-link">Database Transactions →</a>
+</div>
+
+</div><!-- /content -->
+</div><!-- /page -->
+
+<script>
+// TOC scroll spy
+var tocLinks = document.querySelectorAll('.toc a[href^="#"]');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 140, active = null;
+  document.querySelectorAll('[id]').forEach(function(el) {
+    if (el.offsetTop <= pos) active = el.id;
+  });
+  tocLinks.forEach(function(a) {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+  });
+}, {passive: true});
+
+// Cost calculator
+function calcCost() {
+  var n   = parseInt(document.getElementById('sl-n').value);
+  var lat = parseInt(document.getElementById('sl-lat').value);
+  document.getElementById('lbl-n').textContent   = n;
+  document.getElementById('lbl-lat').textContent = lat + 'ms';
+
+  var n1     = (n + 1) * lat;
+  var join   = lat + 5;
+  var batch  = lat * 2 + 2;
+  var colour = n1 > 1000 ? 'var(--red)' : n1 > 300 ? 'var(--orange)' : 'var(--text2)';
+
+  document.getElementById('cost-out').innerHTML =
+    'List size:          ' + n + ' items\n' +
+    'Per-query latency:  ' + lat + 'ms\n\n' +
+    'N+1 approach:       ' + (n + 1) + ' queries  →  <span style="color:' + colour + ';font-weight:700">' + n1 + 'ms total</span>\n' +
+    'JOIN approach:      1 query    →  <span style="color:var(--green);font-weight:700">' + join + 'ms total</span>  (' + Math.round(n1/join) + 'x faster)\n' +
+    'Batch approach:     2 queries  →  <span style="color:var(--green);font-weight:700">' + batch + 'ms total</span>  (' + Math.round(n1/batch) + 'x faster)\n' +
+    (n1 > 1000
+      ? '\n⚠  ' + n1 + 'ms will breach most P99 SLOs.'
+      : n1 > 200
+      ? '\nNoticeable. Will worsen as data grows.'
+      : '\nFine now. Will hurt at 10×.');
+}
+calcCost();
+
+// Fix selector
+var FIXES = {
+  join:
+    'USE: JOIN\n\n' +
+    'Best when:\n' +
+    '  - Both tables are in the same database\n' +
+    '  - You always need the related data (not optional)\n' +
+    '  - It is a many-to-one or one-to-one relationship\n' +
+    '    (event → venue, post → author, order → customer)\n\n' +
+    'How:\n' +
+    '  SELECT e.*, v.name AS venue_name\n' +
+    '  FROM events e\n' +
+    '  JOIN venues v ON v.id = e.venue_id\n' +
+    '  LIMIT 100\n\n' +
+    'Result: 1 query. The database does the join internally.\n\n' +
+    'Avoid when:\n' +
+    '  - One-to-many: JOINing events to bookings returns\n' +
+    '    one row per booking, multiplying your result set.\n' +
+    '    Use a subquery or batch query instead.',
+
+  batch:
+    'USE: BATCH QUERY\n\n' +
+    'Best when:\n' +
+    '  - Related data is in a different database or service\n' +
+    '  - You cannot write raw SQL (using an API or RPC)\n' +
+    '  - The relationship is optional (not all items have it)\n' +
+    '  - One-to-many where JOIN would multiply rows\n\n' +
+    'How:\n' +
+    '  const ids = [...new Set(events.map(e => e.venueId))];\n' +
+    '  const venues = await venueService.findMany(ids);\n' +
+    '  const map = new Map(venues.map(v => [v.id, v]));\n' +
+    '  events.forEach(e => e.venue = map.get(e.venueId));\n\n' +
+    'Result: 2 queries total, regardless of N.\n\n' +
+    'The WHERE id = ANY($1) pattern in PostgreSQL\n' +
+    'accepts an array and returns all matching rows in one query.',
+
+  dataloader:
+    'USE: DATALOADER\n\n' +
+    'Best when:\n' +
+    '  - You are using GraphQL\n' +
+    '  - Field resolvers run independently\n' +
+    '  - You cannot restructure the resolver to use a JOIN\n' +
+    '  - Multiple parts of the query need the same entity type\n\n' +
+    'How it works:\n' +
+    '  1. Each resolver calls loader.load(id)\n' +
+    '  2. DataLoader defers execution to the next tick\n' +
+    '  3. All load() calls in the same tick are batched\n' +
+    '  4. One DB query fetches all IDs\n' +
+    '  5. Results distributed back to each caller\n\n' +
+    'Key rule: create DataLoaders per request, not globally.\n' +
+    'A global DataLoader caches across requests — user A\n' +
+    'could get user B\'s cached data.\n\n' +
+    'npm install dataloader   # Facebook\'s reference implementation',
+
+  orm:
+    'USE: ORM EAGER LOADING\n\n' +
+    'Best when:\n' +
+    '  - You are already using an ORM (Prisma, TypeORM, Sequelize)\n' +
+    '  - You want to stay within the ORM\'s query API\n' +
+    '  - The ORM supports the include/relations syntax\n\n' +
+    'Prisma:    include: { venue: true }\n' +
+    'TypeORM:   relations: { venue: true }\n' +
+    'Sequelize: include: [{ model: Venue }]\n\n' +
+    'What the ORM does:\n' +
+    '  Prisma: issues a second query with WHERE venue_id IN (...)\n' +
+    '          then stitches results in application code\n' +
+    '  TypeORM: generates a LEFT JOIN by default\n' +
+    '  Sequelize: generates a separate query with IN clause\n\n' +
+    'Always check the generated SQL in development.\n' +
+    'ORMs can still generate inefficient queries even with\n' +
+    'eager loading if relationships are nested or complex.',
+
+  onetomany:
+    'ONE-TO-MANY: special case\n\n' +
+    'Problem: an event has many bookings.\n' +
+    'A JOIN multiplies rows — 1 event with 50 bookings\n' +
+    'returns 50 rows, making aggregation needed.\n\n' +
+    'Option 1: batch query (cleanest)\n' +
+    '  const events = await db.query("SELECT * FROM events LIMIT 100");\n' +
+    '  const eventIds = events.rows.map(e => e.id);\n' +
+    '  const bookings = await db.query(\n' +
+    '    "SELECT * FROM bookings WHERE event_id = ANY($1)",\n' +
+    '    [eventIds]\n' +
+    '  );\n' +
+    '  // Group bookings by event_id and attach\n\n' +
+    'Option 2: subquery aggregate\n' +
+    '  SELECT e.*,\n' +
+    '    (SELECT COUNT(*) FROM bookings WHERE event_id = e.id)\n' +
+    '    AS booking_count\n' +
+    '  FROM events e LIMIT 100\n\n' +
+    'Option 3: ORM with include\n' +
+    '  prisma.event.findMany({ include: { bookings: true } })\n' +
+    '  -- Prisma uses a WHERE event_id IN (...) query, not a JOIN\n' +
+    '  -- Safe for one-to-many, but watch result set size',
+};
+
+function showFix(k) {
+  document.querySelectorAll('.viz-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('onclick') === 'showFix(\'' + k + '\')');
+  });
+  document.getElementById('fix-out').innerHTML = FIXES[k];
+}
+showFix('join');
+</script>
+</body>
+</html>
